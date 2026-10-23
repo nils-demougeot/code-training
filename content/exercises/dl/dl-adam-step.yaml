@@ -1,0 +1,80 @@
+id: dl-adam-step
+title: Implémenter SGD momentum et Adam
+domain: dl
+difficulty: medium
+minutes: 10
+interview: true
+tags: [optimiseurs, Adam, momentum]
+cards: [dl-adam-formula]
+statement: |
+  1. `momentum_step(param, grad, velocity, lr=0.01, beta=0.9)` : $v \leftarrow \beta v + g$, puis $\theta \leftarrow \theta - lr \cdot v$. Renvoie `(param, velocity)`.
+  2. `adam_step(param, grad, m, v, t, lr=0.001, b1=0.9, b2=0.999, eps=1e-8)` avec `t` le numéro du pas (commence à 1) :
+
+  $$m \leftarrow \beta_1 m + (1-\beta_1) g \qquad v \leftarrow \beta_2 v + (1-\beta_2) g^2$$
+  $$\hat m = \frac{m}{1-\beta_1^t} \qquad \hat v = \frac{v}{1-\beta_2^t} \qquad \theta \leftarrow \theta - lr \frac{\hat m}{\sqrt{\hat v} + \epsilon}$$
+
+  Renvoie `(param, m, v)`. Ne modifie pas les tableaux d'entrée en place.
+starter: |
+  import numpy as np
+
+
+  def momentum_step(param, grad, velocity, lr=0.01, beta=0.9):
+      pass
+
+
+  def adam_step(param, grad, m, v, t, lr=0.001, b1=0.9, b2=0.999, eps=1e-8):
+      pass
+solution: |
+  import numpy as np
+
+
+  def momentum_step(param, grad, velocity, lr=0.01, beta=0.9):
+      velocity = beta * velocity + grad
+      return param - lr * velocity, velocity
+
+
+  def adam_step(param, grad, m, v, t, lr=0.001, b1=0.9, b2=0.999, eps=1e-8):
+      m = b1 * m + (1 - b1) * grad
+      v = b2 * v + (1 - b2) * grad ** 2
+      m_hat = m / (1 - b1 ** t)
+      v_hat = v / (1 - b2 ** t)
+      return param - lr * m_hat / (np.sqrt(v_hat) + eps), m, v
+setup: |
+  import numpy as np
+  p = np.array([1.0, -2.0])
+  g = np.array([0.5, -0.1])
+tests:
+  - call: momentum_step(p, g, np.zeros(2))
+    expected: (np.array([0.995, -1.999]), np.array([0.5, -0.1]))
+  - name: Premier pas d'Adam ≈ lr × signe(g)
+    call: adam_step(p, g, np.zeros(2), np.zeros(2), t=1)[0]
+    expected: np.array([0.999, -1.999])
+  - name: 3 pas d'Adam
+    check: |
+      q, m, v = p.copy(), np.zeros(2), np.zeros(2)
+      for t in range(1, 4):
+          q, m, v = adam_step(q, g * t, m, v, t, lr=0.1)
+      expected = ref.adam_step
+      rq, rm, rv = p.copy(), np.zeros(2), np.zeros(2)
+      for t in range(1, 4):
+          rq, rm, rv = expected(rq, g * t, rm, rv, t, lr=0.1)
+      assert np.allclose(q, rq) and np.allclose(m, rm) and np.allclose(v, rv), f"obtenu {q}, attendu {rq}"
+  - name: Minimise une parabole
+    check: |
+      q, m, v = np.array([5.0]), np.zeros(1), np.zeros(1)
+      for t in range(1, 2001):
+          q, m, v = adam_step(q, 2 * q, m, v, t, lr=0.05)
+      assert abs(q[0]) < 0.05, f"x = {q[0]} après 2000 pas"
+  - name: Pas de modification en place
+    check: |
+      m0 = np.zeros(2)
+      adam_step(p, g, m0, np.zeros(2), 1)
+      assert (m0 == 0).all(), "m a été modifié en place"
+hints:
+  - "Écris `m = b1 * m + (1 - b1) * grad` (nouvel objet) plutôt que `m *= b1` (modification en place)."
+  - "La correction de biais compense l'initialisation à zéro de `m` et `v` lors des premiers pas."
+explanation: |
+  - **Momentum** : moyenne mobile des gradients, qui amortit les oscillations et accélère dans les directions constantes.
+  - **Adam** = momentum (`m`, moment d'ordre 1) + RMSProp (`v`, moment d'ordre 2) : chaque paramètre a son propre pas effectif $lr / \sqrt{\hat v}$.
+  - Au premier pas, $\hat m / \sqrt{\hat v} = g / |g| = \pm 1$ : Adam avance d'environ `lr` quelle que soit l'échelle du gradient.
+  - PyTorch : `torch.optim.Adam(model.parameters(), lr=1e-3)`. **AdamW** découple le weight decay (standard pour les transformers).

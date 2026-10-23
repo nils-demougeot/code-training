@@ -1,0 +1,66 @@
+id: pd-named-agg
+title: Résumé client avec agrégations nommées
+domain: pandas
+difficulty: medium
+minutes: 8
+interview: true
+shared: shop_df
+tags: [groupby, agg, named aggregation, reset_index]
+cards: [pd-named-agg]
+statement: |
+  Écris `customer_summary(df)` qui renvoie **un DataFrame à plat** (une ligne par client) avec les colonnes :
+
+  | colonne | définition |
+  |---|---|
+  | `customer` | le client |
+  | `n_orders` | nombre de commandes |
+  | `total_spent` | somme de `qty * price` |
+  | `avg_basket` | panier moyen (`total_spent / n_orders`) |
+  | `last_order` | date de la dernière commande |
+
+  Trié par `total_spent` décroissant, index `0..n-1`.
+starter: |
+  import pandas as pd
+
+
+  def customer_summary(df):
+      pass
+solution: |
+  import pandas as pd
+
+
+  def customer_summary(df):
+      out = (
+          df.assign(total=df['qty'] * df['price'])
+          .groupby('customer', as_index=False)
+          .agg(
+              n_orders=('order_id', 'count'),
+              total_spent=('total', 'sum'),
+              last_order=('date', 'max'),
+          )
+      )
+      out['avg_basket'] = out['total_spent'] / out['n_orders']
+      out = out[['customer', 'n_orders', 'total_spent', 'avg_basket', 'last_order']]
+      return out.sort_values('total_spent', ascending=False).reset_index(drop=True)
+tests:
+  - call: customer_summary(orders)
+  - name: Colonnes et ordre
+    check: |
+      out = customer_summary(orders)
+      expected = ['customer', 'n_orders', 'total_spent', 'avg_basket', 'last_order']
+      assert list(out.columns) == expected, f"colonnes : {list(out.columns)}"
+  - call: customer_summary(make_orders(150, seed=9))
+    hidden: true
+hints:
+  - "Agrégation nommée : `.agg(nouvelle_col=('colonne_source', 'fonction'))`."
+  - "`groupby('customer', as_index=False)` garde `customer` comme colonne au lieu d'en faire l'index."
+  - "Calcule `avg_basket` après l'agrégation, puis réordonne les colonnes avec `out[[...]]`."
+explanation: |
+  ```python
+  (df.groupby('customer', as_index=False)
+     .agg(n_orders=('order_id', 'count'),
+          total_spent=('total', 'sum'),
+          last_order=('date', 'max')))
+  ```
+  - La syntaxe **named aggregation** évite les colonnes MultiIndex de `.agg({'total': ['sum', 'mean']})`.
+  - Équivalent SQL : `SELECT customer, COUNT(*), SUM(total), MAX(date) FROM ... GROUP BY customer`.

@@ -1,0 +1,46 @@
+id: py-rotate-slicing
+title: Rotation par slicing
+domain: python
+difficulty: easy
+minutes: 4
+tags: [slicing, modulo]
+cards: [py-slice-reverse, py-slice-last]
+statement: |
+  Écris `rotate(lst, k)` qui fait tourner la liste de `k` positions **vers la droite** et renvoie une nouvelle liste.
+
+  - `k` peut être plus grand que la longueur, ou négatif (rotation vers la gauche).
+  - La liste peut être vide.
+
+  Pas de boucle : utilise le **slicing**.
+starter: |
+  def rotate(lst, k):
+      pass
+solution: |
+  def rotate(lst, k):
+      if not lst:
+          return []
+      k %= len(lst)
+      return lst[-k:] + lst[:-k] if k else lst[:]
+tests:
+  - call: rotate([1, 2, 3, 4, 5], 2)
+    expected: "[4, 5, 1, 2, 3]"
+  - call: rotate([1, 2, 3], 4)
+    expected: "[3, 1, 2]"
+  - call: rotate([1, 2, 3], -1)
+    expected: "[2, 3, 1]"
+  - call: rotate([], 3)
+    expected: "[]"
+  - call: rotate([1, 2, 3], 0)
+    hidden: true
+  - call: rotate([1, 2, 3], 3)
+    hidden: true
+hints:
+  - "`k % len(lst)` ramène k dans `[0, len)`, même pour un k négatif en Python."
+  - "Les k derniers éléments : `lst[-k:]`. Tout sauf eux : `lst[:-k]`. Attention au cas `k == 0` : `lst[-0:]` vaut toute la liste !"
+explanation: |
+  ```python
+  a[start:stop:step]   a[::-1] (inverse)   a[-3:] (3 derniers)   a[:-1] (sauf le dernier)
+  ```
+  - En Python, `-1 % 5 == 4` : le modulo d'un négatif est positif (≠ C/Java).
+  - Piège : `a[-0:]` = `a[0:]` = toute la liste. D'où le cas particulier `k == 0`.
+  - Le slicing crée une **copie superficielle** (`a[:]` copie la liste).

@@ -1,0 +1,102 @@
+id: sql
+title: SQL — requêtes d'entretien
+domain: sql
+description: Jointures, agrégats, HAVING, CTE, window functions. Auto-évaluées. Pratique-les dans les exercices SQL.
+cards:
+  - id: sql-order-by
+    kind: reveal
+    prompt: "Les 5 produits les plus chers (nom, prix)."
+    answer: |-
+      SELECT name, price FROM products
+      ORDER BY price DESC
+      LIMIT 5;
+  - id: sql-join
+    kind: reveal
+    prompt: "Chaque commande avec le nom de son client."
+    answer: |-
+      SELECT o.id, c.name
+      FROM orders o
+      JOIN customers c ON c.id = o.customer_id;
+  - id: sql-group-by
+    kind: reveal
+    prompt: "Nombre de clients par ville, du plus grand au plus petit."
+    answer: |-
+      SELECT city, COUNT(*) AS n
+      FROM customers
+      GROUP BY city
+      ORDER BY n DESC;
+  - id: sql-having
+    kind: reveal
+    prompt: "Les villes ayant plus de 2 clients."
+    answer: |-
+      SELECT city, COUNT(*) AS n
+      FROM customers
+      GROUP BY city
+      HAVING COUNT(*) > 2;
+    note: "WHERE filtre les lignes avant agrégation, HAVING filtre les groupes après."
+  - id: sql-left-join-null
+    kind: reveal
+    prompt: "Les clients sans aucune commande."
+    answer: |-
+      SELECT c.*
+      FROM customers c
+      LEFT JOIN orders o ON o.customer_id = c.id
+      WHERE o.id IS NULL;
+  - id: sql-distinct-count
+    kind: reveal
+    prompt: "Nombre de clients distincts ayant commandé."
+    answer: |-
+      SELECT COUNT(DISTINCT customer_id) FROM orders;
+  - id: sql-case-when
+    kind: reveal
+    prompt: "Ajouter une colonne price_band : 'cheap' si price < 50, sinon 'premium'."
+    answer: |-
+      SELECT name,
+             CASE WHEN price < 50 THEN 'cheap' ELSE 'premium' END AS price_band
+      FROM products;
+  - id: sql-coalesce
+    kind: reveal
+    prompt: "Remplacer un NULL de la colonne discount par 0."
+    answer: |-
+      SELECT COALESCE(discount, 0) AS discount FROM orders;
+  - id: sql-strftime
+    kind: reveal
+    prompt: "Nombre de commandes par mois (SQLite, format AAAA-MM)."
+    answer: |-
+      SELECT strftime('%Y-%m', order_date) AS month, COUNT(*) AS n
+      FROM orders
+      GROUP BY month
+      ORDER BY month;
+    note: "PostgreSQL : `DATE_TRUNC('month', order_date)`."
+  - id: sql-cte
+    kind: reveal
+    prompt: "Structure d'une requête avec une CTE."
+    answer: |-
+      WITH totals AS (
+          SELECT customer_id, SUM(amount) AS total
+          FROM payments
+          GROUP BY customer_id
+      )
+      SELECT * FROM totals WHERE total > 100;
+  - id: sql-row-number
+    kind: reveal
+    prompt: "Numéroter les commandes de chaque client de la plus récente à la plus ancienne."
+    answer: |-
+      SELECT *,
+             ROW_NUMBER() OVER (PARTITION BY customer_id ORDER BY order_date DESC) AS rn
+      FROM orders;
+    note: "Puis `WHERE rn = 1` dans une requête englobante pour la dernière commande de chaque client."
+  - id: sql-running-total
+    kind: reveal
+    prompt: "Cumul du montant par client au fil du temps."
+    answer: |-
+      SELECT customer_id, order_date, amount,
+             SUM(amount) OVER (PARTITION BY customer_id ORDER BY order_date) AS running_total
+      FROM payments;
+  - id: sql-lag
+    kind: reveal
+    prompt: "Pour chaque commande, la date de la commande précédente du même client."
+    answer: |-
+      SELECT id, customer_id, order_date,
+             LAG(order_date) OVER (PARTITION BY customer_id ORDER BY order_date) AS prev_date
+      FROM orders;

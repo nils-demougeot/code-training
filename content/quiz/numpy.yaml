@@ -1,0 +1,151 @@
+domain: numpy
+questions:
+  - id: q-np-axis0-shape
+    topic: Axes
+    verify: true
+    question: Qu'affiche ce code ?
+    code: |
+      import numpy as np
+      a = np.arange(12).reshape(3, 4)
+      print(a.sum(axis=0).shape)
+    choices: ["(3,)", "(4,)", "(3, 1)", "(1, 4)"]
+    answer: 1
+    explain: "`axis=0` **écrase les lignes** : il reste un résultat par colonne, donc `(4,)`."
+  - id: q-np-keepdims
+    topic: Axes
+    verify: true
+    question: Qu'affiche ce code ?
+    code: |
+      import numpy as np
+      a = np.ones((3, 4))
+      print(a.mean(axis=1, keepdims=True).shape)
+    choices: ["(3,)", "(4,)", "(3, 1)", "(1, 4)"]
+    answer: 2
+    explain: "`keepdims=True` garde l'axe réduit avec une taille 1, pour que le résultat se broadcast contre `a`."
+  - id: q-np-broadcast-error
+    topic: Broadcasting
+    verify: true
+    question: Que se passe-t-il ?
+    code: |
+      import numpy as np
+      X = np.ones((4, 3))
+      row_means = X.mean(axis=1)
+      print((X - row_means).shape)
+    choices: ["(4, 3)", "(4,)", "ValueError", "(3, 4)"]
+    answer: 2
+    explain: "`(4, 3) - (4,)` : aligné à droite, 3 ≠ 4, broadcasting impossible. Il fallait `keepdims=True` ou `row_means[:, None]`."
+  - id: q-np-outer
+    topic: Broadcasting
+    verify: true
+    question: Qu'affiche ce code ?
+    code: |
+      import numpy as np
+      a = np.arange(3)[:, None]
+      b = np.arange(4)
+      print((a + b).shape)
+    choices: ["(3,)", "(4,)", "(3, 4)", "ValueError"]
+    answer: 2
+    explain: "`(3, 1) + (4,)` → `(3, 1) + (1, 4)` → `(3, 4)`. C'est l'astuce du produit extérieur."
+  - id: q-np-view
+    topic: Vues et copies
+    verify: true
+    question: Qu'affiche ce code ?
+    code: |
+      import numpy as np
+      a = np.arange(5)
+      b = a[1:3]
+      b[0] = 99
+      print(a)
+    choices: ["[0 1 2 3 4]", "[ 0 99  2  3  4]", "[99  1  2  3  4]", "[ 0 99 99  3  4]"]
+    answer: 1
+    explain: "Le slicing NumPy renvoie une **vue** : modifier `b` modifie `a`. Utilise `.copy()` pour une copie indépendante (contrairement aux listes Python)."
+  - id: q-np-fancy-copy
+    topic: Vues et copies
+    verify: true
+    question: Qu'affiche ce code ?
+    code: |
+      import numpy as np
+      a = np.arange(5)
+      b = a[[1, 2]]
+      b[0] = 99
+      print(a)
+    choices: ["[0 1 2 3 4]", "[ 0 99  2  3  4]", "[99  1  2  3  4]", "IndexError"]
+    answer: 0
+    explain: "L'indexation par **liste d'indices** (fancy indexing) ou par **masque** renvoie une **copie**, contrairement au slicing."
+  - id: q-np-int-dtype
+    topic: dtype
+    verify: true
+    question: Qu'affiche ce code ?
+    code: |
+      import numpy as np
+      a = np.array([1, 2, 3])
+      a[0] = 2.7
+      print(a)
+    choices: ["[2.7 2.  3. ]", "[2 2 3]", "[3 2 3]", "TypeError"]
+    answer: 1
+    explain: "Le dtype d'un tableau est **fixe** (ici entier) : 2.7 est tronqué en 2 sans avertissement. Crée le tableau en float dès le départ."
+  - id: q-np-and
+    topic: Masques
+    verify: true
+    question: Que se passe-t-il ?
+    code: |
+      import numpy as np
+      a = np.array([1, 5, 10])
+      print(a[a > 2 and a < 8])
+    choices: ["[5]", "[5 10]", "ValueError", "[]"]
+    answer: 2
+    explain: "`and` exige un booléen unique, or `a > 2` est un tableau : `ValueError: The truth value of an array ... is ambiguous`. Utilise `(a > 2) & (a < 8)`."
+  - id: q-np-matmul-vs-mul
+    topic: Opérations
+    verify: true
+    question: Qu'affiche ce code ?
+    code: |
+      import numpy as np
+      A = np.array([[1, 2], [3, 4]])
+      print((A * A)[0, 1], (A @ A)[0, 1])
+    choices: ["4 10", "10 4", "4 4", "10 10"]
+    answer: 0
+    explain: "`*` : produit **élément par élément** (2×2 = 4). `@` : produit **matriciel** (1×2 + 2×4 = 10)."
+  - id: q-np-reshape-order
+    topic: Reshape
+    verify: true
+    question: Qu'affiche ce code ?
+    code: |
+      import numpy as np
+      print(np.arange(6).reshape(2, 3)[:, 1])
+    choices: ["[1 4]", "[3 4 5]", "[1 2]", "[2 3]"]
+    answer: 0
+    explain: "`reshape(2, 3)` remplit ligne par ligne : `[[0 1 2], [3 4 5]]`. La colonne 1 contient `[1 4]`."
+  - id: q-np-argmax
+    topic: Indices
+    verify: true
+    question: Qu'affiche ce code ?
+    code: |
+      import numpy as np
+      P = np.array([[0.1, 0.7, 0.2], [0.5, 0.3, 0.2]])
+      print(P.argmax(axis=1))
+    choices: ["[1 0]", "[0.7 0.5]", "[0 1]", "1"]
+    answer: 0
+    explain: "`argmax(axis=1)` donne l'**indice** du max de chaque ligne : c'est la classe prédite."
+  - id: q-np-nan
+    topic: NaN
+    verify: true
+    question: Qu'affiche ce code ?
+    code: |
+      import numpy as np
+      x = np.array([1.0, np.nan, 3.0])
+      print(x.mean(), np.nanmean(x))
+    choices: ["2.0 2.0", "nan 2.0", "1.33 2.0", "nan nan"]
+    answer: 1
+    explain: "Un NaN « contamine » les calculs. `np.nanmean`, `np.nansum`… les ignorent. Pandas, lui, ignore les NaN par défaut (`skipna=True`)."
+  - id: q-np-1d-transpose
+    topic: Shapes
+    verify: true
+    question: Qu'affiche ce code ?
+    code: |
+      import numpy as np
+      v = np.array([1, 2, 3])
+      print(v.T.shape)
+    choices: ["(3, 1)", "(1, 3)", "(3,)", "ValueError"]
+    answer: 2
+    explain: "Transposer un tableau 1D ne fait **rien** : il n'a qu'un axe. Pour une colonne : `v[:, None]` ou `v.reshape(-1, 1)`."

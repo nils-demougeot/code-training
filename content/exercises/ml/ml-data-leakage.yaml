@@ -1,0 +1,67 @@
+id: ml-data-leakage
+title: Corriger une fuite de données
+domain: ml
+difficulty: medium
+minutes: 8
+interview: true
+tags: [data leakage, fit/transform, train/test]
+cards: [sk-fit-transform-test]
+statement: |
+  Un collègue a écrit le code de départ. Il **fonctionne**, mais contient une **fuite de données** classique : le scaler voit les données de test.
+
+  Corrige `evaluate(X, y)` pour que :
+  - le split soit fait **avant** toute transformation (`test_size=0.3`, `random_state=0`) ;
+  - le `StandardScaler` soit `fit` **uniquement sur le train**, puis utilisé pour transformer train et test ;
+  - la fonction renvoie `(scaler, X_train_raw, accuracy_test)` où `X_train_raw` est le train **avant** standardisation.
+setup: |
+  from sklearn.datasets import load_wine
+  X, y = load_wine(return_X_y=True)
+starter: |
+  from sklearn.linear_model import LogisticRegression
+  from sklearn.model_selection import train_test_split
+  from sklearn.preprocessing import StandardScaler
+
+
+  def evaluate(X, y):
+      scaler = StandardScaler()
+      X_scaled = scaler.fit_transform(X)          # ⚠️ fit sur TOUT le dataset
+      X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=0.3, random_state=0)
+      model = LogisticRegression(max_iter=1000).fit(X_train, y_train)
+      return scaler, X_train, model.score(X_test, y_test)
+solution: |
+  from sklearn.linear_model import LogisticRegression
+  from sklearn.model_selection import train_test_split
+  from sklearn.preprocessing import StandardScaler
+
+
+  def evaluate(X, y):
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=0)
+      scaler = StandardScaler().fit(X_train)
+      model = LogisticRegression(max_iter=1000).fit(scaler.transform(X_train), y_train)
+      return scaler, X_train, model.score(scaler.transform(X_test), y_test)
+tests:
+  - name: Le scaler n'a vu que le train
+    check: |
+      import numpy as np
+      scaler, X_train_raw, acc = evaluate(X, y)
+      assert X_train_raw.shape[0] == 124, f"X_train_raw a {X_train_raw.shape[0]} lignes (attendu 124 = 70 % de 178)"
+      assert np.allclose(X_train_raw.mean(axis=0), scaler.mean_), "scaler.mean_ ≠ moyenne du train brut : le scaler a vu d'autres données (ou X_train_raw est déjà standardisé)"
+  - name: Score de test
+    call: evaluate(X, y)[2]
+hints:
+  - "Fais le `train_test_split` sur `X` brut, en premier."
+  - "`scaler = StandardScaler().fit(X_train)`, puis `scaler.transform(X_train)` et `scaler.transform(X_test)`. Jamais `fit_transform` sur le test !"
+explanation: |
+  **Règle d'or** : tout ce qui « apprend » des données (scaler, imputer, encodeur, sélection de features, PCA…) se `fit` sur le **train uniquement**.
+
+  ```python
+  scaler.fit(X_train)            # apprend mean_/scale_
+  scaler.transform(X_train); scaler.transform(X_test)
+  ```
+  Autres fuites classiques en entretien :
+  - sélectionner les features avec la corrélation à `y` calculée **sur tout** le dataset ;
+  - des **doublons** du même client dans train et test (→ `GroupKFold`) ;
+  - en séries temporelles, un split **aléatoire** (le futur aide à prédire le passé → `TimeSeriesSplit`) ;
+  - une feature qui n'existe pas au moment de la prédiction (ex. « date de résiliation » pour prédire le churn).
+
+  La solution robuste : un `Pipeline` passé à `cross_val_score`.

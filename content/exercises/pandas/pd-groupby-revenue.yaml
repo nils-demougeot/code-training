@@ -1,0 +1,65 @@
+id: pd-groupby-revenue
+title: Chiffre d'affaires par catégorie
+domain: pandas
+difficulty: easy
+minutes: 5
+shared: shop_df
+tags: [groupby, sum, value_counts]
+cards: [pd-groupby-sum, pd-value-counts]
+statement: |
+  1. `revenue_by_category(df)` : une **Series** indexée par `category`, contenant la somme de `qty * price`, triée par valeur **décroissante**.
+  2. `orders_per_city(df)` : une Series `{ville: nombre de commandes}` triée par nombre décroissant (puis par nom de ville).
+  3. `share_by_category(df)` : comme 1., mais en **part du CA total** (les valeurs somment à 1).
+starter: |
+  import pandas as pd
+
+
+  def revenue_by_category(df):
+      pass
+
+
+  def orders_per_city(df):
+      pass
+
+
+  def share_by_category(df):
+      pass
+solution: |
+  import pandas as pd
+
+
+  def revenue_by_category(df):
+      revenue = df['qty'] * df['price']
+      return revenue.groupby(df['category']).sum().sort_values(ascending=False)
+
+
+  def orders_per_city(df):
+      counts = df.groupby('city').size()
+      return counts.sort_index().sort_values(ascending=False, kind='stable')
+
+
+  def share_by_category(df):
+      r = revenue_by_category(df)
+      return r / r.sum()
+tests:
+  - call: revenue_by_category(orders)
+  - call: orders_per_city(orders)
+  - name: Les parts somment à 1
+    check: |
+      s = share_by_category(orders)
+      assert abs(s.sum() - 1) < 1e-9, f"somme = {s.sum()}"
+  - call: share_by_category(orders)
+    hidden: true
+hints:
+  - "Une Series peut être groupée par une autre Series : `(df.qty * df.price).groupby(df.category).sum()`."
+  - "Ou : `df.assign(rev=...).groupby('category')['rev'].sum()`."
+  - "Compter les lignes par groupe : `df.groupby('city').size()` ou `df['city'].value_counts()`."
+explanation: |
+  ```python
+  df.groupby('category')['rev'].sum()            # Series indexée par catégorie
+  df.groupby('category', as_index=False)['rev'].sum()   # DataFrame à plat
+  df['city'].value_counts()                      # comptage trié décroissant
+  df['city'].value_counts(normalize=True)        # proportions
+  ```
+  - `size()` compte les lignes, `count()` compte les valeurs **non nulles** de chaque colonne.
+  - Pour un ordre déterministe à égalité, trier d'abord par l'index puis faire un tri **stable**.

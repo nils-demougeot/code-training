@@ -1,0 +1,81 @@
+id: pytorch-loop
+title: La boucle d'entraînement PyTorch annotée
+domain: dl
+summary: Le code complet d'un entraînement PyTorch, ligne par ligne, avec les erreurs classiques à éviter.
+body: |
+  ## Le code de référence
+
+  ```python
+  import torch
+  from torch import nn
+  from torch.utils.data import DataLoader, TensorDataset
+
+  device = 'cuda' if torch.cuda.is_available() else 'cpu'
+
+  # 1. Données
+  train_ds = TensorDataset(torch.tensor(X_train, dtype=torch.float32),
+                           torch.tensor(y_train, dtype=torch.long))
+  train_loader = DataLoader(train_ds, batch_size=64, shuffle=True)
+
+  # 2. Modèle
+  class Net(nn.Module):
+      def __init__(self, d_in, n_classes):
+          super().__init__()
+          self.net = nn.Sequential(
+              nn.Linear(d_in, 128), nn.ReLU(), nn.Dropout(0.2),
+              nn.Linear(128, n_classes),            # logits
+          )
+      def forward(self, x):
+          return self.net(x)
+
+  model = Net(X_train.shape[1], 10).to(device)
+
+  # 3. Loss et optimiseur
+  loss_fn = nn.CrossEntropyLoss()                   # prend des LOGITS
+  optimizer = torch.optim.AdamW(model.parameters(), lr=1e-3, weight_decay=1e-2)
+
+  # 4. Boucle
+  for epoch in range(20):
+      model.train()                                 # active dropout / batchnorm
+      for xb, yb in train_loader:
+          xb, yb = xb.to(device), yb.to(device)
+          optimizer.zero_grad()                     # (1) remettre les gradients à 0
+          loss = loss_fn(model(xb), yb)             # (2) forward
+          loss.backward()                           # (3) backward : remplit .grad
+          optimizer.step()                          # (4) mise à jour
+
+      model.eval()                                  # désactive dropout / batchnorm
+      with torch.no_grad():                         # pas de graphe de calcul
+          val_acc = (model(X_val_t.to(device)).argmax(1) == y_val_t.to(device)).float().mean().item()
+      print(f"epoch {epoch}: val_acc={val_acc:.3f}")
+  ```
+
+  ## Les 8 erreurs classiques
+
+  1. **Oublier `optimizer.zero_grad()`** : les gradients s'additionnent d'un batch à l'autre.
+  2. **Softmax avant `CrossEntropyLoss`** : elle applique déjà log-softmax. Donne-lui des logits.
+  3. **Labels en float** pour `CrossEntropyLoss` : il faut des entiers `torch.long` de shape `(N,)`.
+  4. **Oublier `model.eval()`** : dropout actif à l'évaluation, résultats aléatoires et sous-estimés.
+  5. **Évaluer sans `torch.no_grad()`** : mémoire gaspillée (graphe conservé).
+  6. **`losses.append(loss)`** au lieu de `loss.item()` : garde tout le graphe en mémoire.
+  7. **Modèle et données sur des devices différents** : `RuntimeError: Expected all tensors to be on the same device`.
+  8. **Mettre les couches dans une `list` Python** : leurs paramètres ne sont pas enregistrés ; utiliser `nn.ModuleList` ou `nn.Sequential`.
+
+  ## Quelle loss pour quel problème
+
+  | Problème | Sortie du modèle | Loss | Cible |
+  |---|---|---|---|
+  | multi-classe | `(N, C)` logits | `nn.CrossEntropyLoss` | `(N,)` long |
+  | binaire | `(N,)` ou `(N, 1)` logit | `nn.BCEWithLogitsLoss` | float 0/1, même shape |
+  | multi-label | `(N, C)` logits | `nn.BCEWithLogitsLoss` | `(N, C)` float 0/1 |
+  | régression | `(N,)` | `nn.MSELoss` / `nn.L1Loss` / `nn.HuberLoss` | float |
+
+  ## Shapes des couches courantes
+
+  | Couche | Entrée | Sortie |
+  |---|---|---|
+  | `nn.Linear(d_in, d_out)` | `(N, *, d_in)` | `(N, *, d_out)` |
+  | `nn.Conv2d(C_in, C_out, k, padding=k//2)` | `(N, C_in, H, W)` | `(N, C_out, H, W)` |
+  | `nn.MaxPool2d(2)` | `(N, C, H, W)` | `(N, C, H/2, W/2)` |
+  | `nn.Embedding(V, d)` | `(N, L)` entiers | `(N, L, d)` |
+  | `nn.LSTM(d, h, batch_first=True)` | `(N, L, d)` | `(N, L, h)` + états |

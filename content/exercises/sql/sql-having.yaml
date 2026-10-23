@@ -1,0 +1,35 @@
+id: sql-having
+title: Filtrer des groupes (HAVING)
+domain: sql
+difficulty: medium
+minutes: 6
+language: sql
+shared: sql_shop
+tags: [GROUP BY, HAVING, COUNT]
+cards: [sql-having]
+statement: |
+  Trouve les clients ayant passé **au moins 3 commandes non annulées** (statut différent de `'annulée'`).
+
+  Colonnes : `name`, `n_orders`, triées par `n_orders` décroissant puis `name`.
+starter: |
+  SELECT customer_id, COUNT(*)
+  FROM orders
+  GROUP BY customer_id
+solution: |
+  SELECT c.name, COUNT(*) AS n_orders
+  FROM orders o
+  JOIN customers c ON c.id = o.customer_id
+  WHERE o.status <> 'annulée'
+  GROUP BY c.id, c.name
+  HAVING COUNT(*) >= 3
+  ORDER BY n_orders DESC, c.name
+tests:
+  - name: Résultat de la requête
+    call: q(QUERY)
+hints:
+  - "Le filtre sur le statut porte sur les **lignes** : `WHERE`. Le filtre sur le nombre porte sur les **groupes** : `HAVING`."
+  - "`HAVING COUNT(*) >= 3`."
+explanation: |
+  - `WHERE` filtre les lignes **avant** le `GROUP BY` ; `HAVING` filtre les groupes **après**.
+  - Grouper par `c.id, c.name` (et pas seulement `name`) évite de fusionner deux clients homonymes.
+  - En pandas : `df[df.status != 'annulée'].groupby('name').size().loc[lambda s: s >= 3]`.

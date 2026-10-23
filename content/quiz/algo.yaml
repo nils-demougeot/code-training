@@ -1,0 +1,58 @@
+domain: algo
+questions:
+  - id: q-algo-in-list
+    topic: Complexité
+    question: "Complexité de `x in ma_liste` avec n éléments ?"
+    choices: ["O(1)", "O(log n)", "O(n)", "O(n log n)"]
+    answer: 2
+    explain: "Une liste est parcourue séquentiellement. Pour des tests d'appartenance répétés, convertis en `set` : O(1) en moyenne."
+  - id: q-algo-pop0
+    topic: Complexité
+    question: "Complexité de `liste.pop(0)` ?"
+    choices: ["O(1)", "O(log n)", "O(n)", "O(n²)"]
+    answer: 2
+    explain: "Tous les éléments suivants sont décalés. Pour une file : `collections.deque.popleft()` en O(1)."
+  - id: q-algo-binary-search
+    topic: Complexité
+    question: "Combien de comparaisons au maximum pour une recherche dichotomique dans 1 million d'éléments ?"
+    choices: ["~20", "~1 000", "~500 000", "~1 000 000"]
+    answer: 0
+    explain: "$\\log_2(10^6) ≈ 20$. Chaque comparaison divise l'espace de recherche par deux."
+  - id: q-algo-shortest-path
+    topic: Graphes
+    question: "Plus court chemin dans un labyrinthe (déplacements de coût 1) : quel algorithme ?"
+    choices: ["DFS", "BFS", "Tri topologique", "Programmation dynamique sur les lignes"]
+    answer: 1
+    explain: "Le BFS explore par distance croissante : la première fois qu'il atteint la cible, c'est par un plus court chemin."
+  - id: q-algo-heap-topk
+    topic: Structures
+    question: "Les k plus grands éléments d'un flux de n valeurs, avec peu de mémoire ?"
+    choices: ["Trier tout le flux", "Un min-heap de taille k", "Un max-heap de taille n", "Une recherche dichotomique"]
+    answer: 1
+    explain: "On garde les k meilleurs dans un min-heap : si une nouvelle valeur dépasse le minimum, on remplace. O(n log k) en temps, O(k) en mémoire."
+  - id: q-algo-recursion-fib
+    topic: Programmation dynamique
+    question: "Complexité du Fibonacci récursif naïf, et avec @lru_cache ?"
+    choices: ["O(n) et O(n)", "O(2ⁿ) et O(n)", "O(n²) et O(n)", "O(2ⁿ) et O(log n)"]
+    answer: 1
+    explain: "Sans mémoïsation, les mêmes sous-problèmes sont recalculés de façon exponentielle. Avec cache, chaque valeur est calculée une seule fois."
+  - id: q-algo-sorted-stable
+    topic: Tri
+    verify: true
+    question: Qu'affiche ce code ?
+    code: |
+      data = [('b', 2), ('a', 1), ('c', 2), ('d', 1)]
+      print([k for k, v in sorted(data, key=lambda t: t[1])])
+    choices: ["['a', 'd', 'b', 'c']", "['d', 'a', 'c', 'b']", "['a', 'b', 'c', 'd']", "['a', 'd', 'c', 'b']"]
+    answer: 0
+    explain: "Le tri de Python est **stable** : à valeur égale, l'ordre d'origine est conservé (`a` avant `d`, `b` avant `c`)."
+  - id: q-algo-hash-key
+    topic: Structures
+    verify: true
+    question: Que se passe-t-il ?
+    code: |
+      seen = set()
+      seen.add([1, 2])
+    choices: ["seen vaut {[1, 2]}", "TypeError", "seen vaut {1, 2}", "KeyError"]
+    answer: 1
+    explain: "Une liste est mutable donc **non hashable** : elle ne peut pas être dans un set ni servir de clé de dict. Utilise un `tuple`."

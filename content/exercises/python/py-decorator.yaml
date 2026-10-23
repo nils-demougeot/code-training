@@ -1,0 +1,109 @@
+id: py-decorator
+title: Écrire un décorateur
+domain: python
+difficulty: medium
+minutes: 10
+interview: true
+tags: [décorateur, closure, functools.wraps]
+cards: [py-decorator-wraps]
+statement: |
+  Écris un décorateur `count_calls` qui compte le nombre d'appels d'une fonction.
+
+  ```python
+  @count_calls
+  def add(a, b):
+      """Additionne."""
+      return a + b
+
+  add(1, 2); add(3, 4)
+  add.calls      # 2
+  add.__name__   # 'add'   (métadonnées préservées)
+  add.__doc__    # 'Additionne.'
+  ```
+
+  Puis écris `memoize`, un décorateur qui met en cache les résultats selon les arguments positionnels.
+starter: |
+  import functools
+
+
+  def count_calls(func):
+      pass
+
+
+  def memoize(func):
+      pass
+solution: |
+  import functools
+
+
+  def count_calls(func):
+      @functools.wraps(func)
+      def wrapper(*args, **kwargs):
+          wrapper.calls += 1
+          return func(*args, **kwargs)
+
+      wrapper.calls = 0
+      return wrapper
+
+
+  def memoize(func):
+      cache = {}
+
+      @functools.wraps(func)
+      def wrapper(*args):
+          if args not in cache:
+              cache[args] = func(*args)
+          return cache[args]
+
+      return wrapper
+tests:
+  - name: count_calls compte les appels
+    check: |
+      @count_calls
+      def add(a, b):
+          """Additionne."""
+          return a + b
+      assert add(1, 2) == 3
+      add(3, b=4)
+      assert add.calls == 2, f"calls = {getattr(add, 'calls', None)}"
+  - name: Métadonnées préservées (functools.wraps)
+    check: |
+      @count_calls
+      def add(a, b):
+          """Additionne."""
+          return a + b
+      assert add.__name__ == 'add', f"__name__ = {add.__name__} : utilise @functools.wraps(func)"
+      assert add.__doc__ == 'Additionne.'
+  - name: memoize évite les recalculs
+    check: |
+      n = {'calls': 0}
+      @memoize
+      def slow_square(x):
+          n['calls'] += 1
+          return x * x
+      assert [slow_square(3), slow_square(3), slow_square(4)] == [9, 9, 16]
+      assert n['calls'] == 2, f"la fonction a été exécutée {n['calls']} fois au lieu de 2"
+  - name: memoize rend fib rapide
+    check: |
+      @memoize
+      def fib(n):
+          return n if n < 2 else fib(n - 1) + fib(n - 2)
+      assert fib(80) == 23416728348467685
+hints:
+  - "Un décorateur est une fonction qui prend `func` et renvoie une **nouvelle** fonction `wrapper(*args, **kwargs)`."
+  - "Une fonction est un objet : tu peux lui ajouter un attribut, `wrapper.calls = 0`."
+  - "`@functools.wraps(func)` sur le wrapper copie `__name__`, `__doc__`, etc."
+explanation: |
+  ```python
+  def deco(func):
+      @functools.wraps(func)
+      def wrapper(*args, **kwargs):
+          # avant
+          result = func(*args, **kwargs)
+          # après
+          return result
+      return wrapper
+  ```
+  - `@deco` au-dessus de `def f` équivaut à `f = deco(f)`.
+  - Le `cache` vit dans la **closure** de `wrapper` : il persiste entre les appels.
+  - En vrai : `@functools.lru_cache(maxsize=None)` ou `@functools.cache` (Python ≥ 3.9). Les arguments doivent être **hashables**.

@@ -1,0 +1,107 @@
+id: py-bank-account
+title: Une classe BankAccount
+domain: python
+difficulty: medium
+minutes: 10
+interview: true
+tags: [classes, property, exceptions, __repr__]
+cards: [py-property, py-raise]
+statement: |
+  Écris une classe `BankAccount` :
+
+  - `BankAccount(owner, balance=0.0)`
+  - `deposit(amount)` : ajoute `amount`, qui doit être **strictement positif**, sinon lève `ValueError`.
+  - `withdraw(amount)` : retire `amount` ; lève `ValueError` si `amount <= 0` ou si le solde est insuffisant.
+  - `balance` : **propriété en lecture seule** (pas de setter).
+  - `history` : liste des opérations sous forme de tuples `('deposit', 50.0)` / `('withdraw', 20.0)`.
+  - `repr(compte)` renvoie `"BankAccount(owner='Alice', balance=30.00)"`.
+starter: |
+  class BankAccount:
+      def __init__(self, owner, balance=0.0):
+          pass
+solution: |
+  class BankAccount:
+      def __init__(self, owner, balance=0.0):
+          self.owner = owner
+          self._balance = float(balance)
+          self.history = []
+
+      @property
+      def balance(self):
+          return self._balance
+
+      def deposit(self, amount):
+          if amount <= 0:
+              raise ValueError("Le montant doit être positif")
+          self._balance += amount
+          self.history.append(('deposit', float(amount)))
+
+      def withdraw(self, amount):
+          if amount <= 0:
+              raise ValueError("Le montant doit être positif")
+          if amount > self._balance:
+              raise ValueError("Solde insuffisant")
+          self._balance -= amount
+          self.history.append(('withdraw', float(amount)))
+
+      def __repr__(self):
+          return f"BankAccount(owner={self.owner!r}, balance={self._balance:.2f})"
+tests:
+  - name: Dépôt et retrait
+    check: |
+      acc = BankAccount('Alice')
+      acc.deposit(50)
+      acc.withdraw(20)
+      assert acc.balance == 30, f"solde attendu 30, obtenu {acc.balance}"
+      assert acc.history == [('deposit', 50.0), ('withdraw', 20.0)], f"historique : {acc.history}"
+  - name: repr
+    check: |
+      acc = BankAccount('Alice', 30)
+      assert repr(acc) == "BankAccount(owner='Alice', balance=30.00)", f"repr : {acc!r}"
+  - name: Montants invalides → ValueError
+    check: |
+      acc = BankAccount('Bob', 10)
+      for bad in (0, -5):
+          try:
+              acc.deposit(bad)
+          except ValueError:
+              pass
+          else:
+              raise AssertionError(f"deposit({bad}) devrait lever ValueError")
+      try:
+          acc.withdraw(100)
+      except ValueError:
+          pass
+      else:
+          raise AssertionError("withdraw au-delà du solde devrait lever ValueError")
+      assert acc.balance == 10, "un retrait refusé ne doit pas modifier le solde"
+  - name: balance est en lecture seule
+    check: |
+      acc = BankAccount('Chloé', 5)
+      try:
+          acc.balance = 1000
+      except AttributeError:
+          pass
+      else:
+          raise AssertionError("acc.balance = ... devrait lever AttributeError (utilise @property)")
+hints:
+  - "Stocke le solde dans un attribut « privé » `self._balance`, et expose-le avec `@property`."
+  - "Une propriété sans `@balance.setter` est en lecture seule : l'affectation lève `AttributeError`."
+  - "`f\"{self.owner!r}\"` affiche la valeur avec `repr()` (donc avec les guillemets)."
+explanation: |
+  ```python
+  class C:
+      def __init__(self, x):
+          self._x = x
+      @property
+      def x(self):            # c.x  (lecture)
+          return self._x
+      @x.setter
+      def x(self, value):     # c.x = 3  (optionnel)
+          self._x = value
+      def __repr__(self):     # repr(c), affichage dans la console
+          return f"C(x={self._x!r})"
+  ```
+  - `raise ValueError("message")` pour un argument invalide, `TypeError` pour un mauvais type.
+  - `__repr__` vise le développeur (non ambigu), `__str__` l'utilisateur (`print`).
+  - `@dataclass` génère `__init__`, `__repr__` et `__eq__` automatiquement pour les classes de données.

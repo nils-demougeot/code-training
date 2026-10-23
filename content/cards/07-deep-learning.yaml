@@ -1,0 +1,97 @@
+id: deep-learning
+title: Deep learning — formules et réflexes
+domain: dl
+description: Paramètres, initialisation, backprop, optimiseurs, régularisation. Pour expliquer ce qu'il se passe.
+cards:
+  - id: dl-linear-params
+    prompt: "Nombre de paramètres d'une couche dense 784 → 128 (poids + biais)."
+    answer: |-
+      784 * 128 + 128
+  - id: dl-conv-params
+    prompt: "Nombre de paramètres de Conv2d(in=3, out=64, kernel=3) avec biais."
+    answer: |-
+      64 * (3 * 3 * 3 + 1)
+  - id: dl-sigmoid-derivative
+    prompt: "Dérivée de la sigmoïde en 0 (valeur numérique, à partir de s = sigmoid(0))."
+    setup: |-
+      import numpy as np
+      s = 1 / (1 + np.exp(-0.0))
+    answer: |-
+      s * (1 - s)
+    note: "Maximum de σ' = 0,25 : empilée sur beaucoup de couches, elle fait disparaître le gradient."
+  - id: dl-he-init
+    prompt: "Initialisation de He d'une matrice (n_in, n_out) avec le générateur rng."
+    setup: |-
+      import numpy as np
+      n_in, n_out = 4, 3
+      rng = np.random.default_rng(0)
+    answer: |-
+      rng.standard_normal((n_in, n_out)) * np.sqrt(2 / n_in)
+    note: "He pour ReLU (√(2/n_in)), Xavier/Glorot pour tanh (√(1/n_in))."
+  - id: dl-ce-gradient
+    kind: reveal
+    prompt: "Gradient de la cross-entropy (moyenne sur n) par rapport aux logits Z."
+    answer: |-
+      dZ = (softmax(Z) - onehot(y)) / n
+  - id: dl-backprop-dW
+    kind: reveal
+    prompt: "Pour Y = X @ W + b, gradients dW, db, dX en fonction de dY."
+    answer: |-
+      dW = X.T @ dY        # shape de W
+      db = dY.sum(axis=0)  # shape de b
+      dX = dY @ W.T        # shape de X
+  - id: dl-adam-formula
+    kind: reveal
+    prompt: "Les 4 lignes d'une mise à jour Adam."
+    answer: |-
+      m = b1*m + (1-b1)*g
+      v = b2*v + (1-b2)*g**2
+      m_hat, v_hat = m/(1-b1**t), v/(1-b2**t)
+      theta -= lr * m_hat / (sqrt(v_hat) + eps)
+  - id: dl-wide-deep
+    kind: reveal
+    prompt: "Réseau large vs profond : différence ?"
+    answer: |-
+      Large : beaucoup de neurones par couche → capacité « en parallèle » (somme de features simples).
+      Profond : beaucoup de couches → composition de features (hiérarchie), plus expressif à
+      nombre de paramètres égal, mais plus dur à optimiser (gradients, initialisation)
+      → ReLU, normalisation, connexions résiduelles.
+  - id: dl-vanishing
+    kind: reveal
+    prompt: "Vanishing gradient : cause et 4 remèdes."
+    answer: |-
+      Cause : produit de nombreuses dérivées < 1 (sigmoïde/tanh saturées) pendant la backprop.
+      Remèdes : ReLU/GELU, bonne initialisation (He), BatchNorm/LayerNorm, connexions résiduelles.
+  - id: dl-dropout
+    kind: reveal
+    prompt: "Que fait le dropout en train et en eval ?"
+    answer: |-
+      Train : met à zéro chaque activation avec probabilité p (et multiplie les autres par 1/(1-p)).
+      Eval  : ne fait rien → il faut appeler model.eval() avant d'évaluer.
+      Effet : régularisation (empêche la co-adaptation des neurones).
+  - id: dl-batchnorm
+    kind: reveal
+    prompt: "BatchNorm : que fait-elle et pourquoi ça aide ?"
+    answer: |-
+      Normalise chaque feature sur le batch (moyenne 0, variance 1) puis applique γ, β appris.
+      Stabilise et accélère l'entraînement (learning rates plus grands).
+      En eval : utilise des moyennes mobiles calculées pendant l'entraînement.
+  - id: dl-overfit-remedies
+    kind: reveal
+    prompt: "Ton réseau overfit (train 99 %, val 80 %). 5 actions ?"
+    answer: |-
+      Plus de données / data augmentation, weight decay (L2), dropout,
+      early stopping sur la loss de validation, réseau plus petit.
+  - id: dl-lr-symptoms
+    kind: reveal
+    prompt: "Symptômes d'un learning rate trop grand / trop petit ?"
+    answer: |-
+      Trop grand : loss qui oscille, explose ou devient NaN.
+      Trop petit : loss qui baisse très lentement, plateau.
+      → chercher par ordres de grandeur (1e-1, 1e-2, 1e-3), scheduler, warmup.
+  - id: dl-softmax-sum
+    prompt: "Quelle est la somme des sorties d'un softmax, quels que soient les logits ? (un nombre)"
+    loose: true
+    answer: |-
+      1.0
+    note: "C'est une distribution de probabilités. Pour du multi-label (plusieurs classes vraies à la fois), on utilise une sigmoïde par classe à la place."

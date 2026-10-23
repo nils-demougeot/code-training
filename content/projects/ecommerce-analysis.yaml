@@ -1,0 +1,201 @@
+id: ecommerce-analysis
+title: "Analyse e-commerce : KPIs, cohortes et segmentation RFM"
+domain: pandas
+difficulty: medium
+hours: 1
+shared: shop_df
+summary: Le cas pratique data analyst classique. KPIs, rapport mensuel, segmentation RFM des clients et analyse de Pareto des produits.
+intro: |
+  Tu reçois l'export des commandes d'une boutique en ligne (`orders`, 500 commandes sur 6 mois) :
+  `order_id, date, customer, city, product, category, qty, price`.
+
+  Le CEO veut un point sur l'activité. Tu vas produire, étape par étape, les tableaux d'une analyse complète. Le code reste dans un seul fichier, comme dans un notebook bien rangé.
+setup: |
+  import numpy as np
+  orders = make_orders(500, seed=21)
+  REF_DATE = pd.Timestamp('2024-07-01')
+starter: |
+  import numpy as np
+  import pandas as pd
+
+
+  # Étape 1
+  def kpis(df):
+      pass
+
+
+  # Étape 2
+  def monthly_report(df):
+      pass
+
+
+  # Étape 3
+  def rfm(df, ref_date):
+      pass
+
+
+  # Étape 4
+  def segment(rfm_df):
+      pass
+
+
+  # Étape 5
+  def pareto(df):
+      pass
+
+
+  orders.head()
+solution: |
+  import numpy as np
+  import pandas as pd
+
+
+  def kpis(df):
+      revenue = (df['qty'] * df['price']).sum()
+      return {
+          'revenue': round(float(revenue), 2),
+          'n_orders': int(df['order_id'].nunique()),
+          'n_customers': int(df['customer'].nunique()),
+          'avg_basket': round(float(revenue / df['order_id'].nunique()), 2),
+      }
+
+
+  def monthly_report(df):
+      d = df.assign(revenue=df['qty'] * df['price'], month=df['date'].dt.strftime('%Y-%m'))
+      first = d.groupby('customer')['month'].transform('min')
+      d['is_new'] = d['month'] == first
+      report = d.groupby('month').agg(
+          revenue=('revenue', 'sum'),
+          orders=('order_id', 'nunique'),
+          customers=('customer', 'nunique'),
+      )
+      new = d[d['is_new']].groupby('month')['customer'].nunique()
+      report['new_customers'] = new.reindex(report.index, fill_value=0)
+      return report.reset_index()
+
+
+  def rfm(df, ref_date):
+      d = df.assign(revenue=df['qty'] * df['price'])
+      out = d.groupby('customer').agg(
+          last_order=('date', 'max'),
+          frequency=('order_id', 'nunique'),
+          monetary=('revenue', 'sum'),
+      )
+      out['recency'] = (ref_date - out['last_order']).dt.days
+      return out[['recency', 'frequency', 'monetary']].sort_values('monetary', ascending=False)
+
+
+  def segment(rfm_df):
+      out = rfm_df.copy()
+      conditions = [
+          (out['recency'] <= 30) & (out['frequency'] >= 60),
+          out['recency'] <= 30,
+          out['recency'] > 90,
+      ]
+      out['segment'] = np.select(conditions, ['champion', 'actif', 'perdu'], default='à relancer')
+      return out
+
+
+  def pareto(df):
+      rev = (df['qty'] * df['price']).groupby(df['product']).sum().sort_values(ascending=False)
+      out = rev.to_frame('revenue')
+      out['share'] = out['revenue'] / out['revenue'].sum()
+      out['cum_share'] = out['share'].cumsum()
+      return out
+steps:
+  - title: KPIs globaux
+    instructions: |
+      `kpis(df)` renvoie un dict :
+
+      | clé | définition |
+      |---|---|
+      | `revenue` | CA total (`qty * price`), arrondi à 2 décimales |
+      | `n_orders` | nombre de commandes distinctes |
+      | `n_customers` | nombre de clients distincts |
+      | `avg_basket` | panier moyen = CA / nombre de commandes, arrondi à 2 décimales |
+
+      Types Python natifs (`float`, `int`), pas de types NumPy.
+    hints:
+      - "`df['customer'].nunique()` compte les valeurs distinctes."
+      - "`round(float(x), 2)` et `int(n)` pour des types natifs."
+    tests:
+      - call: kpis(orders)
+      - name: Types natifs
+        check: |
+          k = kpis(orders)
+          assert all(type(k[c]) is int for c in ['n_orders', 'n_customers']), "n_orders et n_customers doivent être des int"
+          assert all(type(k[c]) is float for c in ['revenue', 'avg_basket']), "revenue et avg_basket doivent être des float"
+  - title: Rapport mensuel avec nouveaux clients
+    instructions: |
+      `monthly_report(df)` renvoie un DataFrame **à plat**, une ligne par mois, avec les colonnes :
+
+      `month` (texte `'2024-01'`), `revenue`, `orders` (commandes distinctes), `customers` (clients actifs distincts), `new_customers` (clients dont **c'est le premier mois** d'achat).
+
+      Trié par mois, index `0..n-1`.
+    hints:
+      - "Le mois en texte : `df['date'].dt.strftime('%Y-%m')`."
+      - "Le premier mois de chaque client : `groupby('customer')['month'].transform('min')`. Un client est nouveau ce mois-là si `month == premier_mois`."
+      - "Un mois sans nouveau client doit valoir 0 : `reindex(..., fill_value=0)`."
+    tests:
+      - call: monthly_report(orders)
+      - name: Cohérence
+        check: |
+          r = monthly_report(orders)
+          assert list(r.columns) == ['month', 'revenue', 'orders', 'customers', 'new_customers'], f"colonnes : {list(r.columns)}"
+          assert r['new_customers'].sum() == orders['customer'].nunique(), "chaque client doit être « nouveau » exactement une fois"
+  - title: Segmentation RFM
+    instructions: |
+      Le **RFM** est un classique du marketing analytique. `rfm(df, ref_date)` renvoie un DataFrame indexé par `customer` avec :
+
+      - `recency` : nombre de **jours** entre la dernière commande et `ref_date` ;
+      - `frequency` : nombre de commandes distinctes ;
+      - `monetary` : CA total du client.
+
+      Trié par `monetary` décroissant. Utilise `REF_DATE` pour tester.
+    hints:
+      - "Agrège d'abord la date de dernière commande avec `max`, puis `(ref_date - last_order).dt.days`."
+      - "Garde seulement les 3 colonnes à la fin : `out[['recency', 'frequency', 'monetary']]`."
+    tests:
+      - call: rfm(orders, REF_DATE)
+  - title: Règles de segmentation
+    instructions: |
+      `segment(rfm_df)` renvoie une copie avec une colonne `segment` :
+
+      | segment | règle (dans cet ordre de priorité) |
+      |---|---|
+      | `'champion'` | `recency <= 30` **et** `frequency >= 60` |
+      | `'actif'` | `recency <= 30` |
+      | `'perdu'` | `recency > 90` |
+      | `'à relancer'` | tous les autres |
+
+      Sans `apply` : utilise `np.select`.
+    hints:
+      - "`np.select([cond1, cond2, cond3], ['champion', 'actif', 'perdu'], default='à relancer')` : la première condition vraie l'emporte."
+    tests:
+      - call: segment(rfm(orders, REF_DATE))
+      - name: Règles sur un cas construit
+        check: |
+          t = pd.DataFrame({'recency': [10, 10, 200, 50], 'frequency': [80, 5, 80, 5], 'monetary': [1.0, 1.0, 1.0, 1.0]})
+          assert segment(t)['segment'].tolist() == ['champion', 'actif', 'perdu', 'à relancer']
+  - title: Analyse de Pareto des produits
+    instructions: |
+      `pareto(df)` renvoie un DataFrame indexé par `product`, trié par CA décroissant, avec :
+
+      - `revenue` : CA du produit ;
+      - `share` : part du CA total ;
+      - `cum_share` : part cumulée.
+
+      Avec Exécuter : combien de produits font 80 % du CA ?
+    hints:
+      - "`(df.qty * df.price).groupby(df['product']).sum().sort_values(ascending=False).to_frame('revenue')`."
+      - "`cumsum()` sur la colonne `share`."
+    tests:
+      - call: pareto(orders)
+      - name: La part cumulée finit à 1
+        check: |
+          p = pareto(orders)
+          assert np.isclose(p['cum_share'].iloc[-1], 1.0) and p['revenue'].is_monotonic_decreasing
+outro: |
+  Ces cinq tableaux forment une vraie analyse : santé globale, dynamique d'acquisition, valeur client et concentration du catalogue.
+
+  En entretien data analyst, on te demandera souvent la **même chose en SQL** : refais l'étape 2 avec `strftime`, une CTE pour le premier mois de chaque client et un `LEFT JOIN`. Les exercices SQL t'y préparent.

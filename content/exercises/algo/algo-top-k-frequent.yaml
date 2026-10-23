@@ -1,0 +1,47 @@
+id: algo-top-k-frequent
+title: Les k éléments les plus fréquents
+domain: algo
+difficulty: medium
+minutes: 8
+interview: true
+tags: [heap, Counter, heapq]
+cards: [cx-heapq, py-counter]
+statement: |
+  Écris `top_k_frequent(nums, k)` qui renvoie les `k` valeurs les plus fréquentes, de la plus fréquente à la moins fréquente. À fréquence égale, la **plus petite valeur** d'abord.
+
+  Bonus : fais-le en **O(n log k)** avec un tas (`heapq`) plutôt qu'en triant toutes les valeurs distinctes.
+starter: |
+  def top_k_frequent(nums, k):
+      pass
+solution: |
+  import heapq
+  from collections import Counter
+
+
+  def top_k_frequent(nums, k):
+      counts = Counter(nums)
+      best = heapq.nsmallest(k, counts.items(), key=lambda kv: (-kv[1], kv[0]))
+      return [value for value, _ in best]
+tests:
+  - call: top_k_frequent([1, 1, 1, 2, 2, 3], 2)
+    expected: "[1, 2]"
+  - call: top_k_frequent([4, 4, 5, 5, 6], 2)
+    expected: "[4, 5]"
+  - call: top_k_frequent([7], 1)
+    expected: "[7]"
+  - call: top_k_frequent([3, 1, 2, 2, 3, 1, 9, 9, 9], 3)
+    hidden: true
+hints:
+  - "Compte avec `collections.Counter`."
+  - "Clé de tri : `(-fréquence, valeur)`."
+  - "`heapq.nsmallest(k, items, key=...)` garde un tas de taille k : O(n log k)."
+explanation: |
+  ```python
+  import heapq
+  heapq.heappush(h, x); heapq.heappop(h)     # min-heap : le plus petit en h[0]
+  heapq.nlargest(k, xs, key=...)             # O(n log k)
+  heapq.heappush(h, (-score, item))          # max-heap : on inverse le signe
+  ```
+  - Tas = file de priorité : accès au min en O(1), insertion/extraction en O(log n).
+  - Patterns « top k », « k-ième plus grand », « fusionner k listes triées », Dijkstra → heap.
+  - Alternative O(n) : *bucket sort* par fréquence.

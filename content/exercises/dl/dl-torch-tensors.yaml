@@ -1,0 +1,99 @@
+id: dl-torch-tensors
+title: Manipuler des tenseurs PyTorch
+domain: dl
+difficulty: easy
+minutes: 6
+engine: local
+tags: [PyTorch, tensor, view, unsqueeze, dtype]
+cards: [torch-tensor-from-numpy, torch-unsqueeze, torch-item]
+statement: |
+  Échauffement PyTorch (nécessite le **runner local** avec `torch` installé).
+
+  1. `make_batch()` : un tenseur `float32` de shape `(4, 3)` contenant les entiers 0 à 11 dans l'ordre.
+  2. `add_channel(images)` : transforme un batch d'images `(N, H, W)` en `(N, 1, H, W)`.
+  3. `flatten_batch(x)` : `(N, C, H, W)` → `(N, C*H*W)`.
+  4. `to_numpy(t)` : un tenseur qui peut nécessiter un gradient → un `np.ndarray`.
+  5. `mean_value(t)` : la moyenne de tous les éléments sous forme de **float Python**.
+starter: |
+  import numpy as np
+  import torch
+
+
+  def make_batch():
+      pass
+
+
+  def add_channel(images):
+      pass
+
+
+  def flatten_batch(x):
+      pass
+
+
+  def to_numpy(t):
+      pass
+
+
+  def mean_value(t):
+      pass
+solution: |
+  import numpy as np
+  import torch
+
+
+  def make_batch():
+      return torch.arange(12, dtype=torch.float32).reshape(4, 3)
+
+
+  def add_channel(images):
+      return images.unsqueeze(1)
+
+
+  def flatten_batch(x):
+      return x.flatten(start_dim=1)
+
+
+  def to_numpy(t):
+      return t.detach().cpu().numpy()
+
+
+  def mean_value(t):
+      return t.float().mean().item()
+tests:
+  - name: make_batch
+    check: |
+      t = make_batch()
+      assert isinstance(t, torch.Tensor) and t.dtype == torch.float32, f"dtype {getattr(t, 'dtype', None)}"
+      assert tuple(t.shape) == (4, 3) and t[3, 2].item() == 11
+  - name: add_channel
+    check: |
+      assert tuple(add_channel(torch.zeros(8, 28, 28)).shape) == (8, 1, 28, 28)
+  - name: flatten_batch
+    check: |
+      assert tuple(flatten_batch(torch.zeros(8, 3, 4, 5)).shape) == (8, 60)
+  - name: to_numpy avec requires_grad
+    check: |
+      out = to_numpy(torch.ones(3, requires_grad=True) * 2)
+      assert isinstance(out, np.ndarray) and out.tolist() == [2.0, 2.0, 2.0]
+  - name: mean_value
+    check: |
+      v = mean_value(torch.tensor([1, 2, 3, 4]))
+      assert type(v) is float and v == 2.5, f"{v!r} ({type(v).__name__})"
+hints:
+  - "`torch.arange(12, dtype=torch.float32).reshape(4, 3)` (ou `.view(4, 3)`)."
+  - "`x.unsqueeze(1)` insère un axe en position 1 (l'équivalent de `x[:, None]`)."
+  - "`x.flatten(start_dim=1)` ou `x.view(x.size(0), -1)`."
+  - "`.numpy()` échoue si le tenseur exige un gradient : `.detach().cpu().numpy()`."
+explanation: |
+  | NumPy | PyTorch |
+  |---|---|
+  | `np.array(x)` | `torch.tensor(x)` / `torch.from_numpy(a)` (mémoire partagée) |
+  | `a.reshape(...)` | `t.reshape(...)` / `t.view(...)` (contigu) |
+  | `a[:, None]` / `np.expand_dims` | `t.unsqueeze(1)` / `t[:, None]` |
+  | `a.astype(np.float32)` | `t.float()` / `t.to(torch.float32)` |
+  | `axis=` | `dim=` |
+  | `a.item()` | `t.item()` |
+
+  - Les tenseurs portent un **device** (`t.to('cuda')`) et un graphe de calcul (`requires_grad`).
+  - `t.detach()` coupe le lien avec le graphe ; `.cpu()` ramène en RAM avant `.numpy()`.

@@ -1,0 +1,63 @@
+id: pd-monthly
+title: Séries temporelles mensuelles
+domain: pandas
+difficulty: medium
+minutes: 8
+shared: shop_df
+tags: [datetime, resample, dt, pct_change]
+cards: [pd-to-datetime, pd-dt-accessor, pd-resample]
+statement: |
+  1. `monthly_revenue(df)` : une Series du CA par mois, indexée par le **premier jour du mois** (`DatetimeIndex`, ex. `2024-01-01`), triée chronologiquement.
+  2. `growth(df)` : la croissance du CA d'un mois sur l'autre en pourcentage (`0.10` = +10 %). Le premier mois vaut `NaN`.
+  3. `weekend_share(df)` : la part du CA réalisée le samedi et le dimanche (un float).
+starter: |
+  import pandas as pd
+
+
+  def monthly_revenue(df):
+      pass
+
+
+  def growth(df):
+      pass
+
+
+  def weekend_share(df):
+      pass
+solution: |
+  import pandas as pd
+
+
+  def monthly_revenue(df):
+      revenue = (df['qty'] * df['price']).set_axis(pd.to_datetime(df['date']))
+      return revenue.sort_index().resample('MS').sum()
+
+
+  def growth(df):
+      return monthly_revenue(df).pct_change()
+
+
+  def weekend_share(df):
+      revenue = df['qty'] * df['price']
+      weekend = pd.to_datetime(df['date']).dt.dayofweek >= 5
+      return float(revenue[weekend].sum() / revenue.sum())
+tests:
+  - call: monthly_revenue(orders)
+  - call: growth(orders)
+  - call: weekend_share(orders)
+  - call: monthly_revenue(make_orders(400, seed=4))
+    hidden: true
+hints:
+  - "`resample` a besoin d'un `DatetimeIndex` : `serie.set_axis(pd.to_datetime(df['date']))` ou `df.set_index('date')`."
+  - "`'MS'` = *month start* : l'étiquette est le 1er du mois (`'ME'` = fin de mois)."
+  - "`s.pct_change()` calcule `(s_t - s_{t-1}) / s_{t-1}`."
+  - "`dt.dayofweek` : lundi = 0, …, dimanche = 6."
+explanation: |
+  ```python
+  df['date'] = pd.to_datetime(df['date'])
+  df.set_index('date')['rev'].resample('MS').sum()    # par mois
+  df.groupby(df['date'].dt.to_period('M'))['rev'].sum()   # alternative avec Period
+  df['date'].dt.year / .dt.month / .dt.dayofweek / .dt.day_name()
+  s.pct_change(), s.diff(), s.rolling(3).mean(), s.shift(1)
+  ```
+  `resample` crée aussi les mois **sans** commande (avec 0), contrairement à un `groupby`.

@@ -1,0 +1,96 @@
+id: pandas-cheatsheet
+title: Pandas en 10 minutes
+domain: pandas
+summary: Sélection, filtres, groupby, jointures, pivots, dates. L'antisèche à relire avant un test technique.
+body: |
+  ## Inspecter
+
+  ```python
+  df.shape, df.dtypes, df.head(), df.info(), df.describe()
+  df['col'].value_counts(normalize=True)
+  df.isna().mean().sort_values(ascending=False)   # taux de NaN
+  df.nunique()
+  ```
+
+  ## Sélectionner
+
+  | But | Syntaxe |
+  |---|---|
+  | une colonne (Series) | `df['col']` |
+  | plusieurs colonnes (DataFrame) | `df[['a', 'b']]` |
+  | lignes par condition | `df[df.age > 30]`, `df[(df.a > 0) & (df.b == 'x')]` |
+  | lignes + colonnes par étiquettes | `df.loc[masque, ['a', 'b']]` (borne de fin **incluse**) |
+  | par positions | `df.iloc[:5, :3]` (fin **exclue**) |
+  | appartenance | `df[df.city.isin(['Paris', 'Lyon'])]` |
+  | requête lisible | `df.query("age > 30 and city == 'Paris'")` |
+
+  ## Créer et transformer
+
+  ```python
+  df.assign(total=df.qty * df.price)          # copie + nouvelle colonne
+  df['band'] = np.where(df.price > 100, 'high', 'low')
+  df['band'] = np.select([c1, c2], ['a', 'b'], default='c')
+  df['region'] = df.city.map({'Paris': 'Nord'})
+  pd.cut(df.age, bins=[0, 18, 65, np.inf], labels=['jeune', 'adulte', 'senior'])
+  df.col.str.lower().str.strip(), df.col.str.contains('x')
+  df.date.dt.month, df.date.dt.dayofweek
+  ```
+
+  ## groupby : split, apply, combine
+
+  ```python
+  df.groupby('city')['rev'].sum()                         # Series
+  df.groupby('city', as_index=False)['rev'].sum()         # DataFrame à plat
+  df.groupby(['city', 'cat']).agg(n=('id', 'count'), total=('rev', 'sum'), avg=('rev', 'mean'))
+  df.groupby('client')['rev'].transform('sum')            # aligné sur les lignes
+  df.groupby('client')['rev'].cumsum() / .cumcount() / .rank() / .shift()
+  ```
+
+  | Méthode | Shape du résultat |
+  |---|---|
+  | `agg` / `sum` / `mean` | une ligne **par groupe** |
+  | `transform` | une ligne **par ligne d'origine** |
+  | `filter` | les lignes des groupes qui passent un test |
+
+  ## Jointures
+
+  ```python
+  a.merge(b, on='key', how='left')            # inner (défaut), left, right, outer
+  a.merge(b, left_on='cid', right_on='id')
+  a.merge(b, on='key', how='left', indicator=True, validate='many_to_one')
+  pd.concat([df1, df2], ignore_index=True)    # empiler
+  ```
+
+  Pièges : `how='inner'` par défaut supprime silencieusement les lignes sans correspondance ; une clé dupliquée **multiplie** les lignes.
+
+  ## Remodeler
+
+  ```python
+  df.pivot_table(index='city', columns='cat', values='rev', aggfunc='sum', fill_value=0)
+  df.groupby(['city', 'cat'])['rev'].sum().unstack(fill_value=0)   # identique
+  wide.melt(id_vars='city', var_name='cat', value_name='rev')       # large → long
+  pd.crosstab(df.city, df.cat, normalize='index')
+  ```
+
+  ## Dates
+
+  ```python
+  df['date'] = pd.to_datetime(df['date'])
+  df.set_index('date')['rev'].resample('MS').sum()   # par mois
+  s.rolling(7).mean(), s.pct_change(), s.shift(1), s.diff()
+  ```
+
+  ## Nettoyer
+
+  ```python
+  df.dropna(subset=['email'])
+  df['age'] = df['age'].fillna(df['age'].median())
+  df.drop_duplicates(subset='email', keep='first')
+  df.astype({'id': int}), df.rename(columns={'old': 'new'})
+  df.sort_values(['a', 'b'], ascending=[True, False]).reset_index(drop=True)
+  ```
+
+  ## Performance
+
+  - Évite `iterrows` et `apply(axis=1)` : pense **colonnes**.
+  - `category` pour les colonnes texte répétitives : `df.city.astype('category')`.

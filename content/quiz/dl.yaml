@@ -1,0 +1,83 @@
+domain: dl
+questions:
+  - id: q-dl-linear-stack
+    topic: Architecture
+    question: "Empiler 10 couches Linear SANS activation entre elles donne un modèle…"
+    choices: ["Plus expressif qu'une seule couche", "Équivalent à une seule couche linéaire", "Non entraînable", "Équivalent à un arbre de décision"]
+    answer: 1
+    explain: "Une composition de fonctions linéaires est linéaire : $W_3 W_2 W_1 x = W x$. Les activations non linéaires sont indispensables."
+  - id: q-dl-sigmoid-max
+    topic: Gradients
+    verify: true
+    question: Qu'affiche ce code ?
+    code: |
+      import numpy as np
+      s = 1 / (1 + np.exp(-0.0))
+      print(s * (1 - s))
+    choices: ["0.5", "0.25", "1.0", "0.0"]
+    answer: 1
+    explain: "La dérivée maximale de la sigmoïde est 0,25 : sur 10 couches, le gradient est multiplié par au plus $0{,}25^{10}$. D'où le vanishing gradient."
+  - id: q-dl-params
+    topic: Paramètres
+    verify: true
+    question: Combien de paramètres ?
+    code: |
+      sizes = [10, 20, 5]
+      print(sum(a * b + b for a, b in zip(sizes, sizes[1:])))
+    choices: ["300", "305", "325", "335"]
+    answer: 2
+    explain: "10×20 + 20 = 220 pour la 1re couche, 20×5 + 5 = 105 pour la 2e : 325."
+  - id: q-dl-dropout-eval
+    topic: PyTorch
+    question: "Oublier model.eval() avant d'évaluer un réseau avec dropout provoque…"
+    choices: ["Une erreur", "Des prédictions aléatoires et une métrique sous-estimée", "Un entraînement supplémentaire", "Rien"]
+    answer: 1
+    explain: "En mode train, le dropout éteint des neurones au hasard. `model.eval()` le désactive (et fige la BatchNorm)."
+  - id: q-dl-zero-grad
+    topic: PyTorch
+    question: "Que se passe-t-il si on oublie optimizer.zero_grad() dans la boucle ?"
+    choices: ["Rien, PyTorch remet les gradients à zéro", "Les gradients s'accumulent d'un batch à l'autre", "Une erreur est levée", "Le learning rate devient nul"]
+    answer: 1
+    explain: "`backward()` **additionne** dans `.grad`. Sans remise à zéro, chaque pas utilise la somme des gradients de tous les batches précédents."
+  - id: q-dl-ce-logits
+    topic: PyTorch
+    question: "Que faut-il donner à nn.CrossEntropyLoss ?"
+    choices: ["Des probabilités (après softmax)", "Des logits bruts et des labels entiers", "Des log-probabilités et du one-hot", "Des labels one-hot des deux côtés"]
+    answer: 1
+    explain: "CrossEntropyLoss applique log-softmax en interne (plus stable). Appliquer un softmax avant revient à le faire deux fois."
+  - id: q-dl-initial-loss
+    topic: Debug
+    question: "Au tout début de l'entraînement d'un classifieur à 10 classes, la cross-entropy devrait valoir environ…"
+    choices: ["0", "1", "2,3 (= ln 10)", "10"]
+    answer: 2
+    explain: "Avec des prédictions uniformes, la loss vaut $-\\ln(1/10) = \\ln 10 ≈ 2{,}3$. Une valeur très différente signale un bug (initialisation, labels)."
+  - id: q-dl-lr-nan
+    topic: Optimisation
+    question: "La loss devient NaN après quelques itérations. Cause la plus probable ?"
+    choices: ["Learning rate trop grand", "Trop de données", "Batch trop grand", "Trop d'époques"]
+    answer: 0
+    explain: "Les mises à jour divergent et les valeurs explosent. Baisse le learning rate, ajoute du gradient clipping, vérifie la normalisation des entrées."
+  - id: q-dl-wide-deep
+    topic: Architecture
+    question: "À nombre de paramètres égal, un réseau plus profond…"
+    choices: ["Est toujours plus facile à entraîner", "Peut représenter des fonctions plus complexes, mais est plus difficile à optimiser", "Est équivalent à un réseau plus large", "Ne peut pas overfitter"]
+    answer: 1
+    explain: "La profondeur compose des transformations (features hiérarchiques). Contrepartie : gradients instables, d'où ReLU, normalisation et connexions résiduelles."
+  - id: q-dl-batchnorm
+    topic: Normalisation
+    question: "En mode évaluation, une couche BatchNorm normalise avec…"
+    choices: ["Les statistiques du batch courant", "Les moyennes mobiles calculées pendant l'entraînement", "Une moyenne de 0 et une variance de 1 fixes", "Rien, elle est désactivée"]
+    answer: 1
+    explain: "Sinon la prédiction d'un exemple dépendrait des autres exemples du batch. D'où l'importance de `model.eval()`."
+  - id: q-dl-softmax-shift
+    topic: Stabilité
+    verify: true
+    question: Qu'affiche ce code ?
+    code: |
+      import numpy as np
+      z = np.array([1000.0, 1000.0])
+      with np.errstate(all='ignore'):
+          print(np.exp(z) / np.exp(z).sum())
+    choices: ["[0.5 0.5]", "[nan nan]", "[1. 0.]", "[inf inf]"]
+    answer: 1
+    explain: "`exp(1000)` déborde en `inf`, et `inf / inf = nan`. Soustraire le max avant l'exponentielle règle le problème sans changer le résultat."

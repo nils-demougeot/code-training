@@ -1,0 +1,134 @@
+id: numpy-ops
+title: NumPy — axes, masques, indexation
+domain: numpy
+description: Réductions par axe, keepdims, masques booléens, fancy indexing, argsort. Là où se cachent les bugs.
+cards:
+  - id: np-mean-axis0
+    prompt: "Moyenne de chaque colonne de X (résultat (d,))."
+    setup: |-
+      import numpy as np
+      X = np.arange(6.).reshape(2, 3)
+    answer: |-
+      X.mean(axis=0)
+    note: "axis=0 réduit les **lignes** → un résultat par colonne."
+  - id: np-max-axis
+    prompt: "Maximum de chaque ligne de X."
+    setup: |-
+      import numpy as np
+      X = np.array([[1, 9, 3], [7, 2, 5]])
+    answer: |-
+      X.max(axis=1)
+  - id: np-keepdims
+    prompt: "Somme de chaque ligne de X en gardant une shape (n, 1)."
+    setup: |-
+      import numpy as np
+      X = np.arange(6.).reshape(3, 2)
+    answer: |-
+      X.sum(axis=1, keepdims=True)
+    note: "Avec keepdims, `X / X.sum(axis=1, keepdims=True)` broadcast directement."
+  - id: np-norm-axis
+    prompt: "Norme euclidienne de chaque ligne de X."
+    setup: |-
+      import numpy as np
+      X = np.array([[3., 4.], [6., 8.]])
+    answer: |-
+      np.linalg.norm(X, axis=1)
+  - id: np-argmin-axis
+    prompt: "Pour chaque ligne de D, l'indice de la colonne minimale."
+    setup: |-
+      import numpy as np
+      D = np.array([[4., 1., 3.], [0., 5., 2.]])
+    answer: |-
+      D.argmin(axis=1)
+  - id: np-mask
+    prompt: "Les valeurs strictement positives de a."
+    setup: |-
+      import numpy as np
+      a = np.array([-2, 3, 0, 5, -1])
+    answer: |-
+      a[a > 0]
+  - id: np-and-mask
+    prompt: "Les valeurs de a entre 2 et 8 inclus (deux conditions)."
+    setup: |-
+      import numpy as np
+      a = np.arange(11)
+    answer: |-
+      a[(a >= 2) & (a <= 8)]
+    note: "`&`, `|`, `~` avec des **parenthèses**. `and`/`or` lèvent une erreur sur des tableaux."
+  - id: np-where
+    prompt: "Remplacer les valeurs négatives de a par 0, les autres inchangées (np.where)."
+    setup: |-
+      import numpy as np
+      a = np.array([-2, 3, -1, 4])
+    answer: |-
+      np.where(a < 0, 0, a)
+  - id: np-clip
+    prompt: "Borner les valeurs de a dans [0, 1]."
+    setup: |-
+      import numpy as np
+      a = np.array([-0.5, 0.3, 1.7])
+    answer: |-
+      np.clip(a, 0, 1)
+  - id: np-fancy-index
+    prompt: "Pour chaque ligne i de P, l'élément de la colonne y[i]."
+    setup: |-
+      import numpy as np
+      P = np.array([[0.1, 0.9], [0.8, 0.2], [0.3, 0.7]])
+      y = np.array([1, 0, 1])
+    answer: |-
+      P[np.arange(len(y)), y]
+    note: "Deux tableaux d'indices sélectionnent des **paires** (i, y[i]). Indispensable pour la cross-entropy."
+  - id: np-argsort-desc
+    prompt: "Indices qui trient scores du plus grand au plus petit."
+    setup: |-
+      import numpy as np
+      scores = np.array([0.2, 0.9, 0.5])
+    answer: |-
+      np.argsort(scores)[::-1]
+    note: "Ou `np.argsort(-scores)` (plus stable en cas d'égalité)."
+  - id: np-take-along
+    prompt: "Récupérer S[i, idx[i, j]] pour chaque ligne (shape de idx)."
+    setup: |-
+      import numpy as np
+      S = np.array([[10, 20, 30], [40, 50, 60]])
+      idx = np.array([[2, 0], [1, 1]])
+    answer: |-
+      np.take_along_axis(S, idx, axis=1)
+  - id: np-bincount
+    prompt: "Nombre d'occurrences de chaque entier 0..max dans labels."
+    setup: |-
+      import numpy as np
+      labels = np.array([0, 2, 2, 1, 2])
+    answer: |-
+      np.bincount(labels)
+  - id: np-unique-counts
+    prompt: "Valeurs uniques de a et leur nombre d'occurrences (un seul appel)."
+    setup: |-
+      import numpy as np
+      a = np.array(['b', 'a', 'b', 'c', 'b'])
+    answer: |-
+      np.unique(a, return_counts=True)
+  - id: np-isnan-sum
+    prompt: "Nombre de NaN dans x."
+    setup: |-
+      import numpy as np
+      x = np.array([1., np.nan, 3., np.nan])
+    answer: |-
+      np.isnan(x).sum()
+    note: "`np.nan == np.nan` est False : on teste toujours avec `np.isnan`. Pour ignorer les NaN : `np.nanmean`."
+  - id: np-allclose
+    prompt: "True si a et b sont égaux à la précision flottante près."
+    setup: |-
+      import numpy as np
+      a = np.array([0.1 + 0.2])
+      b = np.array([0.3])
+    answer: |-
+      np.allclose(a, b)
+  - id: np-outer-broadcast
+    prompt: "Matrice des différences u[i] - v[j] (shape (len(u), len(v))) par broadcasting."
+    setup: |-
+      import numpy as np
+      u = np.array([1., 2., 3.])
+      v = np.array([10., 20.])
+    answer: |-
+      u[:, None] - v[None, :]

@@ -1,0 +1,76 @@
+id: ml-metrics-scratch
+title: Précision, rappel, F1 from scratch
+domain: ml
+difficulty: easy
+minutes: 8
+interview: true
+tags: [métriques, matrice de confusion, precision, recall]
+cards: [ml-precision-recall-def, sk-confusion-matrix]
+statement: |
+  Pour une classification **binaire** (labels 0/1, numpy arrays) :
+
+  1. `confusion(y_true, y_pred)` renvoie le tuple `(tp, fp, fn, tn)` (entiers Python).
+  2. `precision_recall_f1(y_true, y_pred)` renvoie `(precision, recall, f1)`. Si un dénominateur est nul, la métrique vaut `0.0`.
+
+  Rappels :
+  $$\text{precision} = \frac{TP}{TP + FP} \qquad \text{recall} = \frac{TP}{TP + FN} \qquad F_1 = \frac{2PR}{P + R}$$
+starter: |
+  import numpy as np
+
+
+  def confusion(y_true, y_pred):
+      pass
+
+
+  def precision_recall_f1(y_true, y_pred):
+      pass
+solution: |
+  import numpy as np
+
+
+  def confusion(y_true, y_pred):
+      tp = int(np.sum((y_true == 1) & (y_pred == 1)))
+      fp = int(np.sum((y_true == 0) & (y_pred == 1)))
+      fn = int(np.sum((y_true == 1) & (y_pred == 0)))
+      tn = int(np.sum((y_true == 0) & (y_pred == 0)))
+      return tp, fp, fn, tn
+
+
+  def precision_recall_f1(y_true, y_pred):
+      tp, fp, fn, _ = confusion(y_true, y_pred)
+      p = tp / (tp + fp) if tp + fp else 0.0
+      r = tp / (tp + fn) if tp + fn else 0.0
+      f1 = 2 * p * r / (p + r) if p + r else 0.0
+      return p, r, f1
+setup: |
+  import numpy as np
+  y_true = np.array([1, 0, 1, 1, 0, 0, 1, 0])
+  y_pred = np.array([1, 0, 0, 1, 1, 0, 1, 0])
+tests:
+  - call: confusion(y_true, y_pred)
+    expected: (3, 1, 1, 3)
+  - call: precision_recall_f1(y_true, y_pred)
+    expected: (0.75, 0.75, 0.75)
+  - name: Aucun positif prédit
+    call: precision_recall_f1(np.array([1, 0]), np.array([0, 0]))
+    expected: (0.0, 0.0, 0.0)
+  - name: Identique à scikit-learn
+    check: |
+      from sklearn.metrics import precision_score, recall_score, f1_score
+      rng = np.random.default_rng(0)
+      a, b = rng.integers(0, 2, 200), rng.integers(0, 2, 200)
+      p, r, f = precision_recall_f1(a, b)
+      assert np.allclose([p, r, f], [precision_score(a, b), recall_score(a, b), f1_score(a, b)])
+hints:
+  - "`(y_true == 1) & (y_pred == 1)` est un masque des vrais positifs ; `.sum()` les compte."
+  - "Convertis en `int(...)` pour renvoyer des entiers Python."
+explanation: |
+  |  | prédit 1 | prédit 0 |
+  |---|---|---|
+  | **vrai 1** | TP | FN |
+  | **vrai 0** | FP | TN |
+
+  - **Precision** : parmi ce que j'ai signalé, combien sont vrais ? (coût des **fausses alertes**, ex. filtre anti-spam).
+  - **Recall** : parmi les vrais positifs, combien ai-je trouvés ? (coût des **oublis**, ex. détection de cancer, de fraude).
+  - **F1** : moyenne harmonique, utile quand les classes sont déséquilibrées. Avec 99 % de négatifs, prédire toujours 0 donne 99 % d'**accuracy** et un recall de 0.
+  - `sklearn.metrics.classification_report(y_true, y_pred)` affiche tout d'un coup.

@@ -1,0 +1,151 @@
+id: numpy-create
+title: NumPy — créer et remodeler
+domain: numpy
+description: Créer des tableaux, choisir le dtype, reshape, empiler. La base pour ne plus hésiter sur les shapes.
+cards:
+  - id: np-zeros-dtype
+    prompt: "Matrice 3×3 de zéros en float32."
+    setup: |-
+      import numpy as np
+    answer: |-
+      np.zeros((3, 3), dtype=np.float32)
+    note: "La shape est un **tuple**. Comparaison stricte du dtype : `np.zeros((3, 3))` donne du float64."
+  - id: np-arange
+    prompt: "Les entiers de 0 à 18 inclus, de 2 en 2."
+    setup: |-
+      import numpy as np
+    answer: |-
+      np.arange(0, 20, 2)
+  - id: np-linspace
+    prompt: "5 valeurs régulièrement espacées de 0 à 1 inclus."
+    setup: |-
+      import numpy as np
+    answer: |-
+      np.linspace(0, 1, 5)
+  - id: np-eye
+    prompt: "Matrice identité 4×4."
+    setup: |-
+      import numpy as np
+    answer: |-
+      np.eye(4)
+  - id: np-full
+    prompt: "Matrice 2×3 remplie de 7 (entiers)."
+    setup: |-
+      import numpy as np
+    answer: |-
+      np.full((2, 3), 7)
+  - id: np-reshape
+    prompt: "Transformer a (12 éléments) en matrice de 3 lignes, en laissant NumPy déduire le nombre de colonnes."
+    setup: |-
+      import numpy as np
+      a = np.arange(12)
+    answer: |-
+      a.reshape(3, -1)
+  - id: np-newaxis
+    prompt: "Transformer le vecteur v de shape (n,) en colonne (n, 1), sans reshape."
+    setup: |-
+      import numpy as np
+      v = np.array([1, 2, 3])
+    answer: |-
+      v[:, None]
+    note: "`None` = `np.newaxis`. Ligne : `v[None, :]` → `(1, n)`."
+  - id: np-random-rng
+    prompt: "Avec un générateur de seed 0, une matrice 2×3 de tirages normaux standard."
+    setup: |-
+      import numpy as np
+    answer: |-
+      np.random.default_rng(0).normal(size=(2, 3))
+    note: "`rng = np.random.default_rng(seed)` est l'API moderne (préférer à `np.random.seed`). `rng.integers`, `rng.uniform`, `rng.choice`, `rng.permutation`."
+  - id: np-astype
+    prompt: "Convertir a en float32."
+    setup: |-
+      import numpy as np
+      a = np.array([1, 2, 3])
+    answer: |-
+      a.astype(np.float32)
+  - id: np-shape-ndim
+    prompt: "Tuple (shape, ndim, size) du tableau a."
+    setup: |-
+      import numpy as np
+      a = np.zeros((4, 5, 6))
+    answer: |-
+      (a.shape, a.ndim, a.size)
+  - id: np-concatenate
+    prompt: "Empiler A et B l'une sous l'autre (même nombre de colonnes)."
+    setup: |-
+      import numpy as np
+      A = np.ones((2, 3))
+      B = np.zeros((1, 3))
+    answer: |-
+      np.concatenate([A, B], axis=0)
+    note: "`np.vstack([A, B])` équivalent. `axis=1` / `np.hstack` côte à côte."
+  - id: np-stack
+    prompt: "Empiler 3 vecteurs (n,) en une matrice (3, n) avec un NOUVEL axe."
+    setup: |-
+      import numpy as np
+      u, v, w = np.arange(4), np.ones(4), np.zeros(4)
+    answer: |-
+      np.stack([u, v, w])
+    note: "`stack` crée un nouvel axe, `concatenate` réutilise un axe existant."
+  - id: np-column-stack
+    prompt: "Ajouter une colonne de 1 à droite de X (pour un biais)."
+    setup: |-
+      import numpy as np
+      X = np.arange(6.).reshape(3, 2)
+    answer: |-
+      np.column_stack([X, np.ones(len(X))])
+  - id: np-transpose
+    prompt: "Passer un batch d'images de (N, H, W, C) à (N, C, H, W)."
+    setup: |-
+      import numpy as np
+      imgs = np.zeros((8, 32, 32, 3))
+    answer: |-
+      imgs.transpose(0, 3, 1, 2)
+    note: "`.T` inverse **tous** les axes. `np.moveaxis(imgs, -1, 1)` fait la même chose."
+  - id: np-flatten
+    prompt: "Aplatir un batch (N, C, H, W) en (N, C*H*W)."
+    setup: |-
+      import numpy as np
+      x = np.zeros((8, 3, 4, 4))
+    answer: |-
+      x.reshape(len(x), -1)
+  - id: np-matmul
+    prompt: "Produit matriciel de X (n, d) et W (d, h)."
+    setup: |-
+      import numpy as np
+      X = np.ones((2, 3))
+      W = np.arange(12.).reshape(3, 4)
+    answer: |-
+      X @ W
+    note: "`*` est un produit **élément par élément**. `@` = `np.matmul` = `np.dot` pour du 2D."
+  - id: np-maximum
+    prompt: "ReLU élément par élément de Z."
+    setup: |-
+      import numpy as np
+      Z = np.array([[-1., 2.], [3., -4.]])
+    answer: |-
+      np.maximum(0, Z)
+    note: "`np.max(Z)` réduirait le tableau à un seul nombre !"
+  - id: np-cumsum
+    prompt: "Somme cumulée de x."
+    setup: |-
+      import numpy as np
+      x = np.array([1, 2, 3, 4])
+    answer: |-
+      np.cumsum(x)
+  - id: np-lstsq
+    prompt: "Solution des moindres carrés de A theta = b."
+    setup: |-
+      import numpy as np
+      A = np.array([[1., 0.], [1., 1.], [1., 2.]])
+      b = np.array([1., 2., 4.])
+    answer: |-
+      np.linalg.lstsq(A, b, rcond=None)[0]
+  - id: np-copy
+    prompt: "Une copie indépendante de la tranche a[:2] (modifiable sans toucher a)."
+    setup: |-
+      import numpy as np
+      a = np.arange(5)
+    answer: |-
+      a[:2].copy()
+    note: "Le slicing NumPy renvoie une **vue** (mémoire partagée), contrairement aux listes Python. Le *fancy indexing* et les masques renvoient des copies."

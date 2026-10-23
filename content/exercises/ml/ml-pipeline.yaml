@@ -1,0 +1,79 @@
+id: ml-pipeline
+title: Pipeline scaler + modèle
+domain: ml
+difficulty: medium
+minutes: 8
+interview: true
+tags: [Pipeline, StandardScaler, cross_val_score]
+cards: [sk-make-pipeline, sk-cross-val-score, sk-pipeline-step-param]
+statement: |
+  1. `make_model(C=1.0)` renvoie un **Pipeline** à deux étapes nommées `'scaler'` (`StandardScaler`) et `'clf'` (`LogisticRegression(C=C, max_iter=5000)`).
+  2. `evaluate(X, y)` renvoie la moyenne des scores d'une **validation croisée à 5 folds** de `make_model()` (métrique par défaut).
+  3. `tune(X, y)` teste `C ∈ {0.01, 0.1, 1, 10}` avec `GridSearchCV` (5 folds) et renvoie le meilleur `C`.
+
+  Le dataset `X, y` (cancer du sein, 30 features d'échelles très différentes) est déjà chargé.
+setup: |
+  from sklearn.datasets import load_breast_cancer
+  X, y = load_breast_cancer(return_X_y=True)
+starter: |
+  from sklearn.linear_model import LogisticRegression
+  from sklearn.model_selection import GridSearchCV, cross_val_score
+  from sklearn.pipeline import Pipeline
+  from sklearn.preprocessing import StandardScaler
+
+
+  def make_model(C=1.0):
+      pass
+
+
+  def evaluate(X, y):
+      pass
+
+
+  def tune(X, y):
+      pass
+solution: |
+  from sklearn.linear_model import LogisticRegression
+  from sklearn.model_selection import GridSearchCV, cross_val_score
+  from sklearn.pipeline import Pipeline
+  from sklearn.preprocessing import StandardScaler
+
+
+  def make_model(C=1.0):
+      return Pipeline([
+          ('scaler', StandardScaler()),
+          ('clf', LogisticRegression(C=C, max_iter=5000)),
+      ])
+
+
+  def evaluate(X, y):
+      return cross_val_score(make_model(), X, y, cv=5).mean()
+
+
+  def tune(X, y):
+      search = GridSearchCV(make_model(), {'clf__C': [0.01, 0.1, 1, 10]}, cv=5)
+      search.fit(X, y)
+      return search.best_params_['clf__C']
+tests:
+  - name: Structure du pipeline
+    check: |
+      from sklearn.pipeline import Pipeline
+      m = make_model(C=3.0)
+      assert isinstance(m, Pipeline), f"type {type(m).__name__}"
+      assert list(m.named_steps) == ['scaler', 'clf'], f"étapes {list(m.named_steps)}"
+      assert m.named_steps['clf'].C == 3.0
+  - call: evaluate(X, y)
+    atol: 0.001
+  - call: tune(X, y)
+hints:
+  - "`Pipeline([('scaler', StandardScaler()), ('clf', LogisticRegression(...))])`."
+  - "`cross_val_score(model, X, y, cv=5)` renvoie 5 scores : prends `.mean()`."
+  - "Dans `GridSearchCV`, les paramètres d'une étape se nomment `<étape>__<param>` : `{'clf__C': [...]}`."
+explanation: |
+  ```python
+  pipe = Pipeline([('scaler', StandardScaler()), ('clf', LogisticRegression())])
+  # ou make_pipeline(StandardScaler(), LogisticRegression())  → étapes nommées automatiquement
+  cross_val_score(pipe, X, y, cv=5, scoring='f1')
+  GridSearchCV(pipe, {'clf__C': [0.1, 1, 10]}, cv=5).fit(X, y).best_params_
+  ```
+  **Pourquoi un pipeline ?** Pendant la validation croisée, le scaler est re-`fit` **sur chaque fold d'entraînement** uniquement. Scaler tout `X` avant le `cross_val_score` ferait fuiter des informations du fold de validation (*data leakage*) et gonflerait le score.

@@ -1,0 +1,55 @@
+id: py-word-count
+title: Compter les mots et trouver le top k
+domain: python
+difficulty: easy
+minutes: 6
+interview: true
+tags: [dict, Counter, sorted, key]
+cards: [py-counter, py-sorted-key]
+statement: |
+  1. `word_freq(text)` renvoie un dict `{mot: nombre d'occurrences}`. Les mots sont séparés par des espaces et comptés **en minuscules**.
+  2. `top_k(text, k)` renvoie la liste des `k` mots les plus fréquents, sous forme de tuples `(mot, compte)`, triés par **compte décroissant** puis par **ordre alphabétique** en cas d'égalité.
+starter: |
+  def word_freq(text):
+      pass
+
+
+  def top_k(text, k):
+      pass
+solution: |
+  from collections import Counter
+
+
+  def word_freq(text):
+      return dict(Counter(text.lower().split()))
+
+
+  def top_k(text, k):
+      freq = word_freq(text)
+      return sorted(freq.items(), key=lambda kv: (-kv[1], kv[0]))[:k]
+tests:
+  - call: "word_freq('Le chat et le chien')"
+    expected: "{'le': 2, 'chat': 1, 'et': 1, 'chien': 1}"
+  - call: "top_k('b a b c a b', 2)"
+    expected: "[('b', 3), ('a', 2)]"
+  - name: Égalité départagée par ordre alphabétique
+    call: "top_k('z y x', 2)"
+    expected: "[('x', 1), ('y', 1)]"
+  - call: "word_freq('')"
+    hidden: true
+  - call: "top_k('Data data DATA science science ia', 3)"
+    hidden: true
+hints:
+  - "`text.lower().split()` découpe sur tous les espaces (et ignore les espaces multiples)."
+  - "`collections.Counter` compte tout seul. Sinon : `d[w] = d.get(w, 0) + 1`."
+  - "Pour trier sur deux critères dont un décroissant : `key=lambda kv: (-kv[1], kv[0])`."
+explanation: |
+  ```python
+  from collections import Counter
+  c = Counter(words)          # dict spécialisé
+  c.most_common(3)            # [(mot, n), ...] trié par n décroissant
+  sorted(d.items(), key=lambda kv: (-kv[1], kv[0]))
+  ```
+  - `sorted(..., key=...)` prend une fonction qui renvoie la **clé de tri**. Un **tuple** trie sur plusieurs critères, dans l'ordre.
+  - Pour inverser un seul critère numérique, on met un **signe moins**. `reverse=True` inverserait tous les critères.
+  - `most_common` ne garantit pas l'ordre alphabétique en cas d'égalité : en entretien, précise la règle de départage.

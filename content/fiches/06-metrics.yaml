@@ -1,0 +1,55 @@
+id: metrics
+title: Métriques d'évaluation
+domain: ml
+summary: Accuracy, precision, recall, F1, ROC/PR AUC, log loss, MAE, RMSE, R². Laquelle choisir et pourquoi.
+body: |
+  ## Classification : la matrice de confusion
+
+  |  | prédit positif | prédit négatif |
+  |---|---|---|
+  | **réellement positif** | TP | FN (oubli) |
+  | **réellement négatif** | FP (fausse alerte) | TN |
+
+  | Métrique | Formule | Question à laquelle elle répond |
+  |---|---|---|
+  | Accuracy | (TP+TN) / total | quelle proportion de bonnes réponses ? |
+  | Precision | TP / (TP+FP) | quand je dis « positif », ai-je raison ? |
+  | Recall (sensibilité) | TP / (TP+FN) | quelle part des positifs ai-je trouvée ? |
+  | Spécificité | TN / (TN+FP) | quelle part des négatifs ai-je bien rejetée ? |
+  | F1 | 2PR / (P+R) | compromis precision / recall |
+
+  ## Choisir
+
+  - **Classes équilibrées, coûts symétriques** → accuracy.
+  - **Les oublis coûtent cher** (cancer, fraude) → recall (à precision minimale fixée).
+  - **Les fausses alertes coûtent cher** (spam, recommandation) → precision.
+  - **Classes déséquilibrées** → F1, PR AUC. Jamais l'accuracy seule.
+  - **Besoin de probabilités fiables** (pricing, risque) → log loss, courbe de calibration.
+
+  ## Courbes et seuil
+
+  Un classifieur sort un **score** ; la classe dépend d'un **seuil** (0,5 par défaut, arbitraire).
+
+  - **ROC** : TPR (recall) vs FPR pour tous les seuils. **AUC** = probabilité qu'un positif au hasard ait un score plus élevé qu'un négatif au hasard. 0,5 = hasard.
+  - **Precision-Recall** : plus informative quand les positifs sont rares.
+  - Choisir le seuil = choisir un point de la courbe selon le coût métier.
+
+  ```python
+  from sklearn.metrics import classification_report, roc_auc_score, precision_recall_curve
+  roc_auc_score(y_test, model.predict_proba(X_test)[:, 1])   # des scores, pas des classes !
+  ```
+
+  ## Régression
+
+  | Métrique | Formule | Remarque |
+  |---|---|---|
+  | MAE | mean\|y − ŷ\| | robuste aux outliers, même unité que y |
+  | RMSE | √mean(y − ŷ)² | pénalise les grosses erreurs |
+  | MAPE | mean\|(y − ŷ)/y\| | en %, explose si y ≈ 0 |
+  | R² | 1 − SS_res/SS_tot | part de variance expliquée ; < 0 = pire que la moyenne |
+
+  ## Multi-classe
+
+  - `average='macro'` : moyenne simple sur les classes (chaque classe compte autant).
+  - `average='weighted'` : pondérée par le support.
+  - `average='micro'` : calculée globalement (= accuracy en multi-classe mono-label).

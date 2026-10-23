@@ -1,0 +1,60 @@
+id: ml-first-model
+title: Premier modèle scikit-learn
+domain: ml
+difficulty: easy
+minutes: 5
+tags: [train_test_split, fit, predict, accuracy]
+cards: [sk-split-stratify, sk-fit-predict, sk-accuracy]
+statement: |
+  Le squelette de tout projet scikit-learn. Écris `train_iris()` qui :
+
+  1. charge le dataset Iris (`load_iris(return_X_y=True)`) ;
+  2. le découpe en train/test avec **25 % de test**, **stratifié** sur `y`, `random_state=42` ;
+  3. entraîne une `LogisticRegression(max_iter=1000)` sur le train ;
+  4. renvoie le tuple `(model, accuracy_test)`.
+starter: |
+  from sklearn.datasets import load_iris
+  from sklearn.linear_model import LogisticRegression
+  from sklearn.metrics import accuracy_score
+  from sklearn.model_selection import train_test_split
+
+
+  def train_iris():
+      X, y = load_iris(return_X_y=True)
+      pass
+solution: |
+  from sklearn.datasets import load_iris
+  from sklearn.linear_model import LogisticRegression
+  from sklearn.metrics import accuracy_score
+  from sklearn.model_selection import train_test_split
+
+
+  def train_iris():
+      X, y = load_iris(return_X_y=True)
+      X_train, X_test, y_train, y_test = train_test_split(
+          X, y, test_size=0.25, stratify=y, random_state=42
+      )
+      model = LogisticRegression(max_iter=1000)
+      model.fit(X_train, y_train)
+      return model, accuracy_score(y_test, model.predict(X_test))
+tests:
+  - name: Renvoie (modèle entraîné, accuracy)
+    check: |
+      model, acc = train_iris()
+      assert hasattr(model, 'coef_'), "le modèle n'a pas été entraîné (fit)"
+      assert 0.9 <= acc <= 1.0, f"accuracy = {acc}"
+  - name: Accuracy exacte avec le bon split
+    call: train_iris()[1]
+hints:
+  - "`X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, stratify=y, random_state=42)` : attention à l'ordre de retour !"
+  - "`model.fit(X_train, y_train)` puis `accuracy_score(y_test, model.predict(X_test))`."
+explanation: |
+  ```python
+  X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, stratify=y, random_state=42)
+  model = LogisticRegression(max_iter=1000).fit(X_train, y_train)   # fit renvoie le modèle
+  y_pred = model.predict(X_test)          # classes
+  proba = model.predict_proba(X_test)     # (n, n_classes)
+  model.score(X_test, y_test)             # accuracy pour un classifieur, R² pour un régresseur
+  ```
+  - `stratify=y` garde les mêmes proportions de classes dans train et test (indispensable si les classes sont déséquilibrées).
+  - L'API est la même pour **tous** les estimateurs : `fit`, `predict`, `score`. C'est la force de scikit-learn.

@@ -1,0 +1,43 @@
+id: sql-select-where
+title: SELECT, WHERE, ORDER BY
+domain: sql
+difficulty: easy
+minutes: 4
+language: sql
+shared: sql_shop
+tags: [SELECT, WHERE, ORDER BY, LIKE]
+cards: [sql-order-by]
+statement: |
+  La base contient 4 tables :
+
+  - `customers(id, name, city, signup_date)`
+  - `products(id, name, category, price)`
+  - `orders(id, customer_id, order_date, status)`
+  - `order_items(order_id, product_id, quantity)`
+
+  Écris une requête qui renvoie le **nom** et la **date d'inscription** des clients de **Paris** inscrits **à partir du 1er mars 2023**, triés par date d'inscription.
+
+  Astuce : **Exécuter** affiche le résultat de ta requête. Essaie d'abord `SELECT * FROM customers`.
+starter: |
+  SELECT *
+  FROM customers
+solution: |
+  SELECT name, signup_date
+  FROM customers
+  WHERE city = 'Paris'
+    AND signup_date >= '2023-03-01'
+  ORDER BY signup_date
+tests:
+  - name: Résultat de la requête
+    call: q(QUERY)
+hints:
+  - "Les dates sont stockées en texte `YYYY-MM-DD` : la comparaison de chaînes respecte donc l'ordre chronologique."
+  - "Combine les conditions avec `AND`."
+explanation: |
+  ```sql
+  SELECT col1, col2 FROM t
+  WHERE a = 'x' AND (b > 3 OR c IS NULL) AND name LIKE 'A%'
+  ORDER BY col2 DESC, col1
+  LIMIT 10;
+  ```
+  Ordre d'**exécution** logique : `FROM → WHERE → GROUP BY → HAVING → SELECT → ORDER BY → LIMIT`. C'est pourquoi un alias du `SELECT` n'est pas utilisable dans le `WHERE`.

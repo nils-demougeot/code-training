@@ -1,0 +1,61 @@
+id: sql-window-top
+title: Top produit par catégorie (window function)
+domain: sql
+difficulty: hard
+minutes: 12
+language: sql
+shared: sql_shop
+interview: true
+tags: [window function, ROW_NUMBER, CTE, PARTITION BY]
+cards: [sql-row-number, sql-cte]
+statement: |
+  Pour chaque **catégorie**, trouve le **produit le plus vendu en quantité** (toutes commandes confondues, sauf les annulées).
+
+  En cas d'égalité de quantité, garde le produit dont le **nom** vient en premier alphabétiquement.
+
+  Colonnes : `category`, `product`, `total_qty`, triées par `category`.
+
+  Utilise une **CTE** (`WITH`) et la window function `ROW_NUMBER()`.
+starter: |
+  WITH sales AS (
+      SELECT p.category, p.name AS product, SUM(oi.quantity) AS total_qty
+      FROM order_items oi
+      JOIN products p ON p.id = oi.product_id
+      GROUP BY p.id
+  )
+  SELECT * FROM sales
+solution: |
+  WITH sales AS (
+      SELECT p.category, p.name AS product, SUM(oi.quantity) AS total_qty
+      FROM order_items oi
+      JOIN products p ON p.id = oi.product_id
+      JOIN orders o ON o.id = oi.order_id
+      WHERE o.status <> 'annulée'
+      GROUP BY p.id, p.category, p.name
+  ),
+  ranked AS (
+      SELECT *, ROW_NUMBER() OVER (PARTITION BY category ORDER BY total_qty DESC, product) AS rn
+      FROM sales
+  )
+  SELECT category, product, total_qty
+  FROM ranked
+  WHERE rn = 1
+  ORDER BY category
+tests:
+  - name: Résultat de la requête
+    call: q(QUERY)
+hints:
+  - "Étape 1 (CTE `sales`) : quantité totale par produit, en excluant les commandes annulées (jointure avec `orders`)."
+  - "Étape 2 : `ROW_NUMBER() OVER (PARTITION BY category ORDER BY total_qty DESC, product) AS rn`."
+  - "Une window function ne peut pas être filtrée dans le `WHERE` de la même requête : il faut une 2e CTE, puis `WHERE rn = 1`."
+explanation: |
+  ```sql
+  WITH ranked AS (
+    SELECT *, ROW_NUMBER() OVER (PARTITION BY category ORDER BY total_qty DESC) AS rn
+    FROM sales
+  )
+  SELECT * FROM ranked WHERE rn = 1;
+  ```
+  - `ROW_NUMBER` : 1, 2, 3 sans ex æquo. `RANK` : 1, 1, 3. `DENSE_RANK` : 1, 1, 2.
+  - Contrairement à `GROUP BY`, une window function **garde toutes les lignes** et ajoute une colonne calculée sur la « fenêtre ».
+  - Autres classiques : `SUM(x) OVER (PARTITION BY c ORDER BY d)` (cumul), `LAG(x)` / `LEAD(x)` (valeur précédente / suivante).

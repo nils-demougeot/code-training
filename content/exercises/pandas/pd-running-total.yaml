@@ -1,0 +1,66 @@
+id: pd-running-total
+title: Cumuls et rangs par client
+domain: pandas
+difficulty: hard
+minutes: 12
+shared: shop_df
+interview: true
+tags: [groupby, cumsum, rank, transform, shift]
+cards: [pd-transform, pd-groupby-cumsum]
+statement: |
+  L'équivalent pandas des *window functions* SQL. Écris `customer_timeline(df)` qui renvoie une copie de `df` **triée par `customer` puis `date` puis `order_id`**, avec :
+
+  | colonne | définition |
+  |---|---|
+  | `total` | `qty * price` |
+  | `order_rank` | numéro de la commande **dans l'historique du client** (1 = la plus ancienne) |
+  | `cum_spent` | dépense cumulée du client jusqu'à cette commande incluse |
+  | `share_of_customer` | `total` / dépense totale du client |
+  | `days_since_prev` | jours écoulés depuis la commande précédente **du même client** (`NaN` pour la première) |
+
+  Index remis à `0..n-1`.
+starter: |
+  import pandas as pd
+
+
+  def customer_timeline(df):
+      pass
+solution: |
+  import pandas as pd
+
+
+  def customer_timeline(df):
+      out = df.sort_values(['customer', 'date', 'order_id']).reset_index(drop=True)
+      out['total'] = out['qty'] * out['price']
+      g = out.groupby('customer')
+      out['order_rank'] = g.cumcount() + 1
+      out['cum_spent'] = g['total'].cumsum()
+      out['share_of_customer'] = out['total'] / g['total'].transform('sum')
+      out['days_since_prev'] = g['date'].diff().dt.days
+      return out
+tests:
+  - call: customer_timeline(orders)
+  - name: Rang 1 = première commande de chaque client
+    check: |
+      out = customer_timeline(orders)
+      first = out[out['order_rank'] == 1]
+      assert len(first) == orders['customer'].nunique()
+      assert first['days_since_prev'].isna().all()
+  - call: customer_timeline(make_orders(120, seed=11))
+    hidden: true
+hints:
+  - "Trie d'abord, puis `g = out.groupby('customer')`."
+  - "`g.cumcount()` numérote les lignes de chaque groupe à partir de 0."
+  - "`g['total'].cumsum()` garde la shape d'origine (une valeur par ligne)."
+  - "`g['total'].transform('sum')` diffuse le total du groupe sur chacune de ses lignes."
+  - "`g['date'].diff()` donne un `Timedelta` : `.dt.days` pour avoir des jours."
+explanation: |
+  | SQL | pandas |
+  |---|---|
+  | `ROW_NUMBER() OVER (PARTITION BY c ORDER BY d)` | `df.sort_values(d).groupby(c).cumcount() + 1` |
+  | `SUM(x) OVER (PARTITION BY c ORDER BY d)` | `groupby(c)[x].cumsum()` |
+  | `SUM(x) OVER (PARTITION BY c)` | `groupby(c)[x].transform('sum')` |
+  | `LAG(d) OVER (PARTITION BY c ORDER BY d)` | `groupby(c)[d].shift(1)` |
+  | `RANK() OVER (...)` | `groupby(c)[x].rank(method='min')` |
+
+  `transform` renvoie un résultat **aligné sur les lignes d'origine**, alors que `agg` réduit à une ligne par groupe.

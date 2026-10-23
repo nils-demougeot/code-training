@@ -1,0 +1,99 @@
+id: dl-backprop
+title: Backpropagation d'un MLP à 2 couches
+domain: dl
+difficulty: hard
+minutes: 18
+interview: true
+tags: [backprop, chain rule, gradients, from scratch]
+cards: [dl-backprop-dW, dl-ce-gradient]
+statement: |
+  Réseau : $H = \text{ReLU}(XW_1 + b_1)$, $Z = HW_2 + b_2$, loss = cross-entropy moyenne entre $\text{softmax}(Z)$ et les labels `y`.
+
+  Écris `loss_and_grads(X, y, W1, b1, W2, b2)` qui renvoie `(loss, grads)` où `grads` est un dict avec les clés `'W1', 'b1', 'W2', 'b2'` (mêmes shapes que les paramètres).
+
+  Chaîne de dérivation :
+  1. $dZ = (\text{softmax}(Z) - \text{onehot}(y)) / n$
+  2. $dW_2 = H^\top dZ$, $db_2 = \sum_i dZ_i$
+  3. $dH = dZ\, W_2^\top$, puis $dA = dH \odot \mathbb{1}[XW_1 + b_1 > 0]$
+  4. $dW_1 = X^\top dA$, $db_1 = \sum_i dA_i$
+starter: |
+  import numpy as np
+
+
+  def loss_and_grads(X, y, W1, b1, W2, b2):
+      n = X.shape[0]
+      # forward
+      A = X @ W1 + b1
+      H = np.maximum(0, A)
+      Z = H @ W2 + b2
+      # TODO : loss (cross-entropy stable) puis backward
+      pass
+solution: |
+  import numpy as np
+
+
+  def loss_and_grads(X, y, W1, b1, W2, b2):
+      n = X.shape[0]
+      A = X @ W1 + b1
+      H = np.maximum(0, A)
+      Z = H @ W2 + b2
+      Z = Z - Z.max(axis=1, keepdims=True)
+      P = np.exp(Z) / np.exp(Z).sum(axis=1, keepdims=True)
+      loss = float(-np.log(P[np.arange(n), y]).mean())
+
+      dZ = P.copy()
+      dZ[np.arange(n), y] -= 1
+      dZ /= n
+      dW2 = H.T @ dZ
+      db2 = dZ.sum(axis=0)
+      dH = dZ @ W2.T
+      dA = dH * (A > 0)
+      dW1 = X.T @ dA
+      db1 = dA.sum(axis=0)
+      return loss, {'W1': dW1, 'b1': db1, 'W2': dW2, 'b2': db2}
+setup: |
+  import numpy as np
+  rng = np.random.default_rng(0)
+  X = rng.normal(size=(6, 4))
+  y = np.array([0, 2, 1, 2, 0, 1])
+  W1, b1 = rng.normal(size=(4, 5)) * 0.5, rng.normal(size=5) * 0.1
+  W2, b2 = rng.normal(size=(5, 3)) * 0.5, rng.normal(size=3) * 0.1
+tests:
+  - name: Loss
+    call: loss_and_grads(X, y, W1, b1, W2, b2)[0]
+  - name: Shapes des gradients
+    check: |
+      _, g = loss_and_grads(X, y, W1, b1, W2, b2)
+      for k, p in {'W1': W1, 'b1': b1, 'W2': W2, 'b2': b2}.items():
+          assert g[k].shape == p.shape, f"grads['{k}'] a la shape {g[k].shape}, attendu {p.shape}"
+  - name: Gradients exacts
+    call: loss_and_grads(X, y, W1, b1, W2, b2)[1]
+  - name: Gradient check numérique sur W1
+    check: |
+      _, g = loss_and_grads(X, y, W1, b1, W2, b2)
+      h = 1e-5
+      num = np.zeros_like(W1)
+      for idx in np.ndindex(W1.shape):
+          Wp, Wm = W1.copy(), W1.copy()
+          Wp[idx] += h
+          Wm[idx] -= h
+          num[idx] = (loss_and_grads(X, y, Wp, b1, W2, b2)[0] - loss_and_grads(X, y, Wm, b1, W2, b2)[0]) / (2 * h)
+      assert np.allclose(g['W1'], num, atol=1e-5), "dW1 ne correspond pas au gradient numérique"
+hints:
+  - "Commence par la loss : softmax stable sur `Z`, puis `-log(P[np.arange(n), y]).mean()`."
+  - "Règle des shapes : `dW2` doit avoir la shape de `W2` `(h, C)` → `H.T @ dZ` est `(h, n) @ (n, C)`."
+  - "La dérivée de ReLU est le masque `A > 0` : `dA = dH * (A > 0)`."
+  - "Les gradients des biais somment sur le batch : `dZ.sum(axis=0)`."
+explanation: |
+  **Le truc pour ne jamais se tromper : les shapes.** Le gradient d'un paramètre a toujours la shape du paramètre.
+  ```python
+  # forward :  A = X @ W1 + b1   H = relu(A)   Z = H @ W2 + b2
+  dZ  = (softmax(Z) - onehot(y)) / n        # (n, C)
+  dW2 = H.T @ dZ                            # (h, n) @ (n, C) = (h, C) ✓
+  db2 = dZ.sum(0)                           # (C,)
+  dH  = dZ @ W2.T                           # (n, C) @ (C, h) = (n, h)
+  dA  = dH * (A > 0)                        # ReLU'
+  dW1 = X.T @ dA                            # (d, n) @ (n, h) = (d, h) ✓
+  ```
+  - Pour `Y = X @ W` : `dW = X.T @ dY` et `dX = dY @ W.T`. C'est tout le backprop d'une couche dense.
+  - C'est exactement ce que fait `loss.backward()` en PyTorch (autograd), couche par couche, de la sortie vers l'entrée.

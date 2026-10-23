@@ -1,0 +1,49 @@
+id: algo-merge-intervals
+title: Fusionner des intervalles
+domain: algo
+difficulty: medium
+minutes: 10
+interview: true
+tags: [tri, intervalles]
+cards: [py-sorted-key]
+statement: |
+  Écris `merge(intervals)` qui fusionne les intervalles qui se **chevauchent ou se touchent**, et renvoie la liste triée des intervalles résultants (des listes `[début, fin]`).
+
+  ```python
+  merge([[1, 3], [8, 10], [2, 6], [15, 18]])  # [[1, 6], [8, 10], [15, 18]]
+  merge([[1, 4], [4, 5]])                     # [[1, 5]]
+  ```
+
+  Cas d'usage réel : fusionner des créneaux d'agenda, des sessions utilisateur, des plages de dates.
+starter: |
+  def merge(intervals):
+      pass
+solution: |
+  def merge(intervals):
+      merged = []
+      for start, end in sorted(intervals):
+          if merged and start <= merged[-1][1]:
+              merged[-1][1] = max(merged[-1][1], end)
+          else:
+              merged.append([start, end])
+      return merged
+tests:
+  - call: merge([[1, 3], [8, 10], [2, 6], [15, 18]])
+    expected: "[[1, 6], [8, 10], [15, 18]]"
+  - call: merge([[1, 4], [4, 5]])
+    expected: "[[1, 5]]"
+  - call: merge([])
+    expected: "[]"
+  - name: Intervalle inclus dans un autre
+    call: merge([[1, 10], [2, 3], [4, 5]])
+    expected: "[[1, 10]]"
+  - call: merge([[5, 6], [1, 2], [2, 3], [7, 9], [8, 8]])
+    hidden: true
+hints:
+  - "Trie d'abord par début : `sorted(intervals)` (les listes se comparent élément par élément)."
+  - "Parcours : si l'intervalle courant commence avant la fin du dernier fusionné, étends ce dernier ; sinon ajoute-le."
+  - "Attention à `max(...)` : un intervalle peut être **inclus** dans le précédent."
+explanation: |
+  - **Trier** d'abord transforme beaucoup de problèmes O(n²) en un simple balayage O(n log n).
+  - Variantes : nombre minimal de salles de réunion (trier les débuts et les fins, ou un heap), insérer un intervalle, intersection de deux listes.
+  - `sorted` sur des listes/tuples compare lexicographiquement : premier élément, puis le second en cas d'égalité.

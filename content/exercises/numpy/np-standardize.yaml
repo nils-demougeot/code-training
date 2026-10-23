@@ -1,0 +1,63 @@
+id: np-standardize
+title: Standardiser les colonnes (z-score)
+domain: numpy
+difficulty: easy
+minutes: 5
+tags: [mean, std, axis=0, StandardScaler]
+cards: [np-mean-axis0]
+statement: |
+  Réimplémente `StandardScaler` :
+
+  1. `fit(X)` renvoie le tuple `(mean, std)` calculé **par colonne** (shapes `(d,)`).
+  2. `transform(X, mean, std)` renvoie `(X - mean) / std`. Une colonne de variance nulle doit donner des **zéros** (pas de `nan`).
+
+  Pourquoi deux fonctions ? Parce qu'on calcule `mean` et `std` **sur le train uniquement**, puis on les applique au test.
+starter: |
+  import numpy as np
+
+
+  def fit(X):
+      pass
+
+
+  def transform(X, mean, std):
+      pass
+solution: |
+  import numpy as np
+
+
+  def fit(X):
+      return X.mean(axis=0), X.std(axis=0)
+
+
+  def transform(X, mean, std):
+      safe = np.where(std == 0, 1.0, std)
+      return (X - mean) / safe
+setup: |
+  import numpy as np
+  X = np.array([[1., 10., 5.], [3., 30., 5.], [5., 20., 5.]])
+tests:
+  - call: fit(X)
+    expected: (np.array([3., 20., 5.]), np.array([1.63299316, 8.16496581, 0.]))
+  - call: transform(X, *fit(X))
+  - name: Moyenne 0 et écart-type 1 sur le train
+    check: |
+      rng = np.random.default_rng(1)
+      A = rng.normal(5, 3, size=(200, 4))
+      Z = transform(A, *fit(A))
+      assert np.allclose(Z.mean(axis=0), 0) and np.allclose(Z.std(axis=0), 1)
+  - name: Paramètres du train appliqués au test
+    call: transform(np.array([[3., 0., 7.]]), *fit(X))
+    hidden: true
+hints:
+  - "`axis=0` = on agrège **le long des lignes** : un résultat par colonne."
+  - "`(n, d) - (d,)` broadcast tout seul : la moyenne est soustraite à chaque ligne."
+  - "Pour éviter la division par zéro : `np.where(std == 0, 1.0, std)`."
+explanation: |
+  ```python
+  mu, sigma = X_train.mean(axis=0), X_train.std(axis=0)
+  X_test_scaled = (X_test - mu) / sigma     # paramètres du TRAIN
+  ```
+  - `axis=0` → réduit les lignes → shape `(d,)`. `axis=1` → réduit les colonnes → shape `(n,)`.
+  - `np.std` utilise `ddof=0` (écart-type de la population), comme `StandardScaler`. Pandas `.std()` utilise `ddof=1` !
+  - Calculer `mu` sur tout le dataset avant le split est une **fuite de données** (data leakage).

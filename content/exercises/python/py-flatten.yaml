@@ -1,0 +1,56 @@
+id: py-flatten
+title: Aplatir une liste imbriquée
+domain: python
+difficulty: medium
+minutes: 8
+interview: true
+tags: [récursion, générateur, yield from]
+cards: [py-yield-from, py-isinstance]
+statement: |
+  Écris `flatten(nested)` qui aplatit une liste arbitrairement imbriquée.
+
+  ```python
+  flatten([1, [2, [3, 4]], [], 5])  # [1, 2, 3, 4, 5]
+  ```
+
+  - Les éléments qui ne sont pas des `list` (ou `tuple`) sont gardés tels quels, y compris les chaînes.
+  - Bonus : écris-le comme un **générateur** `iter_flatten` puis fais `flatten = list(iter_flatten(...))`.
+starter: |
+  def flatten(nested):
+      pass
+solution: |
+  def iter_flatten(nested):
+      for item in nested:
+          if isinstance(item, (list, tuple)):
+              yield from iter_flatten(item)
+          else:
+              yield item
+
+
+  def flatten(nested):
+      return list(iter_flatten(nested))
+tests:
+  - call: "flatten([1, [2, [3, 4]], [], 5])"
+    expected: "[1, 2, 3, 4, 5]"
+  - call: "flatten([[['a']], 'bc', ('d', ['e'])])"
+    expected: "['a', 'bc', 'd', 'e']"
+  - call: "flatten([])"
+    expected: "[]"
+  - call: "flatten([[[[[[7]]]]]])"
+    hidden: true
+hints:
+  - "Cas de base : un élément qui n'est pas une liste → on le garde. Sinon on aplatit récursivement."
+  - "`isinstance(item, (list, tuple))` teste plusieurs types d'un coup."
+  - "Dans un générateur, `yield from sous_generateur` relaie tous ses éléments."
+explanation: |
+  ```python
+  def iter_flatten(xs):
+      for x in xs:
+          if isinstance(x, (list, tuple)):
+              yield from iter_flatten(x)
+          else:
+              yield x
+  ```
+  - Un **générateur** produit les valeurs à la demande, sans construire de listes intermédiaires.
+  - Attention aux chaînes : une `str` est itérable, et chacun de ses caractères est encore une `str`. Tester `isinstance(x, Iterable)` provoquerait une récursion infinie.
+  - Profondeur de récursion max ≈ 1000 en Python : pour des imbrications extrêmes, version itérative avec une **pile**.

@@ -1,0 +1,43 @@
+id: interview-method
+title: La méthode pour un entretien de code
+domain: algo
+summary: Un déroulé en 6 étapes, les phrases utiles et les erreurs qui coûtent cher, pour les entretiens algo et data/ML.
+body: |
+  ## Les 6 étapes
+
+  1. **Reformuler** (1 min) : « Si je comprends bien, on veut… ». Ça évite de résoudre le mauvais problème.
+  2. **Clarifier** (2 min) : taille des entrées, types, doublons, valeurs négatives, entrée vide, format de sortie, peut-on modifier l'entrée ?
+  3. **Exemples** (2 min) : un cas nominal **déroulé à la main**, puis les cas limites.
+  4. **Approche** (5 min) : annonce d'abord la **force brute** et sa complexité, puis optimise. Demande « est-ce que cette approche vous convient avant que je code ? ».
+  5. **Coder** (15 min) : noms clairs, petites fonctions, parle en codant.
+  6. **Tester** (5 min) : déroule ton code sur l'exemple, puis les cas limites. Corrige à voix haute.
+
+  ## Phrases utiles
+
+  - « Je commence par une solution simple en O(n²), puis je l'améliore. »
+  - « Ici j'ai besoin de savoir en O(1) si j'ai déjà vu une valeur : j'utilise un set. »
+  - « Je fais l'hypothèse que… est-ce correct ? »
+  - « La complexité est O(n log n) à cause du tri, et O(n) en mémoire pour le dictionnaire. »
+  - « Si j'avais plus de temps, je gérerais aussi… »
+
+  ## Spécificités data / ML
+
+  - **Exercice pandas/SQL** : annonce le résultat attendu (une ligne par quoi ? quelles colonnes ?) avant d'écrire. Vérifie les **doublons** après une jointure.
+  - **ML from scratch** (kNN, k-means, régression) : écris les **shapes** de chaque tableau, vectorise, teste sur un mini-exemple.
+  - **Question de design ML** : objectif métier → métrique → données disponibles (et fuites !) → baseline → modèle → validation → déploiement et monitoring.
+  - **Questions de concepts** : définition, **intuition**, exemple concret, limites. Par exemple pour l'overfitting : définition, symptôme sur les courbes, 3 remèdes.
+
+  ## Ce qui fait échouer
+
+  - Coder immédiatement sans clarifier.
+  - Rester silencieux plusieurs minutes.
+  - Ignorer les indices de l'intervieweur.
+  - Ne pas tester son code.
+  - Bloquer sur la syntaxe exacte d'une librairie : dis « je ne me souviens plus du nom exact, c'est quelque chose comme… » et continue. (Et révise tes cartes de **Mémoire** !)
+
+  ## Préparation dans cette app
+
+  - **Mémoire** chaque jour : la syntaxe doit être automatique.
+  - **Exercices ⏱ entretien** : chronomètre-toi, sans indice.
+  - **Entretien blanc** : 45 minutes, 2 problèmes, pas d'autocomplétion. Entraîne-toi à parler à voix haute.
+  - **Fiches** la veille.

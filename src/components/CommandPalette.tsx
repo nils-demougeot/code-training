@@ -1,0 +1,130 @@
+import clsx from 'clsx'
+import { BookOpen, Code2, CornerDownLeft, FlaskConical, Rocket, Search } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { exercises, fiches, projects } from '@/lib/content'
+import { DOMAINS } from '@/lib/domains'
+import { LABS } from '@/labs/registry'
+
+interface Item {
+  id: string
+  label: string
+  sub: string
+  to: string
+  kind: 'exercise' | 'fiche' | 'project' | 'lab'
+}
+
+const ICONS = { exercise: Code2, fiche: BookOpen, project: Rocket, lab: FlaskConical }
+
+function normalize(s: string) {
+  return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
+}
+
+export function CommandPalette() {
+  const [open, setOpen] = useState(false)
+  const [q, setQ] = useState('')
+  const [active, setActive] = useState(0)
+  const navigate = useNavigate()
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  const items = useMemo<Item[]>(
+    () => [
+      ...exercises.map((e) => ({
+        id: e.id, label: e.title, sub: `${DOMAINS[e.domain].label} · ${e.tags.join(', ')}`, to: `/exercices/${e.id}`, kind: 'exercise' as const,
+      })),
+      ...fiches.map((f) => ({ id: f.id, label: f.title, sub: `Fiche · ${f.summary}`, to: `/fiches/${f.id}`, kind: 'fiche' as const })),
+      ...projects.map((p) => ({ id: p.id, label: p.title, sub: `Projet · ${p.summary}`, to: `/projets/${p.id}`, kind: 'project' as const })),
+      ...LABS.map((l) => ({ id: l.id, label: l.title, sub: `Lab · ${l.summary}`, to: `/labs/${l.id}`, kind: 'lab' as const })),
+    ],
+    [],
+  )
+
+  const results = useMemo(() => {
+    const terms = normalize(q).split(/\s+/).filter(Boolean)
+    if (!terms.length) return items.slice(0, 12)
+    return items.filter((i) => terms.every((t) => normalize(`${i.label} ${i.sub}`).includes(t))).slice(0, 30)
+  }, [q, items])
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault()
+        setOpen((o) => !o)
+      }
+      if (e.key === 'Escape') setOpen(false)
+    }
+    const onOpen = () => setOpen(true)
+    window.addEventListener('keydown', onKey)
+    window.addEventListener('open-palette', onOpen)
+    return () => {
+      window.removeEventListener('keydown', onKey)
+      window.removeEventListener('open-palette', onOpen)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (open) {
+      setQ('')
+      setActive(0)
+      setTimeout(() => inputRef.current?.focus(), 10)
+    }
+  }, [open])
+
+  useEffect(() => setActive(0), [q])
+
+  if (!open) return null
+
+  const go = (item: Item | undefined) => {
+    if (!item) return
+    setOpen(false)
+    navigate(item.to)
+  }
+
+  return (
+    <div className="fixed inset-0 z-[70] flex items-start justify-center bg-black/60 px-4 pt-[12vh] backdrop-blur-sm" onClick={() => setOpen(false)}>
+      <div className="w-full max-w-xl overflow-hidden rounded-2xl border border-line-strong bg-panel shadow-2xl animate-pop" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center gap-3 border-b border-line px-4">
+          <Search className="size-4 text-faint" />
+          <input
+            ref={inputRef}
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'ArrowDown') {
+                e.preventDefault()
+                setActive((a) => Math.min(a + 1, results.length - 1))
+              } else if (e.key === 'ArrowUp') {
+                e.preventDefault()
+                setActive((a) => Math.max(a - 1, 0))
+              } else if (e.key === 'Enter') go(results[active])
+            }}
+            placeholder="Exercice, fiche, lab, projet…"
+            className="h-12 flex-1 bg-transparent text-sm outline-none placeholder:text-faint"
+          />
+          <kbd className="kbd">Échap</kbd>
+        </div>
+        <div className="max-h-[50vh] overflow-y-auto p-2">
+          {results.length === 0 && <div className="px-3 py-8 text-center text-sm text-faint">Aucun résultat</div>}
+          {results.map((r, i) => {
+            const Icon = ICONS[r.kind]
+            return (
+              <button
+                key={`${r.kind}-${r.id}`}
+                onMouseEnter={() => setActive(i)}
+                onClick={() => go(r)}
+                className={clsx('flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left', i === active && 'bg-white/[0.06]')}
+              >
+                <Icon className="size-4 shrink-0 text-faint" />
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-sm">{r.label}</div>
+                  <div className="truncate text-xs text-faint">{r.sub}</div>
+                </div>
+                {i === active && <CornerDownLeft className="size-3.5 text-faint" />}
+              </button>
+            )
+          })}
+        </div>
+      </div>
+    </div>
+  )
+}

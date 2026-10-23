@@ -1,0 +1,77 @@
+id: pd-missing-values
+title: Nettoyer les valeurs manquantes
+domain: pandas
+difficulty: easy
+minutes: 6
+tags: [isna, fillna, dropna, str]
+cards: [pd-isna-sum, pd-fillna-median, pd-str-methods]
+statement: |
+  Un export CRM est sale. Écris `clean(df)` qui renvoie un **nouveau** DataFrame où :
+
+  1. les lignes **sans `email`** sont supprimées ;
+  2. `email` est mis en minuscules et sans espaces autour ;
+  3. les `age` manquants sont remplacés par la **médiane** des âges connus ;
+  4. les `city` manquantes sont remplacées par `'inconnue'` ;
+  5. les doublons sur `email` sont supprimés (on garde la première occurrence) ;
+  6. l'index est remis à `0..n-1`.
+
+  Écris aussi `missing_report(df)` : une Series du **nombre** de valeurs manquantes par colonne.
+starter: |
+  import pandas as pd
+
+
+  def clean(df):
+      pass
+
+
+  def missing_report(df):
+      pass
+solution: |
+  import pandas as pd
+
+
+  def clean(df):
+      out = df.dropna(subset=['email']).copy()
+      out['email'] = out['email'].str.strip().str.lower()
+      out['age'] = out['age'].fillna(out['age'].median())
+      out['city'] = out['city'].fillna('inconnue')
+      out = out.drop_duplicates(subset='email', keep='first')
+      return out.reset_index(drop=True)
+
+
+  def missing_report(df):
+      return df.isna().sum()
+setup: |
+  import numpy as np
+  import pandas as pd
+  RAW = pd.DataFrame({
+      'email': [' Alice@Mail.com', 'bob@mail.com', None, 'alice@mail.com ', 'CHLOE@mail.com'],
+      'age': [30, np.nan, 41, 31, np.nan],
+      'city': ['Paris', None, 'Lyon', 'Paris', 'Nice'],
+  })
+tests:
+  - call: clean(RAW)
+  - call: missing_report(RAW)
+    expected: "pd.Series({'email': 1, 'age': 2, 'city': 1})"
+  - name: L'entrée n'est pas modifiée
+    check: |
+      before = RAW.copy()
+      clean(RAW)
+      assert RAW.equals(before), "clean() a modifié le DataFrame d'entrée"
+hints:
+  - "`df.dropna(subset=['email'])` supprime les lignes où `email` est manquant."
+  - "Méthodes de chaînes vectorisées : `s.str.strip().str.lower()`."
+  - "La médiane se calcule sur les lignes restantes : `out['age'].fillna(out['age'].median())`."
+  - "`drop_duplicates(subset='email', keep='first')`, après avoir normalisé les emails !"
+explanation: |
+  ```python
+  df.isna().sum()                         # NaN par colonne
+  df.isna().mean()                        # proportion de NaN
+  df.dropna(subset=['email'])
+  df['age'].fillna(df['age'].median())
+  df['email'].str.strip().str.lower()     # .str.contains, .str.replace, .str.split…
+  df.drop_duplicates(subset='email', keep='first')
+  ```
+  - L'**ordre** compte : normaliser les emails avant de dédoublonner.
+  - En ML, l'imputation (médiane…) se calcule sur le **train** : utilise `SimpleImputer` dans un `Pipeline`.
+  - Évite `df['col'].fillna(..., inplace=True)` sur une sélection : préfère réassigner la colonne.

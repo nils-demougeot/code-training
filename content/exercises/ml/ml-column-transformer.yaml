@@ -1,0 +1,100 @@
+id: ml-column-transformer
+title: Prétraitement de données mixtes
+domain: ml
+difficulty: medium
+minutes: 12
+interview: true
+tags: [ColumnTransformer, OneHotEncoder, SimpleImputer, Pipeline]
+cards: [sk-column-transformer, sk-onehot-unknown, sk-simple-imputer]
+setup: |
+  import numpy as np
+  import pandas as pd
+  rng = np.random.default_rng(0)
+  n = 600
+  df = pd.DataFrame({
+      'age': rng.integers(18, 70, n).astype(float),
+      'income': rng.normal(40_000, 15_000, n).round(),
+      'plan': rng.choice(['basic', 'pro', 'team'], n),
+      'country': rng.choice(['FR', 'BE', 'CH', 'CA'], n),
+  })
+  df.loc[rng.random(n) < 0.1, 'income'] = np.nan
+  df.loc[rng.random(n) < 0.05, 'plan'] = np.nan
+  logit = 0.04 * (df['age'] - 40) - 0.00003 * (df['income'].fillna(40_000) - 40_000) + (df['plan'] == 'basic') * 1.2
+  y = (rng.random(n) < 1 / (1 + np.exp(-logit))).astype(int)
+  NUM = ['age', 'income']
+  CAT = ['plan', 'country']
+statement: |
+  On veut prédire le churn (`y`) à partir d'un DataFrame `df` avec des colonnes **numériques** (`NUM = ['age', 'income']`, avec des NaN) et **catégorielles** (`CAT = ['plan', 'country']`, avec des NaN).
+
+  Écris `build_pipeline()` qui renvoie un `Pipeline` :
+
+  - `'prep'` : un `ColumnTransformer` qui
+    - pour `NUM` : impute la **médiane** puis standardise ;
+    - pour `CAT` : impute la valeur **la plus fréquente** puis encode en one-hot, en **ignorant les catégories inconnues** au moment de la prédiction ;
+  - `'clf'` : `LogisticRegression(max_iter=1000)`.
+
+  Le pipeline doit pouvoir faire `fit(df, y)` directement sur le DataFrame brut.
+starter: |
+  from sklearn.compose import ColumnTransformer
+  from sklearn.impute import SimpleImputer
+  from sklearn.linear_model import LogisticRegression
+  from sklearn.pipeline import Pipeline, make_pipeline
+  from sklearn.preprocessing import OneHotEncoder, StandardScaler
+
+
+  def build_pipeline():
+      pass
+solution: |
+  from sklearn.compose import ColumnTransformer
+  from sklearn.impute import SimpleImputer
+  from sklearn.linear_model import LogisticRegression
+  from sklearn.pipeline import Pipeline, make_pipeline
+  from sklearn.preprocessing import OneHotEncoder, StandardScaler
+
+
+  def build_pipeline():
+      prep = ColumnTransformer([
+          ('num', make_pipeline(SimpleImputer(strategy='median'), StandardScaler()), NUM),
+          ('cat', make_pipeline(SimpleImputer(strategy='most_frequent'), OneHotEncoder(handle_unknown='ignore')), CAT),
+      ])
+      return Pipeline([('prep', prep), ('clf', LogisticRegression(max_iter=1000))])
+tests:
+  - name: S'entraîne sur le DataFrame brut (avec NaN)
+    check: |
+      pipe = build_pipeline()
+      pipe.fit(df, y)
+      acc = pipe.score(df, y)
+      assert acc > 0.6, f"accuracy train = {acc:.2f}"
+  - name: 4 + 2 colonnes numériques et one-hot attendues
+    check: |
+      pipe = build_pipeline().fit(df, y)
+      Xt = pipe.named_steps['prep'].transform(df.head())
+      assert Xt.shape[1] == 2 + 3 + 4, f"{Xt.shape[1]} colonnes après prétraitement (attendu 9 : 2 num + 3 plans + 4 pays)"
+  - name: Catégorie inconnue à la prédiction
+    check: |
+      pipe = build_pipeline().fit(df, y)
+      new = df.head(2).copy()
+      new['country'] = ['US', 'JP']
+      pipe.predict(new)
+  - name: Imputation numérique par la médiane
+    check: |
+      pipe = build_pipeline().fit(df, y)
+      imp = pipe.named_steps['prep'].named_transformers_['num'][0]
+      assert imp.strategy == 'median', f"strategy = {imp.strategy}"
+hints:
+  - "`ColumnTransformer([('nom', transformer, colonnes), ...])` applique un traitement différent par groupe de colonnes."
+  - "Chaque transformer peut être un mini-pipeline : `make_pipeline(SimpleImputer(strategy='median'), StandardScaler())`."
+  - "`OneHotEncoder(handle_unknown='ignore')` encode une catégorie jamais vue en un vecteur de zéros au lieu de planter."
+explanation: |
+  ```python
+  prep = ColumnTransformer([
+      ('num', make_pipeline(SimpleImputer(strategy='median'), StandardScaler()), num_cols),
+      ('cat', make_pipeline(SimpleImputer(strategy='most_frequent'),
+                            OneHotEncoder(handle_unknown='ignore')), cat_cols),
+  ])
+  model = Pipeline([('prep', prep), ('clf', LogisticRegression())])
+  model.fit(df_train, y_train); model.predict(df_test)
+  ```
+  C'est **le** squelette d'un projet ML tabulaire. Tout le prétraitement est appris sur le train et réappliqué à l'identique en production : **un seul objet** à sauvegarder (`joblib.dump(model, 'model.joblib')`).
+
+  Paramètres imbriqués dans une recherche : `{'prep__num__simpleimputer__strategy': ['mean', 'median'], 'clf__C': [0.1, 1]}`.

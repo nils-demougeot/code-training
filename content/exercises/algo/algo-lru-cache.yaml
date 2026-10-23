@@ -1,0 +1,86 @@
+id: algo-lru-cache
+title: Cache LRU
+domain: algo
+difficulty: hard
+minutes: 15
+interview: true
+tags: [design, OrderedDict, O(1)]
+cards: [cx-ordereddict]
+statement: |
+  Implémente une classe `LRUCache(capacity)` (*Least Recently Used*) :
+
+  - `get(key)` : renvoie la valeur, ou `-1` si absente. Une lecture rend la clé « récemment utilisée ».
+  - `put(key, value)` : insère ou met à jour. Si la capacité est dépassée, **évince la clé la moins récemment utilisée**.
+
+  Les deux opérations doivent être en **O(1)**.
+starter: |
+  class LRUCache:
+      def __init__(self, capacity):
+          pass
+
+      def get(self, key):
+          pass
+
+      def put(self, key, value):
+          pass
+solution: |
+  from collections import OrderedDict
+
+
+  class LRUCache:
+      def __init__(self, capacity):
+          self.capacity = capacity
+          self.data = OrderedDict()
+
+      def get(self, key):
+          if key not in self.data:
+              return -1
+          self.data.move_to_end(key)
+          return self.data[key]
+
+      def put(self, key, value):
+          if key in self.data:
+              self.data.move_to_end(key)
+          self.data[key] = value
+          if len(self.data) > self.capacity:
+              self.data.popitem(last=False)
+tests:
+  - name: Scénario classique
+    check: |
+      c = LRUCache(2)
+      c.put(1, 'a'); c.put(2, 'b')
+      assert c.get(1) == 'a'
+      c.put(3, 'c')            # évince 2 (le moins récemment utilisé)
+      assert c.get(2) == -1, "2 aurait dû être évincé"
+      c.put(4, 'd')            # évince 1
+      assert c.get(1) == -1, "1 aurait dû être évincé"
+      assert c.get(3) == 'c' and c.get(4) == 'd'
+  - name: Mise à jour d'une clé existante
+    check: |
+      c = LRUCache(2)
+      c.put(1, 1); c.put(2, 2); c.put(1, 10)   # 1 devient le plus récent
+      c.put(3, 3)                              # évince 2
+      assert c.get(1) == 10 and c.get(2) == -1 and c.get(3) == 3
+  - name: Performance (100 000 opérations)
+    check: |
+      import time
+      c = LRUCache(1000)
+      t = time.perf_counter()
+      for i in range(100_000):
+          c.put(i % 3000, i)
+          c.get((i * 7) % 3000)
+      assert time.perf_counter() - t < 2.0, "trop lent : les opérations doivent être O(1)"
+hints:
+  - "Il faut un dict (accès O(1)) **ordonné par récence** (éviction O(1))."
+  - "`collections.OrderedDict` a `move_to_end(key)` et `popitem(last=False)` (retire le plus ancien), tous deux en O(1)."
+  - "Version « à la main » attendue dans certains entretiens : dict + liste doublement chaînée avec nœuds sentinelles."
+explanation: |
+  ```python
+  from collections import OrderedDict
+  d = OrderedDict()
+  d.move_to_end(k)          # k devient le plus récent
+  d.popitem(last=False)     # retire le plus ancien
+  ```
+  - Structure classique : **hash map + liste doublement chaînée**. Le dict pointe vers les nœuds, la liste maintient l'ordre de récence, et chaque opération déplace un nœud en O(1).
+  - En Python de tous les jours : `@functools.lru_cache(maxsize=128)`.
+  - Les questions de *design* (LRU, rate limiter, tableau de bord de hits) testent ta capacité à **combiner** des structures.

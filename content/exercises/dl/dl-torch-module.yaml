@@ -1,0 +1,98 @@
+id: dl-torch-module
+title: Définir un nn.Module
+domain: dl
+difficulty: medium
+minutes: 10
+engine: local
+interview: true
+tags: [PyTorch, nn.Module, nn.Sequential, forward]
+cards: [torch-module-skeleton, torch-count-params]
+statement: |
+  Écris une classe `MLP(nn.Module)` :
+
+  - `MLP(in_dim, hidden, out_dim, dropout=0.0)` où `hidden` est une **liste** de tailles de couches cachées (ex. `[64, 32]`) ;
+  - chaque couche cachée : `Linear → ReLU → Dropout(dropout)` ;
+  - la couche de sortie : `Linear` seule (des **logits**, pas de softmax) ;
+  - `forward(x)` renvoie les logits `(N, out_dim)`.
+
+  Écris aussi `count_params(model)` qui renvoie le nombre de paramètres **entraînables**.
+starter: |
+  import torch
+  from torch import nn
+
+
+  class MLP(nn.Module):
+      def __init__(self, in_dim, hidden, out_dim, dropout=0.0):
+          super().__init__()
+          pass
+
+      def forward(self, x):
+          pass
+
+
+  def count_params(model):
+      pass
+solution: |
+  import torch
+  from torch import nn
+
+
+  class MLP(nn.Module):
+      def __init__(self, in_dim, hidden, out_dim, dropout=0.0):
+          super().__init__()
+          layers = []
+          prev = in_dim
+          for h in hidden:
+              layers += [nn.Linear(prev, h), nn.ReLU(), nn.Dropout(dropout)]
+              prev = h
+          layers.append(nn.Linear(prev, out_dim))
+          self.net = nn.Sequential(*layers)
+
+      def forward(self, x):
+          return self.net(x)
+
+
+  def count_params(model):
+      return sum(p.numel() for p in model.parameters() if p.requires_grad)
+tests:
+  - name: Shape de sortie
+    check: |
+      m = MLP(20, [64, 32], 5)
+      out = m(torch.randn(8, 20))
+      assert tuple(out.shape) == (8, 5), f"shape {tuple(out.shape)}"
+  - name: Nombre de paramètres
+    check: |
+      m = MLP(20, [64, 32], 5)
+      assert count_params(m) == 20 * 64 + 64 + 64 * 32 + 32 + 32 * 5 + 5, f"{count_params(m)} paramètres"
+  - name: Pas de softmax en sortie (logits)
+    check: |
+      torch.manual_seed(0)
+      out = MLP(4, [8], 3)(torch.randn(16, 4) * 10)
+      assert not torch.allclose(out.sum(dim=1), torch.ones(16)), "la sortie ressemble à des probabilités : renvoie des logits"
+  - name: Le dropout dépend du mode train/eval
+    check: |
+      torch.manual_seed(0)
+      m = MLP(10, [256], 2, dropout=0.5)
+      x = torch.randn(4, 10)
+      m.eval()
+      assert torch.equal(m(x), m(x)), "en mode eval, deux passes doivent être identiques"
+      m.train()
+      assert not torch.equal(m(x), m(x)), "en mode train, le dropout devrait rendre les sorties aléatoires"
+  - name: Sans couche cachée
+    check: |
+      assert count_params(MLP(3, [], 2)) == 8
+hints:
+  - "Construis une liste `layers`, puis `self.net = nn.Sequential(*layers)`."
+  - "Les sous-modules doivent être des **attributs** (ou dans un `nn.Sequential` / `nn.ModuleList`) pour que leurs paramètres soient enregistrés. Une simple liste Python ne suffit pas !"
+  - "`sum(p.numel() for p in model.parameters() if p.requires_grad)`."
+explanation: |
+  ```python
+  class MLP(nn.Module):
+      def __init__(self, ...):
+          super().__init__()                # obligatoire
+          self.net = nn.Sequential(nn.Linear(d, h), nn.ReLU(), nn.Linear(h, c))
+      def forward(self, x):
+          return self.net(x)                # on appelle model(x), jamais model.forward(x)
+  ```
+  - `model.train()` / `model.eval()` changent le comportement du **Dropout** et de la **BatchNorm**. L'oublier en évaluation est un bug classique.
+  - Une `list` Python de couches n'est pas suivie par PyTorch : `model.parameters()` serait vide et l'optimiseur n'entraînerait rien. Utilise `nn.ModuleList`.

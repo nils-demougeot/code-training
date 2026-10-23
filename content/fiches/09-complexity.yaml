@@ -1,0 +1,48 @@
+id: complexity
+title: Complexité des opérations Python
+domain: algo
+summary: Le coût réel des opérations sur list, dict, set, deque et heap, et les patterns d'algorithmes à reconnaître.
+body: |
+  ## Coût des opérations
+
+  | Opération | list | dict / set | deque | heapq |
+  |---|---|---|---|---|
+  | accès par indice | O(1) | — | O(n) | — |
+  | recherche `x in` | **O(n)** | **O(1)** | O(n) | O(n) |
+  | ajout en fin | O(1) | O(1) | O(1) | O(log n) (`heappush`) |
+  | retrait en fin | O(1) `pop()` | — | O(1) | O(log n) (`heappop`, le min) |
+  | ajout / retrait en début | **O(n)** | — | **O(1)** | — |
+  | min | O(n) | O(n) | O(n) | **O(1)** (`h[0]`) |
+  | tri | O(n log n) | — | — | — |
+
+  À retenir : `in` sur une liste est linéaire ; `list.pop(0)` aussi. Convertis en `set` pour les tests d'appartenance répétés, utilise `deque` pour une file.
+
+  ## Ordres de grandeur (≈ 10⁷ opérations simples par seconde en Python)
+
+  | n | Algorithmes acceptables |
+  |---|---|
+  | ≤ 20 | O(2ⁿ), O(n!) : recherche exhaustive |
+  | ≤ 10³ | O(n²) |
+  | ≤ 10⁵ – 10⁶ | O(n log n), O(n) |
+  | > 10⁸ | O(log n), O(1), ou vectorisation NumPy |
+
+  ## Reconnaître le pattern
+
+  | Indice dans l'énoncé | Pattern |
+  |---|---|
+  | « ai-je déjà vu… », compter, regrouper | **hash map** (dict, Counter, defaultdict) |
+  | tableau **trié**, paire de somme donnée | **deux pointeurs** ou dichotomie |
+  | sous-tableau / sous-chaîne **contigu(ë)** le plus long ou court | **fenêtre glissante** |
+  | « le k-ième », « les k plus grands », fusion de listes triées | **heap** |
+  | parenthèses, annulation, « le plus récent d'abord » | **pile** |
+  | plus court chemin non pondéré, niveaux | **BFS** (deque) |
+  | toutes les combinaisons / permutations | **backtracking** |
+  | « nombre de façons », « minimum de… », sous-problèmes qui se répètent | **programmation dynamique** |
+  | intervalles qui se chevauchent | **trier** puis balayer |
+  | recherche d'une valeur seuil monotone | **dichotomie sur la réponse** |
+
+  ## Annoncer une complexité
+
+  - **Temps** : compte les boucles imbriquées, ajoute le coût des opérations à l'intérieur (un `in` sur une liste dans une boucle = O(n²)).
+  - **Mémoire** : les structures auxiliaires (dict, pile, tableau DP), la profondeur de récursion.
+  - Précise le cas **moyen** vs **pire** (dict : O(1) moyen, O(n) pire).

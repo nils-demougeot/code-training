@@ -1,0 +1,186 @@
+id: tfidf-search
+title: Mini moteur de recherche TF-IDF
+domain: ml
+difficulty: medium
+hours: 1.5
+summary: Tokenisation, vocabulaire, matrice TF-IDF et similarité cosinus en NumPy. Puis vérification contre scikit-learn.
+intro: |
+  Les bases du NLP « classique » et de la recherche d'information, toujours utilisées en *retrieval* (et comme baseline des embeddings).
+
+  `DOCS` est une liste de 12 courtes descriptions de cours. Tu vas construire un moteur qui renvoie les documents les plus pertinents pour une requête.
+
+  Pipeline : `texte → tokens → vocabulaire → comptages (TF) → pondération IDF → normalisation L2 → similarité cosinus`.
+setup: |
+  import numpy as np
+  DOCS = [
+      "Introduction au machine learning avec Python et scikit-learn",
+      "Les réseaux de neurones profonds et la rétropropagation",
+      "Manipuler des données tabulaires avec pandas",
+      "Statistiques descriptives et visualisation de données",
+      "Apprentissage profond pour la vision par ordinateur",
+      "Requêtes SQL, jointures et agrégations pour l'analyse de données",
+      "Traitement automatique du langage et embeddings de mots",
+      "Optimisation : descente de gradient, momentum et Adam",
+      "Python avancé : générateurs, décorateurs et classes",
+      "Séries temporelles et prévision des ventes",
+      "Machine learning : arbres de décision et forêts aléatoires",
+      "Transformers et attention pour le traitement du langage",
+  ]
+  STOPWORDS = {"au", "avec", "et", "les", "la", "le", "de", "des", "du", "pour", "par", "l", "d"}
+starter: |
+  import re
+  import numpy as np
+
+
+  # Étape 1
+  def tokenize(text):
+      pass
+
+
+  # Étape 2
+  def build_vocab(docs):
+      pass
+
+
+  # Étape 3
+  def term_counts(docs, vocab):
+      pass
+
+
+  # Étape 4
+  def tfidf(docs, vocab):
+      pass
+
+
+  # Étape 5
+  def search(query, docs, k=3):
+      pass
+
+
+  print(tokenize(DOCS[0]))
+solution: |
+  import re
+  import numpy as np
+
+
+  def tokenize(text):
+      words = re.findall(r"\w+", text.lower())
+      return [w for w in words if w not in STOPWORDS and len(w) > 1]
+
+
+  def build_vocab(docs):
+      words = sorted({w for d in docs for w in tokenize(d)})
+      return {w: i for i, w in enumerate(words)}
+
+
+  def term_counts(docs, vocab):
+      M = np.zeros((len(docs), len(vocab)))
+      for i, d in enumerate(docs):
+          for w in tokenize(d):
+              if w in vocab:
+                  M[i, vocab[w]] += 1
+      return M
+
+
+  def tfidf(docs, vocab):
+      tf = term_counts(docs, vocab)
+      n = len(docs)
+      df = (tf > 0).sum(axis=0)
+      idf = np.log((1 + n) / (1 + df)) + 1
+      X = tf * idf
+      norms = np.linalg.norm(X, axis=1, keepdims=True)
+      return X / np.where(norms == 0, 1, norms)
+
+
+  def search(query, docs, k=3):
+      vocab = build_vocab(docs)
+      X = tfidf(docs, vocab)
+      idf = np.log((1 + len(docs)) / (1 + (term_counts(docs, vocab) > 0).sum(axis=0))) + 1
+      q = term_counts([query], vocab)[0] * idf
+      norm = np.linalg.norm(q)
+      if norm:
+          q = q / norm
+      return list(np.argsort(-(X @ q), kind='stable')[:k])
+steps:
+  - title: Tokeniser
+    instructions: |
+      `tokenize(text)` renvoie la liste des mots :
+
+      1. en **minuscules** ;
+      2. découpés avec l'expression régulière `\w+` (`re.findall`) ;
+      3. sans les mots de `STOPWORDS` ni les mots d'une seule lettre.
+
+      `tokenize("Les réseaux de neurones")` → `['réseaux', 'neurones']`.
+    hints:
+      - "`re.findall(r\"\\w+\", text.lower())` gère les accents (`\\w` est Unicode en Python 3)."
+      - "Filtre avec une compréhension : `[w for w in words if w not in STOPWORDS and len(w) > 1]`."
+    tests:
+      - call: tokenize("Les réseaux de neurones")
+        expected: "['réseaux', 'neurones']"
+      - call: tokenize(DOCS[5])
+  - title: Construire le vocabulaire
+    instructions: |
+      `build_vocab(docs)` renvoie un dict `{mot: indice}` contenant tous les mots des documents, avec des indices `0..V-1` attribués par **ordre alphabétique**.
+    hints:
+      - "Un set en compréhension imbriquée : `{w for d in docs for w in tokenize(d)}`, puis `sorted`."
+      - "`{w: i for i, w in enumerate(mots_tries)}`."
+    tests:
+      - call: build_vocab(DOCS)
+  - title: Matrice des comptages (TF)
+    instructions: |
+      `term_counts(docs, vocab)` renvoie une matrice `(n_docs, V)` de float : `M[i, j]` = nombre d'occurrences du mot `j` dans le document `i`. Les mots absents du vocabulaire sont ignorés.
+    hints:
+      - "Initialise `np.zeros((len(docs), len(vocab)))` puis incrémente `M[i, vocab[w]] += 1`."
+    tests:
+      - call: term_counts(DOCS, build_vocab(DOCS))
+      - call: term_counts(["python python inconnu"], build_vocab(DOCS)).sum()
+        expected: "2.0"
+  - title: Pondération TF-IDF
+    instructions: |
+      `tfidf(docs, vocab)` : à partir des comptages,
+
+      - $df_j$ = nombre de documents contenant le mot $j$ ;
+      - $idf_j = \ln\frac{1 + n}{1 + df_j} + 1$ (formule « lissée » de scikit-learn) ;
+      - $X = TF \times idf$ (broadcasting), puis chaque **ligne** normalisée à une norme L2 de 1 (une ligne nulle reste nulle).
+
+      Le test compare ta matrice à `TfidfVectorizer` de scikit-learn !
+    hints:
+      - "`df = (tf > 0).sum(axis=0)` : shape `(V,)`."
+      - "`tf * idf` : `(n, V) * (V,)` broadcast sur les lignes."
+      - "Normalisation : réutilise l'exercice *Normaliser les lignes*."
+    tests:
+      - name: Identique à scikit-learn
+        check: |
+          from sklearn.feature_extraction.text import TfidfVectorizer
+          vocab = build_vocab(DOCS)
+          vec = TfidfVectorizer(tokenizer=tokenize, lowercase=False, token_pattern=None, vocabulary=vocab)
+          ref_X = vec.fit_transform(DOCS).toarray()
+          assert np.allclose(tfidf(DOCS, vocab), ref_X), "ta matrice TF-IDF diffère de celle de scikit-learn"
+      - name: Lignes de norme 1
+        check: |
+          X = tfidf(DOCS, build_vocab(DOCS))
+          assert np.allclose(np.linalg.norm(X, axis=1), 1)
+  - title: Rechercher
+    instructions: |
+      `search(query, docs, k=3)` renvoie la liste des indices des `k` documents les plus similaires à `query` (similarité **cosinus**, du plus au moins similaire).
+
+      1. Vectorise les documents avec `tfidf`.
+      2. Vectorise la requête avec **le même vocabulaire et les mêmes IDF** que les documents.
+      3. Comme tous les vecteurs sont normalisés, la similarité cosinus est un simple **produit scalaire** : `X @ q`.
+    hints:
+      - "Ne recalcule pas les IDF sur la requête seule : ils viennent du corpus de documents."
+      - "`np.argsort(-scores)[:k]` donne les indices des meilleurs scores."
+    tests:
+      - call: search("réseaux de neurones profonds", DOCS)
+      - call: search("analyse de données avec SQL", DOCS, k=2)
+      - name: Le document exact arrive premier
+        check: |
+          for i in [0, 4, 9]:
+              assert search(DOCS[i], DOCS, k=1)[0] == i, f"le document {i} devrait être son propre meilleur résultat"
+outro: |
+  Ton moteur fonctionne exactement comme `TfidfVectorizer` + `cosine_similarity`. Ses limites :
+
+  - il ne comprend pas les **synonymes** (« apprentissage profond » ≠ « deep learning ») ;
+  - il ignore l'**ordre** des mots.
+
+  D'où les **embeddings** (word2vec, puis transformers) : des vecteurs denses où des sens proches sont proches. La recherche reste la même : normaliser, produit scalaire, top-k. C'est le cœur d'un système **RAG**.

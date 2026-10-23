@@ -1,0 +1,101 @@
+id: pytorch
+title: PyTorch — la syntaxe
+domain: dl
+description: Tenseurs, nn.Module, boucle d'entraînement, DataLoader, device. Auto-évaluées (PyTorch ne tourne pas dans le navigateur).
+cards:
+  - id: torch-tensor-from-numpy
+    kind: reveal
+    prompt: "Convertir un np.ndarray a en tenseur float32, et un tenseur t en np.ndarray."
+    answer: |-
+      t = torch.from_numpy(a).float()     # ou torch.tensor(a, dtype=torch.float32)
+      a = t.detach().cpu().numpy()
+  - id: torch-unsqueeze
+    kind: reveal
+    prompt: "Passer un batch d'images (N, H, W) à (N, 1, H, W)."
+    answer: |-
+      x = x.unsqueeze(1)          # ou x[:, None]
+  - id: torch-item
+    kind: reveal
+    prompt: "Récupérer la valeur d'un tenseur scalaire loss en float Python."
+    answer: |-
+      loss.item()
+    note: "Stocker `loss` (le tenseur) dans une liste garderait tout le graphe de calcul en mémoire."
+  - id: torch-module-skeleton
+    kind: reveal
+    prompt: "Squelette d'un nn.Module avec une couche cachée de 64 et ReLU."
+    answer: |-
+      class Net(nn.Module):
+          def __init__(self, d_in, n_classes):
+              super().__init__()
+              self.net = nn.Sequential(
+                  nn.Linear(d_in, 64), nn.ReLU(),
+                  nn.Linear(64, n_classes),
+              )
+          def forward(self, x):
+              return self.net(x)       # logits
+  - id: torch-count-params
+    kind: reveal
+    prompt: "Nombre de paramètres entraînables d'un modèle."
+    answer: |-
+      sum(p.numel() for p in model.parameters() if p.requires_grad)
+  - id: torch-train-step
+    kind: reveal
+    prompt: "Les 4 lignes d'un pas d'entraînement sur un batch (xb, yb)."
+    answer: |-
+      optimizer.zero_grad()
+      loss = loss_fn(model(xb), yb)
+      loss.backward()
+      optimizer.step()
+  - id: torch-no-grad
+    kind: reveal
+    prompt: "Évaluer le modèle sur X_test (prédictions de classes) proprement."
+    answer: |-
+      model.eval()
+      with torch.no_grad():
+          preds = model(X_test).argmax(dim=1)
+  - id: torch-dataloader
+    kind: reveal
+    prompt: "DataLoader mélangé de batch 64 à partir de tenseurs X, y."
+    answer: |-
+      from torch.utils.data import DataLoader, TensorDataset
+      loader = DataLoader(TensorDataset(X, y), batch_size=64, shuffle=True)
+  - id: torch-crossentropy
+    kind: reveal
+    prompt: "Loss de classification multi-classe : que prend nn.CrossEntropyLoss en entrée ?"
+    answer: |-
+      loss = nn.CrossEntropyLoss()(logits, y)   # logits (N, C) bruts, y (N,) entiers (torch.long)
+    note: "Pas de softmax avant : CrossEntropyLoss applique log-softmax en interne. En binaire : `nn.BCEWithLogitsLoss`."
+  - id: torch-device
+    kind: reveal
+    prompt: "Utiliser le GPU s'il est disponible (modèle et données)."
+    answer: |-
+      device = 'cuda' if torch.cuda.is_available() else 'cpu'   # 'mps' sur Mac Apple Silicon
+      model.to(device)
+      xb, yb = xb.to(device), yb.to(device)
+  - id: torch-optimizer
+    kind: reveal
+    prompt: "Créer un optimiseur AdamW (lr 1e-3, weight decay 0.01)."
+    answer: |-
+      optimizer = torch.optim.AdamW(model.parameters(), lr=1e-3, weight_decay=0.01)
+  - id: torch-save-load
+    kind: reveal
+    prompt: "Sauvegarder puis recharger les poids d'un modèle."
+    answer: |-
+      torch.save(model.state_dict(), 'model.pt')
+      model = Net(...)
+      model.load_state_dict(torch.load('model.pt'))
+      model.eval()
+  - id: torch-view-reshape
+    kind: reveal
+    prompt: "Aplatir x de (N, C, H, W) en (N, C*H*W)."
+    answer: |-
+      x = x.flatten(start_dim=1)      # ou x.view(x.size(0), -1)
+    note: "`view` exige un tenseur contigu (sinon `.contiguous()` ou `reshape`)."
+  - id: torch-autograd
+    kind: reveal
+    prompt: "Calculer la dérivée de y = x² en x = 3 avec autograd."
+    answer: |-
+      x = torch.tensor(3.0, requires_grad=True)
+      y = x ** 2
+      y.backward()
+      x.grad          # tensor(6.)

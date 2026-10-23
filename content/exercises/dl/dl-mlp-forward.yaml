@@ -1,0 +1,66 @@
+id: dl-mlp-forward
+title: Forward pass d'un MLP
+domain: dl
+difficulty: medium
+minutes: 8
+tags: [forward, shapes, initialisation, softmax]
+cards: [dl-he-init, np-matmul]
+statement: |
+  1. `init_params(sizes, seed=0)` renvoie une liste de tuples `(W, b)` pour un MLP de tailles `sizes` (ex. `[4, 16, 3]`) :
+     - `W` de shape `(n_in, n_out)`, initialisée avec **He** : $\mathcal{N}(0, 1) \times \sqrt{2 / n_{in}}$, tirée avec `rng = np.random.default_rng(seed)` puis `rng.standard_normal((n_in, n_out))` couche après couche ;
+     - `b` à zéro, shape `(n_out,)`.
+  2. `forward(X, params)` : ReLU sur les couches cachées, **softmax** sur la sortie. Renvoie les probabilités `(n, C)`.
+starter: |
+  import numpy as np
+
+
+  def init_params(sizes, seed=0):
+      pass
+
+
+  def forward(X, params):
+      pass
+solution: |
+  import numpy as np
+
+
+  def init_params(sizes, seed=0):
+      rng = np.random.default_rng(seed)
+      params = []
+      for n_in, n_out in zip(sizes[:-1], sizes[1:]):
+          W = rng.standard_normal((n_in, n_out)) * np.sqrt(2 / n_in)
+          params.append((W, np.zeros(n_out)))
+      return params
+
+
+  def forward(X, params):
+      A = X
+      for W, b in params[:-1]:
+          A = np.maximum(0, A @ W + b)
+      W, b = params[-1]
+      Z = A @ W + b
+      Z = Z - Z.max(axis=1, keepdims=True)
+      E = np.exp(Z)
+      return E / E.sum(axis=1, keepdims=True)
+tests:
+  - name: Shapes des paramètres
+    check: |
+      params = init_params([4, 16, 8, 3])
+      shapes = [(W.shape, b.shape) for W, b in params]
+      assert shapes == [((4, 16), (16,)), ((16, 8), (8,)), ((8, 3), (3,))], f"shapes : {shapes}"
+  - name: Initialisation de He (valeurs exactes)
+    call: init_params([3, 2], seed=1)
+  - name: Sortie = distributions de probabilités
+    check: |
+      P = forward(np.random.default_rng(0).normal(size=(10, 4)), init_params([4, 16, 3]))
+      assert P.shape == (10, 3), f"shape {P.shape}"
+      assert np.allclose(P.sum(axis=1), 1) and (P >= 0).all()
+  - call: forward(np.ones((2, 4)), init_params([4, 5, 3], seed=2))
+hints:
+  - "Boucle sur `zip(sizes[:-1], sizes[1:])` pour les paires `(n_in, n_out)`."
+  - "Une seule instance de `rng` pour tout le réseau, sinon toutes les couches auraient les mêmes nombres."
+  - "Softmax stable en sortie : soustraire le max de chaque ligne."
+explanation: |
+  - **Pourquoi pas tout à zéro ?** Tous les neurones d'une couche recevraient le même gradient et resteraient identiques (symétrie).
+  - **He** ($\sqrt{2/n_{in}}$) pour ReLU, **Xavier/Glorot** ($\sqrt{1/n_{in}}$ ou $\sqrt{2/(n_{in}+n_{out})}$) pour tanh/sigmoïde. Elles gardent la variance des activations stable d'une couche à l'autre.
+  - Une mauvaise échelle d'initialisation fait exploser ou s'éteindre les activations dans un réseau profond.

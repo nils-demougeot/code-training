@@ -1,0 +1,38 @@
+domain: sql
+questions:
+  - id: q-sql-where-having
+    topic: Agrégats
+    question: "Pour garder les clients ayant plus de 5 commandes, on filtre avec…"
+    choices: ["WHERE COUNT(*) > 5", "HAVING COUNT(*) > 5", "ORDER BY COUNT(*) > 5", "LIMIT 5"]
+    answer: 1
+    explain: "WHERE agit sur les lignes **avant** l'agrégation et ne peut pas contenir d'agrégat. HAVING filtre les groupes."
+  - id: q-sql-null-eq
+    topic: "Valeurs NULL"
+    question: "Que renvoie `WHERE email = NULL` ?"
+    choices: ["Les lignes sans email", "Aucune ligne", "Toutes les lignes", "Une erreur"]
+    answer: 1
+    explain: "Toute comparaison avec NULL vaut NULL (ni vrai ni faux). Il faut `email IS NULL`."
+  - id: q-sql-count
+    topic: Agrégats
+    question: "Différence entre COUNT(*) et COUNT(col) ?"
+    choices: ["Aucune", "COUNT(col) ignore les NULL de col", "COUNT(*) ignore les NULL", "COUNT(col) compte les valeurs distinctes"]
+    answer: 1
+    explain: "COUNT(*) compte les lignes ; COUNT(col) les valeurs non nulles ; COUNT(DISTINCT col) les valeurs distinctes non nulles."
+  - id: q-sql-left-where
+    topic: Jointures
+    question: "Après un LEFT JOIN orders, ajouter `WHERE o.status = 'livrée'`…"
+    choices: ["Garde tous les clients", "Transforme de fait la jointure en INNER JOIN", "Provoque une erreur", "Ne filtre que les commandes"]
+    answer: 1
+    explain: "Les clients sans commande ont `o.status` NULL et sont éliminés par le WHERE. Pour les garder, mets la condition dans le `ON`."
+  - id: q-sql-rank
+    topic: Window functions
+    question: "Scores 100, 90, 90, 80. Quels rangs donne DENSE_RANK() ?"
+    choices: ["1, 2, 3, 4", "1, 2, 2, 4", "1, 2, 2, 3", "1, 1, 2, 3"]
+    answer: 2
+    explain: "ROW_NUMBER : 1,2,3,4. RANK : 1,2,2,4 (saut après l'égalité). DENSE_RANK : 1,2,2,3 (pas de saut)."
+  - id: q-sql-order
+    topic: Exécution
+    question: "Dans quel ordre logique une requête SQL est-elle évaluée ?"
+    choices: ["SELECT → FROM → WHERE → GROUP BY", "FROM → WHERE → GROUP BY → HAVING → SELECT → ORDER BY", "FROM → SELECT → WHERE → ORDER BY", "WHERE → FROM → GROUP BY → SELECT"]
+    answer: 1
+    explain: "C'est pourquoi un alias défini dans le SELECT n'est pas utilisable dans le WHERE (dans la plupart des moteurs)."

@@ -1,0 +1,58 @@
+id: algo-longest-substring
+title: Plus longue sous-chaîne sans répétition
+domain: algo
+difficulty: medium
+minutes: 12
+interview: true
+tags: [sliding window, deux pointeurs, dict]
+cards: [cx-sliding-window]
+statement: |
+  Écris `longest_unique(s)` qui renvoie la **longueur** de la plus longue sous-chaîne (contiguë) de `s` sans caractère répété.
+
+  ```python
+  longest_unique("abcabcbb")  # 3  ("abc")
+  longest_unique("pwwkew")    # 3  ("wke")
+  ```
+
+  Objectif : **O(n)** avec une fenêtre glissante.
+starter: |
+  def longest_unique(s):
+      pass
+solution: |
+  def longest_unique(s):
+      last = {}          # caractère -> dernière position vue
+      start = best = 0
+      for i, ch in enumerate(s):
+          if ch in last and last[ch] >= start:
+              start = last[ch] + 1
+          last[ch] = i
+          best = max(best, i - start + 1)
+      return best
+tests:
+  - call: longest_unique("abcabcbb")
+    expected: "3"
+  - call: longest_unique("pwwkew")
+    expected: "3"
+  - call: longest_unique("")
+    expected: "0"
+  - call: longest_unique("bbbbb")
+    expected: "1"
+  - call: longest_unique("abba")
+    hidden: true
+  - name: Grande entrée
+    call: longest_unique("abcdefghij" * 20_000)
+    expected: "10"
+hints:
+  - "Maintiens une fenêtre `[start, i]` sans doublon. Quand `s[i]` est déjà dans la fenêtre, avance `start`."
+  - "Mémorise la **dernière position** de chaque caractère : `start = last[ch] + 1` (seulement si cette position est dans la fenêtre !)."
+explanation: |
+  **Fenêtre glissante** : deux indices qui avancent toujours vers la droite, donc O(n) au total.
+  ```python
+  start = 0
+  for i, x in enumerate(s):
+      # agrandir la fenêtre avec x
+      while <fenêtre invalide>: start += 1   # (ou saut direct comme ici)
+      best = max(best, i - start + 1)
+  ```
+  Reconnaître le pattern : « plus long/court **sous-tableau contigu** tel que … » → sliding window.
+  Piège : `"abba"`. Au second `a`, son ancienne position 0 est **avant** `start`, donc il ne faut pas reculer.

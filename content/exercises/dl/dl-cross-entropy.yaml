@@ -1,0 +1,82 @@
+id: dl-cross-entropy
+title: Cross-entropy et son gradient
+domain: dl
+difficulty: medium
+minutes: 8
+interview: true
+tags: [cross-entropy, softmax, logits, gradient]
+cards: [dl-ce-gradient, np-fancy-index]
+statement: |
+  Pour un batch de `logits` (shape `(n, C)`) et des labels entiers `y` (shape `(n,)`) :
+
+  1. `cross_entropy(logits, y)` : la cross-entropy **moyenne** $L = -\frac{1}{n}\sum_i \log \text{softmax}(z_i)_{y_i}$, calculée de façon **stable** (log-sum-exp).
+  2. `cross_entropy_grad(logits, y)` : le gradient $\frac{\partial L}{\partial z}$, shape `(n, C)`, qui vaut $\frac{1}{n}(\text{softmax}(z) - \text{onehot}(y))$.
+starter: |
+  import numpy as np
+
+
+  def cross_entropy(logits, y):
+      pass
+
+
+  def cross_entropy_grad(logits, y):
+      pass
+solution: |
+  import numpy as np
+
+
+  def _log_softmax(z):
+      z = z - z.max(axis=1, keepdims=True)
+      return z - np.log(np.exp(z).sum(axis=1, keepdims=True))
+
+
+  def cross_entropy(logits, y):
+      n = logits.shape[0]
+      return float(-_log_softmax(logits)[np.arange(n), y].mean())
+
+
+  def cross_entropy_grad(logits, y):
+      n = logits.shape[0]
+      p = np.exp(_log_softmax(logits))
+      p[np.arange(n), y] -= 1
+      return p / n
+setup: |
+  import numpy as np
+  logits = np.array([[2.0, 1.0, 0.1], [0.5, 2.5, 0.3]])
+  y = np.array([0, 1])
+tests:
+  - call: cross_entropy(logits, y)
+    expected: "0.31854"
+    atol: 0.0001
+  - name: Stable avec de grands logits
+    call: cross_entropy(np.array([[1000., 0.], [0., 1000.]]), np.array([0, 1]))
+    expected: "0.0"
+  - call: cross_entropy_grad(logits, y)
+  - name: Gradient vérifié numériquement
+    check: |
+      rng = np.random.default_rng(0)
+      z = rng.normal(size=(4, 5))
+      lab = rng.integers(0, 5, 4)
+      g = cross_entropy_grad(z, lab)
+      num = np.zeros_like(z)
+      h = 1e-5
+      for idx in np.ndindex(z.shape):
+          zp, zm = z.copy(), z.copy()
+          zp[idx] += h
+          zm[idx] -= h
+          num[idx] = (cross_entropy(zp, lab) - cross_entropy(zm, lab)) / (2 * h)
+      assert np.allclose(g, num, atol=1e-6), "le gradient ne correspond pas au gradient numérique"
+hints:
+  - "log-softmax stable : `z - z.max(1, keepdims=True)` puis `z - log(sum(exp(z)))`."
+  - "Sélectionner la log-proba de la bonne classe pour chaque ligne : `logp[np.arange(n), y]`."
+  - "Gradient : softmax, puis soustraire 1 à la bonne classe de chaque ligne, puis diviser par n."
+explanation: |
+  ```python
+  logp = z - z.max(1, keepdims=True)
+  logp = logp - np.log(np.exp(logp).sum(1, keepdims=True))   # log-softmax stable
+  loss = -logp[np.arange(n), y].mean()
+  grad = (softmax(z) - onehot(y)) / n
+  ```
+  - La simplicité du gradient `p - y` explique pourquoi on combine **toujours** softmax + cross-entropy en une seule opération.
+  - PyTorch : `nn.CrossEntropyLoss()` prend des **logits** (pas de softmax avant !) et des labels entiers.
+  - Une loss de $\log(C)$ (≈ 2,30 pour 10 classes) au début de l'entraînement = prédictions uniformes : bon test de sanité.

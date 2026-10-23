@@ -1,0 +1,87 @@
+domain: ml
+questions:
+  - id: q-ml-scaling-needed
+    topic: Prétraitement
+    question: Quel modèle n'est PAS sensible à l'échelle des features ?
+    choices: ["k plus proches voisins", "SVM à noyau RBF", "Random Forest", "Régression logistique régularisée"]
+    answer: 2
+    explain: "Les arbres découpent selon des **seuils** sur une feature à la fois : multiplier une feature par 1000 ne change pas les découpages possibles."
+  - id: q-ml-imbalanced-metric
+    topic: Métriques
+    question: "Détection de fraude : 0,5 % de positifs. Quelle métrique est la MOINS adaptée ?"
+    choices: ["Accuracy", "Recall", "F1", "PR AUC"]
+    answer: 0
+    explain: "Un modèle qui prédit toujours « pas de fraude » a 99,5 % d'accuracy… et ne sert à rien."
+  - id: q-ml-overfit-symptom
+    topic: Biais-variance
+    question: "Train : 99 % d'accuracy. Validation : 72 %. Diagnostic ?"
+    choices: ["Underfitting (biais élevé)", "Overfitting (variance élevée)", "Data leakage", "Learning rate trop petit"]
+    answer: 1
+    explain: "Grand écart train/validation = le modèle mémorise le train. Remèdes : régularisation, plus de données, modèle plus simple."
+  - id: q-ml-leakage
+    topic: Fuite de données
+    question: Lequel de ces procédés provoque une fuite de données ?
+    choices: ["Standardiser avec un scaler fit sur le train uniquement", "Faire une sélection de features sur tout le dataset avant la validation croisée", "Utiliser un Pipeline dans GridSearchCV", "Stratifier le split sur y"]
+    answer: 1
+    explain: "La sélection a « vu » les labels du jeu de validation : le score de CV sera trop optimiste. Mets la sélection **dans** le pipeline."
+  - id: q-ml-knn-k1
+    topic: Modèles
+    question: "Un kNN avec k = 1 évalué sur son propre jeu d'entraînement a une accuracy de…"
+    choices: ["~50 %", "100 % (sauf doublons de labels différents)", "Égale à celle du test", "Impossible à dire"]
+    answer: 1
+    explain: "Chaque point est son propre plus proche voisin. C'est l'exemple typique de variance maximale."
+  - id: q-ml-l1
+    topic: Régularisation
+    question: Quelle régularisation met des coefficients exactement à zéro ?
+    choices: ["L2 (Ridge)", "L1 (Lasso)", "Dropout", "Early stopping"]
+    answer: 1
+    explain: "La pénalité $|w|$ a un « coin » en 0 qui pousse les petits poids à exactement zéro : une sélection de features automatique."
+  - id: q-ml-bagging
+    topic: Ensembles
+    question: "Que réduit principalement le bagging (Random Forest) ?"
+    choices: ["Le biais", "La variance", "Le temps d'entraînement", "Le nombre de features"]
+    answer: 1
+    explain: "Moyenner des modèles instables entraînés sur des échantillons bootstrap réduit la variance. Le boosting, lui, réduit surtout le biais."
+  - id: q-ml-cv-time
+    topic: Validation
+    question: "Prédire les ventes du mois prochain : quelle validation utiliser ?"
+    choices: ["KFold avec shuffle=True", "StratifiedKFold", "TimeSeriesSplit", "LeaveOneOut"]
+    answer: 2
+    explain: "On ne doit jamais entraîner sur le futur pour prédire le passé. `TimeSeriesSplit` respecte l'ordre chronologique."
+  - id: q-ml-logreg-C
+    topic: scikit-learn
+    question: "Dans LogisticRegression de scikit-learn, diminuer C…"
+    choices: ["Diminue la régularisation", "Augmente la régularisation", "Augmente le nombre d'itérations", "Change la fonction de perte"]
+    answer: 1
+    explain: "`C` est l'**inverse** de la force de régularisation (C = 1/λ). Petit C = modèle plus contraint."
+  - id: q-ml-predict-proba
+    topic: scikit-learn
+    verify: true
+    question: Qu'affiche ce code ?
+    code: |
+      import numpy as np
+      from sklearn.linear_model import LogisticRegression
+      X = np.array([[0.], [1.], [2.], [3.]])
+      y = np.array([0, 0, 1, 1])
+      print(LogisticRegression().fit(X, y).predict_proba(X).shape)
+    choices: ["(4,)", "(4, 1)", "(4, 2)", "(2, 4)"]
+    answer: 2
+    explain: "`predict_proba` renvoie une colonne **par classe**. Pour la classe positive : `[:, 1]`."
+  - id: q-ml-fit-transform
+    topic: scikit-learn
+    question: "Sur le jeu de test, on appelle sur le StandardScaler…"
+    choices: ["fit_transform", "fit puis transform", "transform uniquement", "inverse_transform"]
+    answer: 2
+    explain: "Le scaler a appris moyenne et écart-type sur le train : on les **réapplique** au test avec `transform`."
+  - id: q-ml-kmeans
+    topic: Non supervisé
+    question: "k-means peut donner des résultats différents d'une exécution à l'autre parce que…"
+    choices: ["Il est stochastique à chaque itération", "Il converge vers un minimum local qui dépend de l'initialisation", "Il trie les points aléatoirement", "Il utilise du dropout"]
+    answer: 1
+    explain: "D'où `n_init` (plusieurs initialisations, on garde la meilleure inertie) et l'initialisation k-means++."
+  - id: q-ml-r2-negative
+    topic: Métriques
+    question: "Un R² négatif sur le test signifie…"
+    choices: ["Une erreur de calcul", "Le modèle est pire que prédire la moyenne", "Le modèle est parfait", "Les données sont standardisées"]
+    answer: 1
+    explain: "R² = 1 − SS_res / SS_tot. Si les erreurs du modèle dépassent celles de la moyenne constante, R² < 0."

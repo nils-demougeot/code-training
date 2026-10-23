@@ -1,0 +1,54 @@
+id: np-softmax
+title: Softmax numériquement stable
+domain: numpy
+difficulty: medium
+minutes: 6
+interview: true
+tags: [softmax, stabilité numérique, axis=-1]
+cards: [np-keepdims, np-max-axis]
+statement: |
+  Écris `softmax(z)` qui transforme des logits en probabilités le long du **dernier axe** :
+
+  $$\text{softmax}(z)_i = \frac{e^{z_i}}{\sum_j e^{z_j}}$$
+
+  - Doit marcher pour un vecteur `(C,)` **et** pour un batch `(n, C)`.
+  - Doit être **numériquement stable** : `softmax(np.array([1000., 1000.]))` doit renvoyer `[0.5, 0.5]`, pas `nan`.
+starter: |
+  import numpy as np
+
+
+  def softmax(z):
+      pass
+solution: |
+  import numpy as np
+
+
+  def softmax(z):
+      z = z - z.max(axis=-1, keepdims=True)
+      e = np.exp(z)
+      return e / e.sum(axis=-1, keepdims=True)
+tests:
+  - call: softmax(np.array([1., 2., 3.]))
+    expected: np.array([0.09003057, 0.24472847, 0.66524096])
+  - name: Stabilité numérique
+    call: softmax(np.array([1000., 1000.]))
+    expected: np.array([0.5, 0.5])
+  - name: Batch (n, C)
+    call: softmax(np.array([[1., 1., 1.], [0., 0., 100.]]))
+    expected: np.array([[1/3, 1/3, 1/3], [0., 0., 1.]])
+  - name: Chaque ligne somme à 1
+    check: |
+      P = softmax(np.random.default_rng(0).normal(size=(10, 5)) * 50)
+      assert P.shape == (10, 5) and np.allclose(P.sum(axis=1), 1) and not np.isnan(P).any()
+hints:
+  - "$e^{1000}$ déborde en `inf`. Mais $\\text{softmax}(z) = \\text{softmax}(z - c)$ pour toute constante $c$."
+  - "Soustrais le max **de chaque ligne** : `z.max(axis=-1, keepdims=True)`."
+explanation: |
+  ```python
+  z = z - z.max(axis=-1, keepdims=True)    # ne change pas le résultat, évite l'overflow
+  e = np.exp(z)
+  p = e / e.sum(axis=-1, keepdims=True)
+  ```
+  - Invariance par translation : $\frac{e^{z_i - c}}{\sum e^{z_j - c}} = \frac{e^{z_i}}{\sum e^{z_j}}$.
+  - Même astuce pour le **log-sum-exp** et la cross-entropy : on travaille avec les *logits*, d'où `nn.CrossEntropyLoss` qui prend des logits et non des probabilités.
+  - `axis=-1` = le dernier axe, quel que soit le nombre de dimensions.

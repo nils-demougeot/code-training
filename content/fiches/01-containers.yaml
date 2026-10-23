@@ -1,0 +1,66 @@
+id: containers
+title: list, ndarray, DataFrame, Tensor — qui fait quoi ?
+domain: python
+summary: Les 4 structures que tu manipules tous les jours, leurs différences et la syntaxe équivalente côte à côte.
+body: |
+  ## En une phrase
+
+  | Structure | C'est… | Quand l'utiliser |
+  |---|---|---|
+  | `list` | une séquence Python **de n'importe quoi**, redimensionnable | petites collections, objets hétérogènes, construction incrémentale (`append`) |
+  | `np.ndarray` | un bloc mémoire **d'un seul type** (dtype), à **shape fixe**, n dimensions | calcul numérique vectorisé, matrices, images, embeddings |
+  | `pd.DataFrame` | un tableau de **colonnes nommées** (chacune une Series typée) + un **index** | données tabulaires hétérogènes, nettoyage, groupby, jointures |
+  | `torch.Tensor` | un ndarray + **device** (CPU/GPU) + **autograd** | deep learning (entraînement par gradient) |
+
+  ## Pourquoi NumPy est 50× plus rapide qu'une liste
+
+  - Une `list` stocke des **pointeurs** vers des objets Python dispersés en mémoire ; chaque `+` passe par l'interpréteur.
+  - Un `ndarray` stocke des nombres **contigus** du même type ; `a + b` exécute **une** boucle en C.
+  - Règle : dès que tu écris `for i in range(len(a))` sur des nombres, cherche l'opération vectorisée.
+
+  ## Le piège n°1 : les opérateurs n'ont pas le même sens
+
+  ```python
+  [1, 2] + [3, 4]          # [1, 2, 3, 4]      concaténation
+  np.array([1, 2]) + np.array([3, 4])   # [4 6]   addition élément par élément
+  [1, 2] * 2               # [1, 2, 1, 2]      répétition
+  np.array([1, 2]) * 2     # [2 4]
+  ```
+
+  ## Syntaxe équivalente
+
+  | Opération | list | NumPy | pandas | PyTorch |
+  |---|---|---|---|---|
+  | créer | `[1, 2, 3]` | `np.array([1, 2, 3])` | `pd.Series([1, 2, 3])` | `torch.tensor([1, 2, 3])` |
+  | taille / shape | `len(a)` | `a.shape` | `df.shape` | `t.shape` / `t.size()` |
+  | type | — | `a.dtype` | `df.dtypes` | `t.dtype` |
+  | élément | `a[0]` | `a[0, 1]` | `df.loc[lab, 'col']` / `df.iloc[0, 1]` | `t[0, 1]` |
+  | filtrer | `[x for x in a if x > 0]` | `a[a > 0]` | `df[df.col > 0]` | `t[t > 0]` |
+  | somme par colonne | — | `a.sum(axis=0)` | `df.sum()` | `t.sum(dim=0)` |
+  | changer de forme | — | `a.reshape(3, -1)` | `df.pivot`, `melt`, `stack` | `t.view(3, -1)` |
+  | appliquer une fonction | `[f(x) for x in a]` | `np.exp(a)` (ufunc) | `df.col.map(f)` / vectorisé | `torch.exp(t)` |
+  | trier | `sorted(a)` | `np.sort(a)` | `df.sort_values('col')` | `torch.sort(t)` |
+  | copier | `a.copy()` | `a.copy()` | `df.copy()` | `t.clone()` |
+
+  ## Conversions
+
+  ```python
+  arr = np.array(lst)                 # list -> ndarray
+  lst = arr.tolist()                  # ndarray -> list (types Python natifs)
+  df = pd.DataFrame(arr, columns=['a', 'b'])
+  arr = df.to_numpy()                 # DataFrame -> ndarray (perd les noms de colonnes)
+  t = torch.from_numpy(arr)           # partage la mémoire
+  arr = t.detach().cpu().numpy()
+  ```
+
+  ## Vues et copies
+
+  - Slicing d'une **liste** → copie. Slicing d'un **ndarray** → **vue** (modifier la tranche modifie l'original).
+  - Fancy indexing (`a[[0, 2]]`) et masques (`a[a > 0]`) → copie.
+  - pandas : modifier un sous-DataFrame obtenu par filtrage déclenche le `SettingWithCopyWarning` → utilise `.loc[masque, 'col'] = ...` sur l'original, ou `.copy()`.
+
+  ## Shapes : (n,), (n, 1), (1, n)
+
+  - `(n,)` : vecteur 1D, ni ligne ni colonne. `v.T` ne fait rien.
+  - `(n, 1)` : colonne. `(1, n)` : ligne.
+  - En scikit-learn, `X` doit être 2D `(n_samples, n_features)` : pour une seule feature, `x.reshape(-1, 1)`.

@@ -1,0 +1,36 @@
+id: sql-monthly
+title: CA mensuel avec strftime
+domain: sql
+difficulty: medium
+minutes: 7
+language: sql
+shared: sql_shop
+tags: [strftime, dates, GROUP BY]
+cards: [sql-strftime]
+statement: |
+  Calcule le **chiffre d'affaires mensuel** des commandes **livrées** :
+
+  Colonnes : `month` (format `'2024-01'`), `n_orders` (nombre de commandes distinctes), `revenue`. Triées par mois.
+starter: |
+  SELECT order_date
+  FROM orders
+solution: |
+  SELECT strftime('%Y-%m', o.order_date) AS month,
+         COUNT(DISTINCT o.id) AS n_orders,
+         SUM(oi.quantity * p.price) AS revenue
+  FROM orders o
+  JOIN order_items oi ON oi.order_id = o.id
+  JOIN products p ON p.id = oi.product_id
+  WHERE o.status = 'livrée'
+  GROUP BY month
+  ORDER BY month
+tests:
+  - name: Résultat de la requête
+    call: q(QUERY)
+hints:
+  - "En SQLite, `strftime('%Y-%m', order_date)` extrait l'année et le mois (en PostgreSQL : `DATE_TRUNC('month', d)` ou `TO_CHAR`)."
+  - "Après la jointure avec `order_items`, une commande apparaît une fois **par article** : `COUNT(DISTINCT o.id)`."
+explanation: |
+  - `COUNT(*)` après une jointure 1-N compte les **lignes** de la jointure, pas les commandes : d'où `COUNT(DISTINCT o.id)`.
+  - SQLite autorise `GROUP BY` sur un alias du `SELECT` (`month`) ; d'autres moteurs demandent de répéter l'expression.
+  - Fonctions de date : SQLite `strftime`, PostgreSQL `DATE_TRUNC` / `EXTRACT`, BigQuery `FORMAT_DATE`.

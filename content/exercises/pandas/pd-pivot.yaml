@@ -1,0 +1,52 @@
+id: pd-pivot
+title: Tableau croisé dynamique
+domain: pandas
+difficulty: medium
+minutes: 7
+shared: shop_df
+tags: [pivot_table, unstack, crosstab]
+cards: [pd-pivot-table]
+statement: |
+  1. `city_category_revenue(df)` : un DataFrame avec les **villes en lignes**, les **catégories en colonnes**, et le CA (`qty * price`) dans les cellules. Les combinaisons absentes valent `0`.
+  2. `best_category_per_city(df)` : une Series `{ville: catégorie au plus gros CA}`.
+starter: |
+  import pandas as pd
+
+
+  def city_category_revenue(df):
+      pass
+
+
+  def best_category_per_city(df):
+      pass
+solution: |
+  import pandas as pd
+
+
+  def city_category_revenue(df):
+      return pd.pivot_table(
+          df.assign(revenue=df['qty'] * df['price']),
+          index='city', columns='category', values='revenue', aggfunc='sum', fill_value=0,
+      )
+
+
+  def best_category_per_city(df):
+      return city_category_revenue(df).idxmax(axis=1)
+tests:
+  - call: city_category_revenue(orders)
+  - call: best_category_per_city(orders)
+  - call: best_category_per_city(make_orders(300, seed=2))
+    hidden: true
+hints:
+  - "`pd.pivot_table(df, index='city', columns='category', values='revenue', aggfunc='sum', fill_value=0)`."
+  - "Alternative : `df.groupby(['city', 'category'])['revenue'].sum().unstack(fill_value=0)`."
+  - "`idxmax(axis=1)` donne le **nom de la colonne** du max de chaque ligne."
+explanation: |
+  ```python
+  pd.pivot_table(df, index='city', columns='category', values='rev', aggfunc='sum', fill_value=0)
+  df.groupby(['city', 'category'])['rev'].sum().unstack(fill_value=0)   # identique
+  pd.crosstab(df.city, df.category)          # comptages
+  wide.stack() / df.melt(...)                # wide → long
+  ```
+  - `idxmax` renvoie l'**étiquette** du max, `argmax` sa **position**.
+  - `pivot` (sans `_table`) n'agrège pas : il lève une erreur s'il y a des doublons.

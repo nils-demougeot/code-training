@@ -1,0 +1,273 @@
+id: churn-pipeline
+title: "Pipeline ML de bout en bout : prédire le churn"
+domain: ml
+difficulty: medium
+hours: 1.5
+summary: Exploration, split stratifié, ColumnTransformer, pipeline, validation croisée, tuning et évaluation finale, comme dans un vrai projet.
+intro: |
+  Un opérateur télécom veut prédire quels clients vont résilier (`churn = 1`). Le DataFrame `df` (2 000 clients) est chargé :
+
+  | colonne | type |
+  |---|---|
+  | `tenure_months`, `monthly_charges`, `support_calls` | numériques (avec des NaN) |
+  | `plan`, `payment`, `region` | catégorielles (avec des NaN) |
+  | `churn` | cible (0/1, ~25 % de positifs) |
+
+  Constantes disponibles : `NUM`, `CAT`, `TARGET = 'churn'`.
+
+  Tu vas construire le pipeline étape par étape. C'est **exactement** la structure attendue dans un exercice de take-home ML.
+setup: |
+  import numpy as np
+  import pandas as pd
+  _rng = np.random.default_rng(7)
+  _n = 2000
+  df = pd.DataFrame({
+      'tenure_months': _rng.integers(1, 72, _n).astype(float),
+      'monthly_charges': _rng.normal(55, 20, _n).clip(10, 140).round(2),
+      'support_calls': _rng.poisson(1.2, _n).astype(float),
+      'plan': _rng.choice(['mensuel', 'annuel', 'biannuel'], _n, p=[0.55, 0.3, 0.15]),
+      'payment': _rng.choice(['carte', 'prélèvement', 'chèque'], _n, p=[0.45, 0.4, 0.15]),
+      'region': _rng.choice(['Nord', 'Sud', 'Est', 'Ouest'], _n),
+  })
+  _logit = (-1.4 - 0.035 * (df.tenure_months - 36) + 0.02 * (df.monthly_charges - 55)
+            + 0.45 * df.support_calls + (df.plan == 'mensuel') * 1.1 - (df.plan == 'biannuel') * 0.8
+            + (df.payment == 'chèque') * 0.6)
+  df['churn'] = (_rng.random(_n) < 1 / (1 + np.exp(-_logit))).astype(int)
+  for _col, _rate in [('tenure_months', 0.04), ('monthly_charges', 0.06), ('support_calls', 0.03), ('plan', 0.05), ('payment', 0.02)]:
+      df.loc[_rng.random(_n) < _rate, _col] = np.nan
+  NUM = ['tenure_months', 'monthly_charges', 'support_calls']
+  CAT = ['plan', 'payment', 'region']
+  TARGET = 'churn'
+starter: |
+  import numpy as np
+  import pandas as pd
+  from sklearn.compose import ColumnTransformer
+  from sklearn.impute import SimpleImputer
+  from sklearn.linear_model import LogisticRegression
+  from sklearn.metrics import f1_score, precision_score, recall_score, roc_auc_score
+  from sklearn.model_selection import GridSearchCV, cross_val_score, train_test_split
+  from sklearn.pipeline import Pipeline, make_pipeline
+  from sklearn.preprocessing import OneHotEncoder, StandardScaler
+
+
+  # Étape 1 ─ exploration
+  def missing_rate(df):
+      pass
+
+
+  def churn_rate_by(df, col):
+      pass
+
+
+  # Étape 2 ─ split
+  def split(df):
+      pass
+
+
+  # Étape 3 ─ prétraitement
+  def build_preprocessor():
+      pass
+
+
+  # Étape 4 ─ modèle + validation croisée
+  def build_model(C=1.0):
+      pass
+
+
+  def cv_f1(model, X, y):
+      pass
+
+
+  # Étape 5 ─ tuning
+  def tune(X_train, y_train):
+      pass
+
+
+  # Étape 6 ─ évaluation finale
+  def evaluate(model, X_test, y_test):
+      pass
+
+
+  df.head()
+solution: |
+  import numpy as np
+  import pandas as pd
+  from sklearn.compose import ColumnTransformer
+  from sklearn.impute import SimpleImputer
+  from sklearn.linear_model import LogisticRegression
+  from sklearn.metrics import f1_score, precision_score, recall_score, roc_auc_score
+  from sklearn.model_selection import GridSearchCV, cross_val_score, train_test_split
+  from sklearn.pipeline import Pipeline, make_pipeline
+  from sklearn.preprocessing import OneHotEncoder, StandardScaler
+
+
+  def missing_rate(df):
+      return df.isna().mean().sort_values(ascending=False)
+
+
+  def churn_rate_by(df, col):
+      return df.groupby(col)[TARGET].mean().sort_values(ascending=False)
+
+
+  def split(df):
+      X = df.drop(columns=TARGET)
+      y = df[TARGET]
+      return train_test_split(X, y, test_size=0.25, stratify=y, random_state=42)
+
+
+  def build_preprocessor():
+      return ColumnTransformer([
+          ('num', make_pipeline(SimpleImputer(strategy='median'), StandardScaler()), NUM),
+          ('cat', make_pipeline(SimpleImputer(strategy='most_frequent'), OneHotEncoder(handle_unknown='ignore')), CAT),
+      ])
+
+
+  def build_model(C=1.0):
+      return Pipeline([
+          ('prep', build_preprocessor()),
+          ('clf', LogisticRegression(C=C, class_weight='balanced', max_iter=1000)),
+      ])
+
+
+  def cv_f1(model, X, y):
+      return float(cross_val_score(model, X, y, cv=5, scoring='f1').mean())
+
+
+  def tune(X_train, y_train):
+      search = GridSearchCV(build_model(), {'clf__C': [0.01, 0.1, 1, 10]}, cv=5, scoring='f1')
+      return search.fit(X_train, y_train)
+
+
+  def evaluate(model, X_test, y_test):
+      pred = model.predict(X_test)
+      proba = model.predict_proba(X_test)[:, 1]
+      return {
+          'f1': f1_score(y_test, pred),
+          'precision': precision_score(y_test, pred),
+          'recall': recall_score(y_test, pred),
+          'roc_auc': roc_auc_score(y_test, proba),
+      }
+steps:
+  - title: Explorer les données
+    instructions: |
+      Avant tout modèle : regarde les données.
+
+      1. `missing_rate(df)` : proportion de valeurs manquantes par colonne (Series), triée par ordre **décroissant**.
+      2. `churn_rate_by(df, col)` : taux de churn moyen par modalité de `col` (Series), trié par ordre décroissant.
+
+      Puis, avec **Exécuter**, regarde `churn_rate_by(df, 'plan')` : quelle formule résilie le plus ?
+    hints:
+      - "`df.isna().mean()` donne directement la proportion de NaN de chaque colonne."
+      - "La moyenne d'une colonne 0/1 est une proportion : `df.groupby(col)['churn'].mean()`."
+    tests:
+      - call: missing_rate(df)
+      - call: churn_rate_by(df, 'plan')
+  - title: Split stratifié
+    instructions: |
+      `split(df)` renvoie `X_train, X_test, y_train, y_test` :
+
+      - `X` = toutes les colonnes **sauf** `churn`, `y` = la colonne `churn` ;
+      - 25 % de test, **stratifié** sur `y`, `random_state=42`.
+
+      Pourquoi stratifier ? Avec 25 % de positifs, un split malchanceux pourrait déséquilibrer train et test.
+    hints:
+      - "`X = df.drop(columns=TARGET)` et `y = df[TARGET]`."
+      - "`train_test_split(X, y, test_size=0.25, stratify=y, random_state=42)`."
+    tests:
+      - name: Tailles et colonnes
+        check: |
+          X_train, X_test, y_train, y_test = split(df)
+          assert X_train.shape == (1500, 6) and X_test.shape == (500, 6), f"{X_train.shape}, {X_test.shape}"
+          assert TARGET not in X_train.columns, "la cible est restée dans X : fuite garantie !"
+          assert abs(y_train.mean() - y_test.mean()) < 0.01, "split non stratifié"
+      - name: Split reproductible
+        call: split(df)[3].index[:10].tolist()
+  - title: Prétraitement par type de colonne
+    instructions: |
+      `build_preprocessor()` renvoie un `ColumnTransformer` :
+
+      - colonnes `NUM` : imputation par la **médiane** puis `StandardScaler` ;
+      - colonnes `CAT` : imputation par la valeur **la plus fréquente** puis `OneHotEncoder(handle_unknown='ignore')`.
+    hints:
+      - "`ColumnTransformer([('num', make_pipeline(...), NUM), ('cat', make_pipeline(...), CAT)])`."
+    tests:
+      - name: Transforme les données brutes sans NaN
+        check: |
+          Xt = build_preprocessor().fit_transform(df.drop(columns=TARGET))
+          Xt = Xt.toarray() if hasattr(Xt, 'toarray') else Xt
+          assert Xt.shape == (2000, 3 + 3 + 3 + 4), f"shape {Xt.shape} (attendu 13 colonnes : 3 num + 3 plans + 3 paiements + 4 régions)"
+          assert not np.isnan(Xt).any(), "il reste des NaN après prétraitement"
+      - name: Catégorie inconnue tolérée
+        check: |
+          prep = build_preprocessor().fit(df.drop(columns=TARGET))
+          new = df.drop(columns=TARGET).head(1).copy()
+          new['region'] = 'Corse'
+          prep.transform(new)
+  - title: Modèle et validation croisée
+    instructions: |
+      1. `build_model(C=1.0)` : un `Pipeline` `[('prep', build_preprocessor()), ('clf', LogisticRegression(C=C, class_weight='balanced', max_iter=1000))]`.
+      2. `cv_f1(model, X, y)` : la moyenne du **F1** sur une validation croisée à 5 folds (float).
+
+      `class_weight='balanced'` repondère les classes : sans lui, le modèle a tendance à prédire « pas de churn ».
+    hints:
+      - "`cross_val_score(model, X, y, cv=5, scoring='f1').mean()`."
+      - "Le pipeline est passé **entier** à `cross_val_score` : le prétraitement est refait sur chaque fold, sans fuite."
+    tests:
+      - name: Structure du pipeline
+        check: |
+          m = build_model(C=0.5)
+          assert list(m.named_steps) == ['prep', 'clf'], f"étapes : {list(m.named_steps)}"
+          assert m.named_steps['clf'].C == 0.5 and m.named_steps['clf'].class_weight == 'balanced'
+      - name: F1 en validation croisée
+        call: cv_f1(build_model(), *split(df)[0::2])
+        atol: 0.0001
+  - title: Tuning des hyperparamètres
+    instructions: |
+      `tune(X_train, y_train)` lance un `GridSearchCV` sur `build_model()` avec `C ∈ {0.01, 0.1, 1, 10}`, 5 folds, `scoring='f1'`, et renvoie l'objet **entraîné** (après `fit`).
+
+      Rappel : un paramètre d'étape se nomme `<étape>__<paramètre>`.
+    hints:
+      - "`GridSearchCV(build_model(), {'clf__C': [0.01, 0.1, 1, 10]}, cv=5, scoring='f1')`."
+      - "`search.fit(X_train, y_train)` renvoie l'objet lui-même : tu peux faire `return search.fit(...)`."
+    tests:
+      - name: Meilleur C
+        call: tune(*split(df)[0::2]).best_params_
+      - name: Le meilleur modèle est ré-entraîné et prédit
+        check: |
+          X_train, X_test, y_train, y_test = split(df)
+          search = tune(X_train, y_train)
+          assert search.predict(X_test).shape == (500,)
+  - title: Évaluation finale sur le test
+    instructions: |
+      `evaluate(model, X_test, y_test)` renvoie un dict `{'f1', 'precision', 'recall', 'roc_auc'}`.
+
+      - `roc_auc` se calcule avec les **probabilités** de la classe positive (`predict_proba(...)[:, 1]`), pas avec les classes prédites.
+      - Ensuite, avec Exécuter : évalue `tune(...)` sur le test. Le F1 est-il proche du F1 de validation croisée ?
+    hints:
+      - "`f1_score(y_test, pred)`, `precision_score`, `recall_score`, `roc_auc_score(y_test, proba)`."
+    tests:
+      - name: Métriques exactes
+        check: |
+          from sklearn.linear_model import LogisticRegression
+          from sklearn.metrics import f1_score, roc_auc_score
+          rng = np.random.default_rng(0)
+          Xn = rng.normal(size=(200, 3))
+          yn = (Xn[:, 0] + rng.normal(size=200) > 0).astype(int)
+          m = LogisticRegression().fit(Xn, yn)
+          res = evaluate(m, Xn, yn)
+          assert set(res) == {'f1', 'precision', 'recall', 'roc_auc'}, f"clés : {set(res)}"
+          assert np.isclose(res['f1'], f1_score(yn, m.predict(Xn)))
+          assert np.isclose(res['roc_auc'], roc_auc_score(yn, m.predict_proba(Xn)[:, 1])), "roc_auc doit utiliser predict_proba"
+      - name: Performance du modèle final
+        check: |
+          X_train, X_test, y_train, y_test = split(df)
+          res = evaluate(tune(X_train, y_train), X_test, y_test)
+          assert res['roc_auc'] > 0.75, f"ROC AUC {res['roc_auc']:.3f}"
+outro: |
+  Tu as construit le squelette de 90 % des projets ML tabulaires. En entretien, sache justifier :
+
+  - **Pourquoi un pipeline** : pas de fuite, un seul objet à déployer (`joblib.dump`).
+  - **Pourquoi le F1 / la ROC AUC** plutôt que l'accuracy : 25 % de positifs.
+  - **Le seuil** : 0,5 n'est pas sacré. Trace la courbe precision/recall et choisis-le selon le coût métier d'un faux positif et d'un faux négatif.
+
+  Pour aller plus loin : remplace `LogisticRegression` par `HistGradientBoostingClassifier`, ajoute-le à la grille, et compare.

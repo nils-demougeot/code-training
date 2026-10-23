@@ -1,0 +1,58 @@
+id: py-sort-records
+title: Trier des enregistrements
+domain: python
+difficulty: easy
+minutes: 5
+tags: [sorted, lambda, dict]
+cards: [py-sorted-key]
+statement: |
+  On a une liste de personnes sous forme de dicts : `{'name': str, 'age': int, 'city': str}`.
+
+  Écris `sort_people(people)` qui renvoie **une nouvelle liste** triée par **âge décroissant**, puis par **nom croissant** à âge égal. La liste d'origine ne doit pas être modifiée.
+
+  Puis `oldest_by_city(people)` qui renvoie un dict `{ville: nom de la personne la plus âgée}` (en cas d'égalité, le nom qui vient en premier alphabétiquement).
+starter: |
+  def sort_people(people):
+      pass
+
+
+  def oldest_by_city(people):
+      pass
+solution: |
+  def sort_people(people):
+      return sorted(people, key=lambda p: (-p['age'], p['name']))
+
+
+  def oldest_by_city(people):
+      result = {}
+      for p in sort_people(people):
+          result.setdefault(p['city'], p['name'])
+      return result
+setup: |
+  PEOPLE = [
+      {'name': 'Léa', 'age': 31, 'city': 'Lyon'},
+      {'name': 'Ali', 'age': 25, 'city': 'Paris'},
+      {'name': 'Tom', 'age': 31, 'city': 'Paris'},
+      {'name': 'Zoé', 'age': 40, 'city': 'Lyon'},
+      {'name': 'Ana', 'age': 31, 'city': 'Paris'},
+  ]
+tests:
+  - call: "[p['name'] for p in sort_people(PEOPLE)]"
+    expected: "['Zoé', 'Ana', 'Léa', 'Tom', 'Ali']"
+  - call: oldest_by_city(PEOPLE)
+    expected: "{'Lyon': 'Zoé', 'Paris': 'Ana'}"
+  - name: La liste d'origine n'est pas modifiée
+    check: |
+      before = [p['name'] for p in PEOPLE]
+      sort_people(PEOPLE)
+      assert [p['name'] for p in PEOPLE] == before, "sort_people a modifié la liste d'origine : utilise sorted() plutôt que .sort()"
+  - call: sort_people([])
+    hidden: true
+hints:
+  - "`sorted(liste, key=...)` renvoie une nouvelle liste ; `liste.sort()` trie sur place et renvoie `None`."
+  - "Clé de tri : `lambda p: (-p['age'], p['name'])`."
+  - "`d.setdefault(k, v)` n'écrit `v` que si `k` est absent : parcourir la liste déjà triée garde le premier (le plus âgé)."
+explanation: |
+  - `sorted(xs)` → **nouvelle** liste. `xs.sort()` → tri **en place**, renvoie `None` (piège classique : `xs = xs.sort()`).
+  - Le tri de Python est **stable** : on peut aussi trier en deux passes (d'abord par nom, puis par âge décroissant).
+  - `operator.itemgetter('age')` est une alternative rapide à `lambda p: p['age']`.

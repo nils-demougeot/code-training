@@ -1,0 +1,7 @@
+# Same versions as Pyodide 0.27.7 (the in-browser engine), to validate content exactly as it runs in the app.
+# Python 3.12 recommended.
+numpy==2.0.2
+pandas==2.2.3
+scikit-learn==1.6.1
+matplotlib==3.8.4
+pyyaml

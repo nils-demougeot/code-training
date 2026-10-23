@@ -1,0 +1,86 @@
+id: complexity
+title: Complexité & structures de données
+domain: algo
+description: Le coût des opérations Python et les patterns d'algo à reconnaître en entretien.
+cards:
+  - id: cx-dict-lookup
+    kind: reveal
+    prompt: "Complexité de x in my_list, x in my_set, d[k] ?"
+    answer: |-
+      x in list  → O(n)
+      x in set   → O(1) en moyenne
+      d[k]       → O(1) en moyenne
+  - id: cx-list-append-pop
+    kind: reveal
+    prompt: "Complexité de list.append, list.pop(), list.pop(0), list.insert(0, x) ?"
+    answer: |-
+      append, pop()          → O(1) amorti
+      pop(0), insert(0, x)   → O(n) (décalage de tous les éléments) → utiliser deque
+  - id: cx-deque
+    kind: reveal
+    prompt: "Quelle structure pour une file FIFO efficace ? Ses méthodes ?"
+    answer: |-
+      from collections import deque
+      q = deque(); q.append(x); q.popleft()     # O(1) aux deux bouts
+  - id: cx-heapq
+    kind: reveal
+    prompt: "Tas (heapq) : complexités et astuce pour un max-heap ?"
+    answer: |-
+      heappush / heappop → O(log n), h[0] (min) → O(1), heapify → O(n)
+      max-heap : stocker (-priorité, item)
+  - id: cx-sort
+    kind: reveal
+    prompt: "Complexité du tri en Python ? Est-il stable ?"
+    answer: |-
+      O(n log n) (Timsort), stable, O(n) sur des données presque triées.
+  - id: cx-bisect
+    kind: reveal
+    prompt: "Trouver la position d'insertion de x dans une liste triée a (stdlib) ?"
+    answer: |-
+      import bisect
+      bisect.bisect_left(a, x)    # O(log n)
+  - id: cx-ordereddict
+    kind: reveal
+    prompt: "OrderedDict : les 2 méthodes O(1) utiles pour un cache LRU ?"
+    answer: |-
+      d.move_to_end(key)       # marque comme récent
+      d.popitem(last=False)    # retire le plus ancien
+  - id: cx-sliding-window
+    kind: reveal
+    prompt: "Quand penser « fenêtre glissante » ?"
+    answer: |-
+      « Plus long / plus court sous-tableau ou sous-chaîne CONTIGU(Ë) tel que … »
+      Deux indices start ≤ end qui n'avancent que vers la droite → O(n).
+  - id: cx-two-pointers
+    kind: reveal
+    prompt: "Quand penser « deux pointeurs » ?"
+    answer: |-
+      Tableau trié (paires de somme donnée), fusion de deux listes triées,
+      palindrome, supprimer les doublons en place. Un pointeur à chaque bout ou un lent/rapide.
+  - id: cx-dp-recipe
+    kind: reveal
+    prompt: "Les 4 étapes pour résoudre un problème de programmation dynamique."
+    answer: |-
+      1. État : dp[i] = réponse au sous-problème i
+      2. Transition : dp[i] en fonction de dp[j < i]
+      3. Cas de base
+      4. Ordre de calcul (bottom-up) ou récursion + @lru_cache (top-down)
+  - id: cx-bfs-dfs
+    kind: reveal
+    prompt: "BFS vs DFS : quand utiliser lequel ?"
+    answer: |-
+      BFS (deque) : plus court chemin dans un graphe NON pondéré, parcours par niveaux.
+      DFS (pile / récursion) : existence d'un chemin, composantes connexes, détection de cycle, tri topologique.
+      Poids positifs → Dijkstra (heap).
+  - id: cx-string-concat
+    kind: reveal
+    prompt: "Pourquoi éviter s += x dans une boucle sur de longues chaînes ?"
+    answer: |-
+      Les str sont immuables : chaque += recopie la chaîne → O(n²) au total.
+      Accumuler dans une liste puis ''.join(parts) → O(n).
+  - id: cx-hashable
+    kind: reveal
+    prompt: "Quels types peuvent être des clés de dict / éléments de set ?"
+    answer: |-
+      Les hashables (immuables) : int, float, str, tuple (de hashables), frozenset.
+      Pas list, dict, set.

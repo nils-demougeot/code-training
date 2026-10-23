@@ -1,0 +1,104 @@
+id: ml-concepts
+title: Concepts ML pour l'entretien
+domain: ml
+description: Les définitions et formules qu'on te demandera d'expliquer à l'oral. Auto-évaluées.
+cards:
+  - id: ml-precision-recall-def
+    kind: reveal
+    prompt: "Formules de la precision, du recall et du F1. Quand privilégier l'un ou l'autre ?"
+    answer: |-
+      precision = TP / (TP + FP)    # parmi mes alertes, combien sont vraies ?
+      recall    = TP / (TP + FN)    # parmi les vrais cas, combien ai-je trouvés ?
+      f1        = 2 * P * R / (P + R)
+    note: "Recall quand un oubli coûte cher (cancer, fraude). Precision quand une fausse alerte coûte cher (spam, recommandation)."
+  - id: ml-bias-variance
+    kind: reveal
+    prompt: "Biais vs variance : définition, symptômes, remèdes."
+    answer: |-
+      Biais élevé (underfitting)  : erreur train ET test élevées → modèle plus complexe, plus de features.
+      Variance élevée (overfitting): train bas, test haut       → plus de données, régularisation,
+                                                                  modèle plus simple, ensembles (bagging).
+  - id: ml-l1-l2
+    kind: reveal
+    prompt: "Régularisation L1 vs L2 : effet sur les poids ?"
+    answer: |-
+      L1 (Lasso) : λ Σ|w|  → met des poids exactement à 0 (sélection de features)
+      L2 (Ridge) : λ Σw²   → réduit tous les poids sans les annuler (gère la colinéarité)
+      ElasticNet : mélange des deux
+  - id: ml-bagging-boosting
+    kind: reveal
+    prompt: "Bagging vs boosting ?"
+    answer: |-
+      Bagging (Random Forest) : arbres profonds en parallèle sur des échantillons bootstrap,
+                                moyenne → réduit la VARIANCE.
+      Boosting (XGBoost, LightGBM) : arbres peu profonds en séquence, chacun corrige les
+                                erreurs du précédent → réduit le BIAIS. Plus sensible au bruit.
+  - id: ml-roc-pr
+    kind: reveal
+    prompt: "ROC AUC vs PR AUC : laquelle utiliser avec 1 % de positifs ?"
+    answer: |-
+      ROC AUC : TPR vs FPR, insensible au déséquilibre → peut sembler excellente à tort.
+      PR AUC  : precision vs recall, centrée sur la classe positive → préférée si positifs rares.
+  - id: ml-imbalance
+    kind: reveal
+    prompt: "Classes très déséquilibrées : 4 leviers ?"
+    answer: |-
+      1. Bonne métrique (F1, PR AUC, recall@precision), pas l'accuracy
+      2. class_weight='balanced' ou pondération des exemples
+      3. Ré-échantillonnage (sous-échantillonner la majorité, SMOTE) sur le TRAIN uniquement
+      4. Ajuster le seuil de décision sur predict_proba
+  - id: ml-cv-why
+    kind: reveal
+    prompt: "Pourquoi la validation croisée ? Quelle variante pour des séries temporelles ?"
+    answer: |-
+      Estimer la performance avec moins de variance qu'un seul split et utiliser toutes les données
+      pour choisir les hyperparamètres. Séries temporelles : TimeSeriesSplit (jamais de futur dans le train).
+      Données groupées (plusieurs lignes par client) : GroupKFold.
+  - id: ml-scaling-which
+    kind: reveal
+    prompt: "Quels modèles ont besoin de features standardisées ? Lesquels non ?"
+    answer: |-
+      OUI : kNN, SVM, régression linéaire/logistique régularisée, réseaux de neurones, PCA, k-means
+      NON : arbres de décision, Random Forest, gradient boosting (invariants à l'échelle)
+  - id: ml-mse-gradient
+    kind: reveal
+    prompt: "Gradient de la MSE pour une régression linéaire ŷ = Xw + b."
+    answer: |-
+      err = X @ w + b - y
+      dL/dw = 2/n * X.T @ err
+      dL/db = 2/n * err.sum()
+  - id: ml-logloss-gradient
+    kind: reveal
+    prompt: "Log loss (binary cross-entropy) et son gradient pour p = sigmoid(Xw + b)."
+    answer: |-
+      L = -mean(y·log p + (1-y)·log(1-p))
+      dL/dw = X.T @ (p - y) / n
+      dL/db = mean(p - y)
+  - id: ml-regression-metrics
+    kind: reveal
+    prompt: "MAE, RMSE, R² : que mesurent-elles ?"
+    answer: |-
+      MAE  = mean|y - ŷ|          robuste aux outliers, même unité que y
+      RMSE = sqrt(mean (y - ŷ)²)  pénalise fortement les grosses erreurs
+      R²   = 1 - SS_res / SS_tot  part de variance expliquée (1 = parfait, 0 = prédire la moyenne)
+  - id: ml-curse-dim
+    kind: reveal
+    prompt: "Malédiction de la dimension : qu'est-ce que c'est, qui en souffre ?"
+    answer: |-
+      En grande dimension, les points deviennent tous à peu près à la même distance les uns des autres
+      et l'espace est vide : il faut exponentiellement plus de données.
+      Touche surtout kNN et les méthodes à base de distances → réduction de dimension, sélection de features.
+  - id: ml-leakage
+    kind: reveal
+    prompt: "Trois exemples de data leakage."
+    answer: |-
+      1. Fit du scaler / de l'imputer / de la sélection de features sur tout le dataset avant le split
+      2. Split aléatoire sur une série temporelle (le futur dans le train)
+      3. Une feature indisponible au moment de la prédiction (ou dérivée de la cible)
+  - id: ml-tree-split
+    kind: reveal
+    prompt: "Comment un arbre de décision choisit-il un split ?"
+    answer: |-
+      Il teste, pour chaque feature et chaque seuil, la séparation qui réduit le plus l'impureté
+      (Gini ou entropie en classification, variance/MSE en régression), puis recommence
+      récursivement (glouton) jusqu'à un critère d'arrêt (max_depth, min_samples_leaf).

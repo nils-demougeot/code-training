@@ -1,0 +1,81 @@
+id: ml-linreg-normal-eq
+title: Régression linéaire (équation normale)
+domain: ml
+difficulty: medium
+minutes: 8
+interview: true
+tags: [régression linéaire, moindres carrés, lstsq, from scratch]
+cards: [np-lstsq, np-column-stack]
+statement: |
+  Implémente une régression linéaire **sans scikit-learn** :
+
+  1. `fit_linear(X, y)` renvoie `(w, b)` : poids `w` de shape `(d,)` et biais `b` (float) qui minimisent l'erreur quadratique $\|Xw + b - y\|^2$.
+  2. `predict(X, w, b)` renvoie les prédictions `(n,)`.
+  3. `r2_score(y, y_pred)` renvoie le coefficient de détermination $R^2 = 1 - \frac{\sum (y - \hat y)^2}{\sum (y - \bar y)^2}$.
+
+  Astuce : ajoute une colonne de 1 à `X` pour absorber le biais.
+starter: |
+  import numpy as np
+
+
+  def fit_linear(X, y):
+      pass
+
+
+  def predict(X, w, b):
+      pass
+
+
+  def r2_score(y, y_pred):
+      pass
+solution: |
+  import numpy as np
+
+
+  def fit_linear(X, y):
+      Xb = np.column_stack([X, np.ones(len(X))])
+      theta, *_ = np.linalg.lstsq(Xb, y, rcond=None)
+      return theta[:-1], float(theta[-1])
+
+
+  def predict(X, w, b):
+      return X @ w + b
+
+
+  def r2_score(y, y_pred):
+      ss_res = np.sum((y - y_pred) ** 2)
+      ss_tot = np.sum((y - y.mean()) ** 2)
+      return float(1 - ss_res / ss_tot)
+setup: |
+  import numpy as np
+  rng = np.random.default_rng(0)
+  X = rng.normal(size=(200, 3))
+  y = X @ np.array([2.0, -1.0, 0.5]) + 4.0 + rng.normal(scale=0.1, size=200)
+tests:
+  - name: Retrouve les vrais coefficients
+    check: |
+      w, b = fit_linear(X, y)
+      assert np.allclose(w, [2.0, -1.0, 0.5], atol=0.05), f"w = {w}"
+      assert abs(b - 4.0) < 0.05, f"b = {b}"
+  - call: fit_linear(X, y)
+  - name: Identique à scikit-learn
+    check: |
+      from sklearn.linear_model import LinearRegression
+      w, b = fit_linear(X, y)
+      lr = LinearRegression().fit(X, y)
+      assert np.allclose(w, lr.coef_) and np.isclose(b, lr.intercept_)
+      from sklearn.metrics import r2_score as sk_r2
+      assert np.isclose(r2_score(y, predict(X, w, b)), sk_r2(y, lr.predict(X)))
+hints:
+  - "`Xb = np.column_stack([X, np.ones(len(X))])` : shape `(n, d+1)`, le dernier coefficient est le biais."
+  - "Solution des moindres carrés : `theta, *_ = np.linalg.lstsq(Xb, y, rcond=None)` (plus stable que `inv(X.T @ X) @ X.T @ y`)."
+explanation: |
+  Équation normale : $\theta = (X^\top X)^{-1} X^\top y$.
+  ```python
+  Xb = np.column_stack([X, np.ones(len(X))])
+  theta = np.linalg.lstsq(Xb, y, rcond=None)[0]     # stable
+  theta = np.linalg.solve(Xb.T @ Xb, Xb.T @ y)      # OK si bien conditionné
+  ```
+  - Complexité $O(nd^2 + d^3)$ : parfait pour d petit. Pour d ou n énormes, on préfère la **descente de gradient**.
+  - **Ne jamais** calculer `np.linalg.inv` explicitement : `solve`/`lstsq` sont plus rapides et plus précis.
+  - Ridge ajoute $\lambda I$ : $\theta = (X^\top X + \lambda I)^{-1} X^\top y$, ce qui rend le système toujours inversible.

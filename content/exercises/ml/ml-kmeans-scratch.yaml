@@ -1,0 +1,78 @@
+id: ml-kmeans-scratch
+title: k-means from scratch
+domain: ml
+difficulty: hard
+minutes: 15
+interview: true
+tags: [k-means, clustering, non supervisé, vectorisation]
+cards: [np-argmin-axis]
+statement: |
+  Implémente l'algorithme de **Lloyd** : `kmeans(X, init_centroids, n_iter=100)`.
+
+  1. **Assignation** : chaque point va au centroïde le plus proche (distance euclidienne).
+  2. **Mise à jour** : chaque centroïde devient la moyenne de ses points. Un cluster vide garde son ancien centroïde.
+  3. On s'arrête après `n_iter` itérations ou dès que les assignations ne changent plus.
+
+  Renvoie `(labels, centroids, inertia)` où `inertia` est la somme des distances **au carré** de chaque point à son centroïde.
+
+  Les centroïdes initiaux sont fournis pour que le résultat soit déterministe.
+starter: |
+  import numpy as np
+
+
+  def kmeans(X, init_centroids, n_iter=100):
+      centroids = init_centroids.astype(float).copy()
+      labels = None
+      for _ in range(n_iter):
+          pass
+      return labels, centroids, inertia
+solution: |
+  import numpy as np
+
+
+  def kmeans(X, init_centroids, n_iter=100):
+      centroids = init_centroids.astype(float).copy()
+      labels = None
+      for _ in range(n_iter):
+          d2 = ((X[:, None, :] - centroids[None, :, :]) ** 2).sum(axis=-1)   # (n, k)
+          new_labels = d2.argmin(axis=1)
+          if labels is not None and np.array_equal(new_labels, labels):
+              break
+          labels = new_labels
+          for j in range(len(centroids)):
+              members = X[labels == j]
+              if len(members):
+                  centroids[j] = members.mean(axis=0)
+      d2 = ((X - centroids[labels]) ** 2).sum()
+      return labels, centroids, float(d2)
+setup: |
+  import numpy as np
+  rng = np.random.default_rng(42)
+  X = np.vstack([
+      rng.normal([0, 0], 0.5, size=(50, 2)),
+      rng.normal([5, 5], 0.5, size=(50, 2)),
+      rng.normal([0, 6], 0.5, size=(50, 2)),
+  ])
+  INIT = X[[0, 1, 2]]
+tests:
+  - name: Retrouve les 3 groupes
+    check: |
+      labels, centroids, inertia = kmeans(X, X[[0, 60, 120]])
+      assert len(set(labels[:50])) == 1 and len(set(labels[50:100])) == 1 and len(set(labels[100:])) == 1, "les 3 nuages devraient être séparés"
+      assert inertia < 120, f"inertie {inertia:.1f}"
+  - name: Résultat exact depuis une mauvaise initialisation
+    call: kmeans(X, INIT)
+  - name: Cluster vide
+    check: |
+      far = np.array([[0., 0.], [5., 5.], [100., 100.]])
+      labels, centroids, _ = kmeans(X[:100], far)
+      assert np.allclose(centroids[2], [100, 100]), "un cluster vide doit garder son centroïde"
+hints:
+  - "Distances `(n, k)` par broadcasting, puis `argmin(axis=1)` pour l'assignation."
+  - "Mise à jour : `X[labels == j].mean(axis=0)` pour chaque cluster j (une boucle sur k est OK)."
+  - "Inertie : `((X - centroids[labels]) ** 2).sum()`."
+explanation: |
+  - k-means minimise l'**inertie** (somme des distances au carré). Chaque étape la fait décroître, donc l'algorithme converge… vers un **minimum local**.
+  - D'où `n_init=10` dans scikit-learn (10 initialisations, on garde la meilleure) et l'initialisation **k-means++** (centroïdes éloignés les uns des autres).
+  - Choisir k : méthode du coude (inertie vs k), score de silhouette.
+  - Hypothèses : clusters **sphériques** de tailles comparables, features **standardisées**. Pour des formes arbitraires : DBSCAN, mélanges gaussiens.

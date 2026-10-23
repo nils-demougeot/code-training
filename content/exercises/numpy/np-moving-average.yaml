@@ -1,0 +1,49 @@
+id: np-moving-average
+title: Moyenne mobile vectorisée
+domain: numpy
+difficulty: medium
+minutes: 8
+tags: [cumsum, convolve, séries temporelles]
+cards: [np-cumsum]
+statement: |
+  Écris `moving_average(x, w)` qui renvoie la moyenne mobile de fenêtre `w` d'un signal 1D, en mode **valid** : seules les fenêtres complètes, donc `len(x) - w + 1` valeurs.
+
+  ```python
+  moving_average(np.array([1, 2, 3, 4, 5]), 2)  # [1.5, 2.5, 3.5, 4.5]
+  ```
+
+  Pas de boucle Python. Deux idées : `np.convolve`, ou l'astuce de la **somme cumulée**.
+starter: |
+  import numpy as np
+
+
+  def moving_average(x, w):
+      pass
+solution: |
+  import numpy as np
+
+
+  def moving_average(x, w):
+      c = np.cumsum(np.insert(x.astype(float), 0, 0.0))
+      return (c[w:] - c[:-w]) / w
+tests:
+  - call: moving_average(np.array([1, 2, 3, 4, 5]), 2)
+    expected: np.array([1.5, 2.5, 3.5, 4.5])
+  - call: moving_average(np.array([4., 8., 6.]), 3)
+    expected: np.array([6.])
+  - call: moving_average(np.arange(10), 1)
+    expected: np.arange(10.)
+  - call: moving_average(np.sin(np.linspace(0, 10, 200)), 7)
+    hidden: true
+hints:
+  - "Avec `c = cumsum([0, x0, x1, ...])`, la somme de `x[i:i+w]` vaut `c[i+w] - c[i]`."
+  - "Vectorisé : `c[w:] - c[:-w]`."
+  - "Autre option : `np.convolve(x, np.ones(w) / w, mode='valid')`."
+explanation: |
+  ```python
+  c = np.cumsum(np.insert(x, 0, 0))
+  (c[w:] - c[:-w]) / w                           # O(n)
+  np.convolve(x, np.ones(w) / w, mode='valid')   # équivalent
+  pd.Series(x).rolling(w).mean()                 # version pandas (NaN au début)
+  ```
+  La somme cumulée transforme n'importe quelle somme sur un intervalle en **une soustraction**. C'est un pattern d'algo classique (*prefix sums*).

@@ -1,0 +1,78 @@
+id: ml-gd-linreg
+title: Descente de gradient pour la régression
+domain: ml
+difficulty: medium
+minutes: 12
+interview: true
+tags: [descente de gradient, MSE, gradient, from scratch]
+cards: [ml-mse-gradient]
+statement: |
+  Entraîne une régression linéaire par **descente de gradient** (batch complet) sur la MSE :
+
+  $$L(w, b) = \frac{1}{n}\sum_i (x_i \cdot w + b - y_i)^2$$
+
+  Écris `gd_linear(X, y, lr=0.1, n_iter=500)` qui :
+  - initialise `w = 0` (shape `(d,)`) et `b = 0.0` ;
+  - à chaque itération, calcule les gradients $\frac{\partial L}{\partial w}$ et $\frac{\partial L}{\partial b}$ puis met à jour les paramètres ;
+  - renvoie `(w, b, losses)` où `losses` est la liste des MSE **avant** chaque mise à jour.
+starter: |
+  import numpy as np
+
+
+  def gd_linear(X, y, lr=0.1, n_iter=500):
+      n, d = X.shape
+      w = np.zeros(d)
+      b = 0.0
+      losses = []
+      for _ in range(n_iter):
+          pass
+      return w, b, losses
+solution: |
+  import numpy as np
+
+
+  def gd_linear(X, y, lr=0.1, n_iter=500):
+      n, d = X.shape
+      w = np.zeros(d)
+      b = 0.0
+      losses = []
+      for _ in range(n_iter):
+          err = X @ w + b - y              # (n,)
+          losses.append(float(np.mean(err ** 2)))
+          grad_w = 2 / n * X.T @ err       # (d,)
+          grad_b = 2 / n * err.sum()
+          w -= lr * grad_w
+          b -= lr * grad_b
+      return w, b, losses
+setup: |
+  import numpy as np
+  rng = np.random.default_rng(1)
+  X = rng.normal(size=(300, 2))
+  y = X @ np.array([3.0, -2.0]) + 1.0 + rng.normal(scale=0.1, size=300)
+tests:
+  - name: Converge vers les vrais coefficients
+    check: |
+      w, b, losses = gd_linear(X, y)
+      assert np.allclose(w, [3.0, -2.0], atol=0.05), f"w = {w}"
+      assert abs(b - 1.0) < 0.05, f"b = {b}"
+  - name: La loss décroît
+    check: |
+      _, _, losses = gd_linear(X, y, n_iter=50)
+      assert len(losses) == 50, f"{len(losses)} valeurs de loss au lieu de 50"
+      assert all(a >= b for a, b in zip(losses, losses[1:])), "la loss devrait décroître à chaque itération"
+  - name: Valeurs exactes après 20 itérations
+    call: gd_linear(X, y, lr=0.05, n_iter=20)
+hints:
+  - "Erreur vectorisée : `err = X @ w + b - y`, shape `(n,)`."
+  - "$\\nabla_w L = \\frac{2}{n} X^\\top \\cdot err$ (shape `(d,)`) et $\\nabla_b L = \\frac{2}{n}\\sum err$."
+  - "Ajoute la loss à la liste **avant** de mettre à jour `w` et `b`."
+explanation: |
+  ```python
+  err = X @ w + b - y
+  grad_w = 2 / n * X.T @ err     # dérivée de la MSE
+  grad_b = 2 / n * err.sum()
+  w -= lr * grad_w; b -= lr * grad_b
+  ```
+  - `X.T @ err` somme, pour chaque feature, sa contribution à l'erreur : c'est la règle de dérivation en chaîne, vectorisée.
+  - **SGD / mini-batch** : même formule, mais sur un sous-échantillon à chaque pas (plus rapide, plus bruité).
+  - Si les features ont des échelles très différentes, la descente zigzague (voir le lab *Optimiseurs*, surface « ravin ») : standardise d'abord.

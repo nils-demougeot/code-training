@@ -1,0 +1,54 @@
+id: algo-coin-change
+title: Rendu de monnaie (programmation dynamique)
+domain: algo
+difficulty: medium
+minutes: 12
+interview: true
+tags: [programmation dynamique, DP, bottom-up]
+cards: [cx-dp-recipe]
+statement: |
+  Avec des pièces de valeurs `coins` (en quantité illimitée), écris `min_coins(coins, amount)` qui renvoie le **nombre minimal de pièces** pour obtenir exactement `amount`, ou `-1` si c'est impossible.
+
+  ```python
+  min_coins([1, 2, 5], 11)  # 3  (5 + 5 + 1)
+  min_coins([2], 3)         # -1
+  ```
+
+  Attention : l'algorithme glouton (prendre la plus grosse pièce possible) **ne marche pas** toujours : `min_coins([1, 3, 4], 6)` vaut 2 (3 + 3), alors que le glouton donne 3 (4 + 1 + 1).
+starter: |
+  def min_coins(coins, amount):
+      pass
+solution: |
+  def min_coins(coins, amount):
+      INF = float('inf')
+      dp = [0] + [INF] * amount          # dp[a] = min de pièces pour a
+      for a in range(1, amount + 1):
+          for c in coins:
+              if c <= a and dp[a - c] + 1 < dp[a]:
+                  dp[a] = dp[a - c] + 1
+      return dp[amount] if dp[amount] != INF else -1
+tests:
+  - call: min_coins([1, 2, 5], 11)
+    expected: "3"
+  - call: min_coins([2], 3)
+    expected: "-1"
+  - name: Le glouton échoue ici
+    call: min_coins([1, 3, 4], 6)
+    expected: "2"
+  - call: min_coins([7], 0)
+    expected: "0"
+  - name: Montant élevé
+    call: min_coins([1, 7, 13, 29], 9_999)
+    hidden: true
+hints:
+  - "Sous-problème : `dp[a]` = nombre minimal de pièces pour le montant `a`."
+  - "Transition : `dp[a] = min(dp[a - c] + 1 pour chaque pièce c <= a)`, avec `dp[0] = 0`."
+  - "Initialise les autres cases à l'infini (`float('inf')`) pour représenter « impossible »."
+explanation: |
+  **Recette DP** :
+  1. Définir l'état : `dp[a]` = meilleure réponse pour le sous-problème `a`.
+  2. La transition (récurrence) : `dp[a] = min(dp[a - c] + 1)`.
+  3. Les cas de base : `dp[0] = 0`.
+  4. L'ordre de calcul (bottom-up), ou la récursion + `@lru_cache` (top-down).
+
+  Complexité O(amount × len(coins)). Problèmes cousins : sac à dos, plus longue sous-séquence commune, distance d'édition, nombre de chemins dans une grille.

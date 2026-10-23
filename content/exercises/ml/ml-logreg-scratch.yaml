@@ -1,0 +1,96 @@
+id: ml-logreg-scratch
+title: Régression logistique from scratch
+domain: ml
+difficulty: hard
+minutes: 15
+interview: true
+tags: [régression logistique, sigmoïde, log loss, gradient]
+cards: [ml-logloss-gradient]
+statement: |
+  Implémente une régression logistique binaire entraînée par descente de gradient :
+
+  - `sigmoid(z)` ;
+  - `log_loss(y, p)` : la binary cross-entropy moyenne, avec `p` clippé dans `[1e-12, 1 - 1e-12]` ;
+  - `fit_logistic(X, y, lr=0.1, n_iter=1000)` : initialise `w = 0`, `b = 0.0` et renvoie `(w, b)` ;
+  - `predict_proba(X, w, b)` et `predict(X, w, b)` (seuil 0.5).
+
+  Gradient de la log loss moyenne : $\nabla_w = \frac{1}{n} X^\top (p - y)$, $\nabla_b = \frac{1}{n}\sum (p - y)$.
+starter: |
+  import numpy as np
+
+
+  def sigmoid(z):
+      pass
+
+
+  def log_loss(y, p):
+      pass
+
+
+  def fit_logistic(X, y, lr=0.1, n_iter=1000):
+      pass
+
+
+  def predict_proba(X, w, b):
+      pass
+
+
+  def predict(X, w, b):
+      pass
+solution: |
+  import numpy as np
+
+
+  def sigmoid(z):
+      return 1 / (1 + np.exp(-z))
+
+
+  def log_loss(y, p):
+      p = np.clip(p, 1e-12, 1 - 1e-12)
+      return float(-np.mean(y * np.log(p) + (1 - y) * np.log(1 - p)))
+
+
+  def fit_logistic(X, y, lr=0.1, n_iter=1000):
+      n, d = X.shape
+      w = np.zeros(d)
+      b = 0.0
+      for _ in range(n_iter):
+          p = sigmoid(X @ w + b)
+          w -= lr * X.T @ (p - y) / n
+          b -= lr * float(np.mean(p - y))
+      return w, b
+
+
+  def predict_proba(X, w, b):
+      return sigmoid(X @ w + b)
+
+
+  def predict(X, w, b):
+      return (predict_proba(X, w, b) >= 0.5).astype(int)
+setup: |
+  import numpy as np
+  from sklearn.datasets import make_classification
+  X, y = make_classification(n_samples=400, n_features=4, n_informative=3, n_redundant=0, random_state=1)
+tests:
+  - call: sigmoid(np.array([0., 100., -100.]))
+    expected: np.array([0.5, 1., 0.])
+  - call: log_loss(np.array([1, 0]), np.array([0.9, 0.2]))
+    expected: "0.164252033486018"
+  - name: Pas de log(0)
+    call: log_loss(np.array([1, 0]), np.array([0., 1.]))
+  - name: Entraînement (poids exacts)
+    call: fit_logistic(X, y, lr=0.5, n_iter=200)
+  - name: Accuracy > 0.85
+    check: |
+      w, b = fit_logistic(X, y)
+      acc = (predict(X, w, b) == y).mean()
+      assert acc > 0.85, f"accuracy {acc:.2f}"
+hints:
+  - "`np.clip(p, 1e-12, 1 - 1e-12)` avant les `np.log`."
+  - "À chaque itération : `p = sigmoid(X @ w + b)`, puis `w -= lr * X.T @ (p - y) / n`."
+  - "Le gradient de la BCE combinée à la sigmoïde est simplement `p - y` : la même forme que pour la MSE en régression linéaire !"
+explanation: |
+  - La régression logistique est un **réseau de neurones sans couche cachée** avec une sortie sigmoïde (voir le lab *Réseau de neurones*, expérience 1).
+  - Le gradient `X.T @ (p - y) / n` vient de $\frac{\partial L}{\partial z} = p - y$ : la dérivée de la sigmoïde se simplifie avec celle du log.
+  - On ne minimise pas la MSE en classification : avec la sigmoïde, elle est non convexe et donne des gradients faibles.
+  - scikit-learn : `LogisticRegression(C=1.0)` est **régularisée L2 par défaut** (`C` = 1/λ).

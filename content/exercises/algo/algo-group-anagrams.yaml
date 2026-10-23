@@ -1,0 +1,45 @@
+id: algo-group-anagrams
+title: Regrouper les anagrammes
+domain: algo
+difficulty: easy
+minutes: 6
+tags: [hash map, clé canonique, defaultdict]
+cards: [py-defaultdict]
+statement: |
+  Écris `group_anagrams(words)` qui regroupe les mots qui sont des **anagrammes** les uns des autres.
+
+  - Chaque groupe est une liste de mots dans leur **ordre d'apparition**.
+  - Les groupes sont ordonnés selon l'apparition de leur premier mot.
+
+  ```python
+  group_anagrams(["chien", "niche", "chat", "chine", "tach"])
+  # [['chien', 'niche', 'chine'], ['chat', 'tach']]
+  ```
+starter: |
+  def group_anagrams(words):
+      pass
+solution: |
+  from collections import defaultdict
+
+
+  def group_anagrams(words):
+      groups = defaultdict(list)
+      for w in words:
+          groups[''.join(sorted(w))].append(w)
+      return list(groups.values())
+tests:
+  - call: "group_anagrams(['chien', 'niche', 'chat', 'chine', 'tach'])"
+    expected: "[['chien', 'niche', 'chine'], ['chat', 'tach']]"
+  - call: group_anagrams([])
+    expected: "[]"
+  - call: "group_anagrams(['a', 'b', 'a'])"
+    expected: "[['a', 'a'], ['b']]"
+  - call: "group_anagrams(['eat', 'tea', 'tan', 'ate', 'nat', 'bat'])"
+    hidden: true
+hints:
+  - "Deux anagrammes ont les mêmes lettres triées : `''.join(sorted(w))` est une **clé canonique**."
+  - "Un dict `clé → liste de mots` ; depuis Python 3.7, les dicts gardent l'ordre d'insertion."
+explanation: |
+  - Pattern **clé canonique** : regrouper des objets « équivalents » en calculant une représentation commune (lettres triées, tuple de comptes de lettres, forme normalisée…).
+  - Clé alternative en O(L) au lieu de O(L log L) : `tuple(Counter(w).items())` triés, ou un tableau de 26 compteurs.
+  - Les clés d'un dict doivent être **hashables** : `str`, `tuple`, oui ; `list`, `dict`, non.

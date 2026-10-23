@@ -1,0 +1,96 @@
+id: dl-activations
+title: Fonctions d'activation et leurs dérivées
+domain: dl
+difficulty: easy
+minutes: 6
+tags: [ReLU, sigmoïde, tanh, dérivées]
+cards: [dl-sigmoid-derivative, np-maximum]
+statement: |
+  Implémente en NumPy (élément par élément, pour des tableaux de n'importe quelle shape) :
+
+  | fonction | formule | dérivée |
+  |---|---|---|
+  | `relu(x)` | $\max(0, x)$ | `relu_grad(x)` : $1$ si $x > 0$, sinon $0$ |
+  | `sigmoid(x)` | $\frac{1}{1 + e^{-x}}$ | `sigmoid_grad(x)` : $\sigma(x)(1 - \sigma(x))$ |
+  | `tanh(x)` | `np.tanh` | `tanh_grad(x)` : $1 - \tanh^2(x)$ |
+
+  Les dérivées renvoient des **float**.
+starter: |
+  import numpy as np
+
+
+  def relu(x):
+      pass
+
+
+  def relu_grad(x):
+      pass
+
+
+  def sigmoid(x):
+      pass
+
+
+  def sigmoid_grad(x):
+      pass
+
+
+  def tanh(x):
+      pass
+
+
+  def tanh_grad(x):
+      pass
+solution: |
+  import numpy as np
+
+
+  def relu(x):
+      return np.maximum(0, x)
+
+
+  def relu_grad(x):
+      return (x > 0).astype(float)
+
+
+  def sigmoid(x):
+      return 1 / (1 + np.exp(-x))
+
+
+  def sigmoid_grad(x):
+      s = sigmoid(x)
+      return s * (1 - s)
+
+
+  def tanh(x):
+      return np.tanh(x)
+
+
+  def tanh_grad(x):
+      return 1 - np.tanh(x) ** 2
+setup: |
+  import numpy as np
+  x = np.array([-2., -0.5, 0., 0.5, 2.])
+tests:
+  - call: relu(x)
+    expected: np.array([0., 0., 0., 0.5, 2.])
+  - call: relu_grad(x)
+    expected: np.array([0., 0., 0., 1., 1.])
+  - call: sigmoid_grad(np.array([0.]))
+    expected: np.array([0.25])
+  - call: tanh_grad(x)
+  - name: Dérivées vérifiées numériquement
+    check: |
+      z = np.linspace(-3, 3, 13) + 0.01
+      h = 1e-6
+      for f, g in [(relu, relu_grad), (sigmoid, sigmoid_grad), (tanh, tanh_grad)]:
+          num = (f(z + h) - f(z - h)) / (2 * h)
+          assert np.allclose(g(z), num, atol=1e-4), f"{g.__name__} ne correspond pas à la dérivée numérique"
+hints:
+  - "`np.maximum(0, x)` (élément par élément) et non `max` ou `np.max`."
+  - "`(x > 0).astype(float)` transforme un masque booléen en 0./1."
+explanation: |
+  - Le maximum de $\sigma'$ vaut **0,25** (en 0). Empilées sur 10 couches, ces dérivées donnent $0{,}25^{10} \approx 10^{-6}$ : c'est le **vanishing gradient** (voir le lab *Réseau de neurones*).
+  - ReLU : dérivée 1 pour $x > 0$, donc le gradient passe intact. Mais un neurone dont l'entrée est toujours négative ne reçoit plus de gradient (*dying ReLU*), d'où LeakyReLU / GELU.
+  - `tanh` est centrée en 0 (mieux que la sigmoïde dans les couches cachées) mais sature aussi.
+  - Vérifier un gradient avec une **différence finie centrée** $\frac{f(x+h) - f(x-h)}{2h}$ est un réflexe de debug précieux.

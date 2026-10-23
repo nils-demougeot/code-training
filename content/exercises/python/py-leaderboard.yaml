@@ -1,0 +1,38 @@
+id: py-leaderboard
+title: Classement avec zip et enumerate
+domain: python
+difficulty: easy
+minutes: 4
+tags: [zip, enumerate, f-string]
+cards: [py-zip, py-enumerate, py-fstring]
+statement: |
+  Écris `leaderboard(names, scores)` qui renvoie une liste de chaînes formatées `"1. Alice (95.5)"`, triée par score décroissant.
+
+  - Le rang commence à **1**.
+  - Le score est affiché avec **une décimale**.
+  - À score égal, l'ordre d'origine est conservé.
+starter: |
+  def leaderboard(names, scores):
+      pass
+solution: |
+  def leaderboard(names, scores):
+      ranked = sorted(zip(names, scores), key=lambda t: t[1], reverse=True)
+      return [f"{i}. {name} ({score:.1f})" for i, (name, score) in enumerate(ranked, start=1)]
+tests:
+  - call: "leaderboard(['Alice', 'Bob', 'Chloé'], [88, 95.5, 70])"
+    expected: "['1. Bob (95.5)', '2. Alice (88.0)', '3. Chloé (70.0)']"
+  - call: "leaderboard([], [])"
+    expected: "[]"
+  - call: "leaderboard(['a', 'b', 'c'], [1, 2, 2])"
+    hidden: true
+hints:
+  - "`zip(names, scores)` produit des paires `(name, score)`."
+  - "`enumerate(xs, start=1)` donne `(1, x0), (2, x1), …`. Tu peux déballer : `for i, (name, score) in ...`."
+  - "Format à une décimale : `f\"{score:.1f}\"`."
+explanation: |
+  ```python
+  for i, (a, b) in enumerate(zip(xs, ys), start=1): ...
+  f"{x:.2f}"   f"{n:>5}"   f"{ratio:.1%}"   f"{big:,}"
+  ```
+  - `sorted(..., reverse=True)` reste **stable** : les égalités gardent l'ordre d'origine.
+  - `zip` s'arrête à l'itérable le plus court (`zip(..., strict=True)` lève une erreur sinon, Python ≥ 3.10).

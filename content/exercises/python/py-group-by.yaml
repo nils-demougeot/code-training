@@ -1,0 +1,65 @@
+id: py-group-by
+title: Group by avec defaultdict
+domain: python
+difficulty: medium
+minutes: 7
+tags: [defaultdict, dict, agrégation]
+cards: [py-defaultdict, py-dict-get]
+statement: |
+  Sans pandas, écris `group_by(records, key)` qui regroupe une liste de dicts selon la valeur de `records[i][key]`, et renvoie un dict `{valeur: [enregistrements...]}` (ordre d'apparition conservé).
+
+  Puis écris `total_by(records, key, field)` qui renvoie `{valeur: somme de field}`.
+starter: |
+  def group_by(records, key):
+      pass
+
+
+  def total_by(records, key, field):
+      pass
+solution: |
+  from collections import defaultdict
+
+
+  def group_by(records, key):
+      groups = defaultdict(list)
+      for r in records:
+          groups[r[key]].append(r)
+      return dict(groups)
+
+
+  def total_by(records, key, field):
+      totals = defaultdict(float)
+      for r in records:
+          totals[r[key]] += r[field]
+      return dict(totals)
+setup: |
+  SALES = [
+      {'city': 'Paris', 'amount': 120.0},
+      {'city': 'Lyon', 'amount': 80.0},
+      {'city': 'Paris', 'amount': 30.5},
+      {'city': 'Nice', 'amount': 10.0},
+  ]
+tests:
+  - call: "{k: len(v) for k, v in group_by(SALES, 'city').items()}"
+    expected: "{'Paris': 2, 'Lyon': 1, 'Nice': 1}"
+  - call: "total_by(SALES, 'city', 'amount')"
+    expected: "{'Paris': 150.5, 'Lyon': 80.0, 'Nice': 10.0}"
+  - name: Renvoie un vrai dict
+    check: |
+      g = group_by(SALES, 'city')
+      assert type(g) is dict, f"renvoie un dict, pas un {type(g).__name__} (utilise dict(...))"
+      assert g['Paris'][1]['amount'] == 30.5
+  - call: "group_by([], 'city')"
+    hidden: true
+hints:
+  - "`defaultdict(list)` crée automatiquement une liste vide pour une clé inconnue."
+  - "Convertis le résultat avec `dict(groups)` pour renvoyer un dict classique."
+explanation: |
+  ```python
+  from collections import defaultdict
+  groups = defaultdict(list)     # groups[k].append(x) sans KeyError
+  counts = defaultdict(int)      # counts[k] += 1
+  d.setdefault(k, []).append(x)  # alternative sans import
+  d.get(k, 0)                    # lecture avec valeur par défaut
+  ```
+  C'est exactement ce que fait `df.groupby(key)[field].sum()` en pandas : savoir le refaire à la main est une question d'entretien courante.

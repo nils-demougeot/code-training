@@ -1,0 +1,61 @@
+id: algo-binary-search
+title: Recherche dichotomique (lower bound)
+domain: algo
+difficulty: easy
+minutes: 8
+interview: true
+tags: [binary search, O(log n), bisect]
+cards: [cx-bisect]
+statement: |
+  Écris `lower_bound(arr, target)` qui renvoie le **premier indice** `i` tel que `arr[i] >= target`, dans une liste **triée** (avec doublons possibles). Si tous les éléments sont `< target`, renvoie `len(arr)`.
+
+  Complexité attendue : **O(log n)**. N'utilise pas le module `bisect` (mais compare ton résultat avec `bisect.bisect_left` ensuite !).
+starter: |
+  def lower_bound(arr, target):
+      pass
+solution: |
+  def lower_bound(arr, target):
+      lo, hi = 0, len(arr)          # intervalle de recherche [lo, hi)
+      while lo < hi:
+          mid = (lo + hi) // 2
+          if arr[mid] < target:
+              lo = mid + 1
+          else:
+              hi = mid
+      return lo
+tests:
+  - call: lower_bound([1, 3, 3, 3, 7, 9], 3)
+    expected: "1"
+  - call: lower_bound([1, 3, 5], 4)
+    expected: "2"
+  - call: lower_bound([1, 3, 5], 10)
+    expected: "3"
+  - call: lower_bound([], 1)
+    expected: "0"
+  - name: Comparaison avec bisect sur 1 000 cas
+    check: |
+      import bisect, random
+      rnd = random.Random(0)
+      for _ in range(1000):
+          arr = sorted(rnd.randint(0, 20) for _ in range(rnd.randint(0, 15)))
+          t = rnd.randint(-2, 22)
+          assert lower_bound(arr, t) == bisect.bisect_left(arr, t), f"lower_bound({arr}, {t})"
+  - name: Rapide sur 10 millions d'éléments
+    call: lower_bound(range(0, 20_000_000, 2), 13_000_001)
+    expected: "6500001"
+hints:
+  - "Garde un intervalle **semi-ouvert** `[lo, hi)` avec `hi = len(arr)`."
+  - "Si `arr[mid] < target`, la réponse est strictement à droite : `lo = mid + 1`. Sinon `mid` est un candidat : `hi = mid`."
+  - "La boucle s'arrête quand `lo == hi` : c'est la réponse."
+explanation: |
+  ```python
+  lo, hi = 0, len(a)
+  while lo < hi:
+      mid = (lo + hi) // 2
+      if a[mid] < x: lo = mid + 1
+      else:          hi = mid
+  return lo
+  ```
+  - L'invariant avec `[lo, hi)` évite les erreurs « off-by-one » et les boucles infinies.
+  - Variante très fréquente en entretien : dichotomie **sur la réponse** (la plus petite capacité qui marche, la racine carrée entière…).
+  - Bibliothèque standard : `bisect.bisect_left` / `bisect_right` / `insort`.

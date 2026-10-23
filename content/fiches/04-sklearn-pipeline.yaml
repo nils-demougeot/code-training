@@ -1,0 +1,76 @@
+id: sklearn-pipeline
+title: Anatomie d'un projet scikit-learn
+domain: ml
+summary: fit / transform / predict, Pipeline, ColumnTransformer, validation croisée, GridSearch et data leakage.
+body: |
+  ## L'API commune à tout scikit-learn
+
+  | Méthode | Qui | Rôle |
+  |---|---|---|
+  | `fit(X, y)` | tous | apprend des données (paramètres qui finissent par `_` : `coef_`, `mean_`…) |
+  | `transform(X)` | transformers (scaler, encoder, imputer, PCA) | applique ce qui a été appris |
+  | `fit_transform(X)` | transformers | les deux d'un coup, **sur le train seulement** |
+  | `predict(X)` | estimateurs | prédit des classes / valeurs |
+  | `predict_proba(X)` | classifieurs | probabilités `(n, n_classes)` |
+  | `score(X, y)` | estimateurs | accuracy (classif) ou R² (régression) |
+
+  `X` est toujours 2D `(n_samples, n_features)`, `y` 1D `(n_samples,)`.
+
+  ## Le squelette
+
+  ```python
+  from sklearn.compose import ColumnTransformer
+  from sklearn.impute import SimpleImputer
+  from sklearn.linear_model import LogisticRegression
+  from sklearn.model_selection import GridSearchCV, train_test_split
+  from sklearn.pipeline import Pipeline, make_pipeline
+  from sklearn.preprocessing import OneHotEncoder, StandardScaler
+
+  X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, stratify=y, random_state=42)
+
+  prep = ColumnTransformer([
+      ('num', make_pipeline(SimpleImputer(strategy='median'), StandardScaler()), num_cols),
+      ('cat', make_pipeline(SimpleImputer(strategy='most_frequent'),
+                            OneHotEncoder(handle_unknown='ignore')), cat_cols),
+  ])
+  model = Pipeline([('prep', prep), ('clf', LogisticRegression(max_iter=1000))])
+
+  search = GridSearchCV(model, {'clf__C': [0.01, 0.1, 1, 10]}, cv=5, scoring='f1')
+  search.fit(X_train, y_train)
+  print(search.best_params_, search.best_score_)
+  print(classification_report(y_test, search.predict(X_test)))
+  ```
+
+  ## Pourquoi un Pipeline ?
+
+  1. **Pas de fuite** : pendant la validation croisée, le scaler, l'imputer et l'encodeur sont re-`fit` sur chaque fold d'entraînement.
+  2. **Un seul objet** à sauvegarder et à déployer (`joblib.dump(search.best_estimator_, 'model.joblib')`).
+  3. Les hyperparamètres du **prétraitement** se cherchent comme ceux du modèle : `'prep__num__simpleimputer__strategy'`.
+
+  ## Data leakage : la liste noire
+
+  - `fit` d'un transformer sur tout le dataset avant le split (ou avant la CV).
+  - Sélection de features à partir de la corrélation avec `y` sur tout le dataset.
+  - Split aléatoire de séries temporelles → `TimeSeriesSplit`.
+  - Le même client dans train et test → `GroupKFold`.
+  - Une feature indisponible au moment de la prédiction.
+
+  ## Choisir le schéma de validation
+
+  | Situation | Outil |
+  |---|---|
+  | classification, classes déséquilibrées | `StratifiedKFold` (défaut de `cv=5` pour les classifieurs) |
+  | séries temporelles | `TimeSeriesSplit` |
+  | plusieurs lignes par entité (client, patient) | `GroupKFold` |
+  | très peu de données | `RepeatedStratifiedKFold` |
+
+  ## Les hyperparamètres qui comptent
+
+  | Modèle | À régler en premier |
+  |---|---|
+  | `LogisticRegression` | `C` (inverse de la régularisation), `class_weight` |
+  | `KNeighborsClassifier` | `n_neighbors`, `weights` |
+  | `DecisionTreeClassifier` | `max_depth`, `min_samples_leaf` |
+  | `RandomForestClassifier` | `n_estimators` (plus = mieux, plus lent), `max_depth`, `max_features` |
+  | `HistGradientBoostingClassifier` | `learning_rate`, `max_iter`, `max_leaf_nodes`, early stopping |
+  | `SVC` | `C`, `gamma` (noyau RBF) ; standardisation obligatoire |

@@ -1,0 +1,61 @@
+id: pd-filter-select
+title: Filtrer, créer une colonne, trier
+domain: pandas
+difficulty: easy
+minutes: 5
+shared: shop_df
+tags: [loc, masque, assign, sort_values]
+cards: [pd-filter-and, pd-assign, pd-sort-values]
+statement: |
+  Le DataFrame `orders` (déjà chargé) contient des commandes : `order_id, date, customer, city, product, category, qty, price`.
+
+  Écris `big_paris_orders(df)` qui renvoie un DataFrame :
+
+  1. avec une nouvelle colonne `total = qty * price` ;
+  2. filtré sur les commandes de **Paris** avec `total > 150` ;
+  3. réduit aux colonnes `['order_id', 'customer', 'total']` ;
+  4. trié par `total` **décroissant**, puis `order_id` croissant ;
+  5. avec un index remis à `0..n-1`.
+
+  Clique sur **Exécuter** avec `orders.head()` pour explorer les données.
+starter: |
+  import pandas as pd
+
+
+  def big_paris_orders(df):
+      pass
+
+
+  orders.head()
+solution: |
+  import pandas as pd
+
+
+  def big_paris_orders(df):
+      out = df.assign(total=df['qty'] * df['price'])
+      out = out.loc[(out['city'] == 'Paris') & (out['total'] > 150), ['order_id', 'customer', 'total']]
+      return out.sort_values(['total', 'order_id'], ascending=[False, True]).reset_index(drop=True)
+tests:
+  - call: big_paris_orders(orders)
+  - name: Ne modifie pas le DataFrame d'origine
+    check: |
+      cols = list(orders.columns)
+      big_paris_orders(orders)
+      assert list(orders.columns) == cols, "orders a été modifié : utilise df.assign(...) ou df.copy()"
+  - call: big_paris_orders(make_orders(200, seed=5))
+    hidden: true
+hints:
+  - "`df.assign(total=df['qty'] * df['price'])` renvoie une copie avec la nouvelle colonne."
+  - "Deux conditions : `(cond1) & (cond2)`, avec les parenthèses."
+  - "`df.loc[masque, colonnes]` filtre les lignes et choisit les colonnes en une fois."
+  - "`sort_values(['total', 'order_id'], ascending=[False, True])` puis `reset_index(drop=True)`."
+explanation: |
+  ```python
+  (df.assign(total=df.qty * df.price)
+     .loc[lambda d: (d.city == 'Paris') & (d.total > 150), ['order_id', 'customer', 'total']]
+     .sort_values(['total', 'order_id'], ascending=[False, True])
+     .reset_index(drop=True))
+  ```
+  - `df[cond]` filtre les lignes, `df[['a', 'b']]` choisit des colonnes, `df.loc[cond, cols]` fait les deux.
+  - Le **method chaining** (avec `assign` et `loc[lambda d: ...]`) évite les variables intermédiaires et le `SettingWithCopyWarning`.
+  - `reset_index(drop=True)` : sans `drop=True`, l'ancien index devient une colonne.

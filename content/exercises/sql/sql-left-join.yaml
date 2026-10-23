@@ -1,0 +1,41 @@
+id: sql-left-join
+title: Clients sans commande (LEFT JOIN)
+domain: sql
+difficulty: medium
+minutes: 6
+language: sql
+shared: sql_shop
+interview: true
+tags: [LEFT JOIN, IS NULL, anti-jointure]
+cards: [sql-left-join-null]
+statement: |
+  Trouve les clients qui n'ont **jamais passé de commande**.
+
+  Colonnes : `name`, `city`, triées par `name`.
+
+  Puis réfléchis : pourquoi un `INNER JOIN` ne peut-il pas répondre à cette question ?
+starter: |
+  SELECT c.name, c.city
+  FROM customers c
+solution: |
+  SELECT c.name, c.city
+  FROM customers c
+  LEFT JOIN orders o ON o.customer_id = c.id
+  WHERE o.id IS NULL
+  ORDER BY c.name
+tests:
+  - name: Résultat de la requête
+    call: q(QUERY)
+hints:
+  - "Un `LEFT JOIN` garde **tous** les clients ; ceux sans commande ont des colonnes `o.*` à `NULL`."
+  - "Filtre avec `WHERE o.id IS NULL` (et jamais `= NULL`)."
+explanation: |
+  ```sql
+  SELECT c.* FROM customers c
+  LEFT JOIN orders o ON o.customer_id = c.id
+  WHERE o.id IS NULL;
+  -- équivalent : WHERE NOT EXISTS (SELECT 1 FROM orders o WHERE o.customer_id = c.id)
+  ```
+  - `INNER JOIN` ne garde que les lignes **avec** correspondance : les clients sans commande disparaissent.
+  - `NULL = NULL` n'est pas vrai en SQL (c'est `NULL`) : on teste avec `IS NULL`.
+  - Piège : `NOT IN (sous-requête)` renvoie zéro ligne si la sous-requête contient un `NULL`.

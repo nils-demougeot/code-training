@@ -1,0 +1,56 @@
+id: np-top-k
+title: Top-k indices par ligne
+domain: numpy
+difficulty: medium
+minutes: 7
+tags: [argsort, argpartition, take_along_axis]
+cards: [np-argsort-desc, np-take-along]
+statement: |
+  On a une matrice de scores `S` de shape `(n, m)` (par exemple la similarité entre `n` utilisateurs et `m` produits).
+
+  Écris `top_k(S, k)` qui renvoie, pour chaque ligne, les **indices des k plus grands scores, du plus grand au plus petit**. Résultat : shape `(n, k)`.
+
+  Puis `top_k_scores(S, k)` qui renvoie les scores correspondants, shape `(n, k)`.
+starter: |
+  import numpy as np
+
+
+  def top_k(S, k):
+      pass
+
+
+  def top_k_scores(S, k):
+      pass
+solution: |
+  import numpy as np
+
+
+  def top_k(S, k):
+      return np.argsort(-S, axis=1, kind='stable')[:, :k]
+
+
+  def top_k_scores(S, k):
+      return np.take_along_axis(S, top_k(S, k), axis=1)
+setup: |
+  import numpy as np
+  S = np.array([[0.1, 0.9, 0.5, 0.7],
+                [0.8, 0.2, 0.6, 0.0]])
+tests:
+  - call: top_k(S, 2)
+    expected: np.array([[1, 3], [0, 2]])
+  - call: top_k_scores(S, 3)
+    expected: np.array([[0.9, 0.7, 0.5], [0.8, 0.6, 0.2]])
+  - call: top_k(np.random.default_rng(3).permutation(50).reshape(5, 10).astype(float), 4)
+    hidden: true
+hints:
+  - "`np.argsort` trie par ordre **croissant**. Astuce : trier `-S`, ou inverser avec `[:, ::-1]`."
+  - "Pour récupérer les valeurs aux indices trouvés ligne par ligne : `np.take_along_axis(S, idx, axis=1)`."
+explanation: |
+  ```python
+  idx = np.argsort(-S, axis=1)[:, :k]           # O(m log m) par ligne
+  vals = np.take_along_axis(S, idx, axis=1)
+  # Plus rapide si m est grand : argpartition (O(m)), puis trier seulement les k
+  part = np.argpartition(-S, k, axis=1)[:, :k]
+  ```
+  - `argsort` renvoie des **indices**, `sort` renvoie des **valeurs**.
+  - `S[idx]` ne marche pas ligne par ligne : il faut `take_along_axis` ou `S[np.arange(n)[:, None], idx]`.

@@ -1,0 +1,44 @@
+id: sql-join-revenue
+title: Jointures et chiffre d'affaires
+domain: sql
+difficulty: medium
+minutes: 8
+language: sql
+shared: sql_shop
+interview: true
+tags: [JOIN, GROUP BY, SUM]
+cards: [sql-join, sql-group-by]
+statement: |
+  Calcule le **chiffre d'affaires par catégorie de produit**, en ne comptant que les commandes au statut `'livrée'`.
+
+  Colonnes attendues : `category`, `revenue` (somme de `quantity * price`), triées par `revenue` décroissant.
+starter: |
+  SELECT *
+  FROM order_items
+solution: |
+  SELECT p.category, SUM(oi.quantity * p.price) AS revenue
+  FROM order_items AS oi
+  JOIN products AS p ON p.id = oi.product_id
+  JOIN orders AS o ON o.id = oi.order_id
+  WHERE o.status = 'livrée'
+  GROUP BY p.category
+  ORDER BY revenue DESC
+tests:
+  - name: Résultat de la requête
+    call: q(QUERY)
+hints:
+  - "Il faut 3 tables : `order_items` (quantités), `products` (prix, catégorie) et `orders` (statut)."
+  - "`JOIN products p ON p.id = oi.product_id`, puis pareil pour `orders`."
+  - "`GROUP BY p.category` avec `SUM(oi.quantity * p.price)`."
+explanation: |
+  ```sql
+  SELECT p.category, SUM(oi.quantity * p.price) AS revenue
+  FROM order_items oi
+  JOIN products p ON p.id = oi.product_id
+  JOIN orders   o ON o.id = oi.order_id
+  WHERE o.status = 'livrée'
+  GROUP BY p.category
+  ORDER BY revenue DESC;
+  ```
+  - Le `WHERE` filtre **avant** l'agrégation, le `HAVING` filtre **après**.
+  - Toute colonne du `SELECT` doit être dans le `GROUP BY` ou dans une fonction d'agrégation.

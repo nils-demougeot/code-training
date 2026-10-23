@@ -1,0 +1,42 @@
+id: choose-model
+title: Choisir un modèle de ML
+domain: ml
+summary: Hypothèses, forces, faiblesses et besoins de prétraitement des modèles classiques, dans un seul tableau.
+body: |
+  ## Vue d'ensemble
+
+  | Modèle | Frontière / idée | Scaling ? | Points forts | Points faibles |
+  |---|---|---|---|---|
+  | Régression linéaire / logistique | linéaire dans l'espace des features | oui (si régularisée) | rapide, interprétable, bonne baseline, probabilités calibrées | rate les interactions et les non-linéarités sans feature engineering |
+  | kNN | vote des voisins | **oui** | aucune hypothèse, simple | lent à la prédiction, malédiction de la dimension |
+  | Naive Bayes | gaussiennes indépendantes par classe | non | très rapide, peu de données, texte | hypothèse d'indépendance |
+  | SVM (RBF) | marge maximale dans un espace à noyau | **oui** | très bon sur données moyennes et denses | O(n²) à O(n³) : lent au-delà de ~50 k lignes |
+  | Arbre de décision | rectangles alignés sur les axes | non | interprétable, gère les types mixtes | variance énorme, instable |
+  | Random Forest | moyenne d'arbres décorrélés | non | robuste, peu de réglages, importance des features | modèles lourds, extrapole mal |
+  | Gradient boosting (XGBoost, LightGBM, HistGB) | arbres séquentiels qui corrigent les erreurs | non | **état de l'art en tabulaire** | plus de réglages, peut overfitter le bruit |
+  | Réseau de neurones (MLP) | composition de transformations non linéaires | **oui** | images, texte, son, très gros volumes | données tabulaires moyennes : souvent battu par le boosting |
+
+  ## Méthode en entretien (ou en vrai)
+
+  1. **Baseline** triviale (classe majoritaire, moyenne) : le score à battre.
+  2. **Modèle linéaire** bien prétraité : rapide, interprétable.
+  3. **Gradient boosting** : souvent le meilleur en tabulaire.
+  4. Comparer en **validation croisée** avec la bonne métrique, puis analyser les erreurs.
+
+  ## Biais et variance par modèle
+
+  | Moins de biais, plus de variance ← | → Plus de biais, moins de variance |
+  |---|---|
+  | kNN avec petit k | kNN avec grand k |
+  | arbre profond | arbre peu profond |
+  | régression polynomiale de haut degré | régression linéaire |
+  | peu de régularisation (grand C) | forte régularisation (petit C) |
+
+  ## Questions pièges
+
+  - **« Pourquoi la régression logistique s'appelle régression ? »** Elle régresse la *log-odds* $\log\frac{p}{1-p}$ linéairement ; la classification vient du seuil.
+  - **« Random Forest ou boosting ? »** RF : peu de réglages, robuste au bruit, parallélisable. Boosting : plus précis une fois réglé, séquentiel.
+  - **« Comment interpréter un modèle boîte noire ? »** Importance par permutation, valeurs SHAP, dépendances partielles.
+  - **« Pourquoi les arbres n'ont pas besoin de scaling ? »** Un split est un seuil sur une seule feature : une transformation monotone ne change pas l'ordre des valeurs.
+
+  > Le lab **Comparer les modèles de ML** montre ces frontières en direct.

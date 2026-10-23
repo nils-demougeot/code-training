@@ -1,0 +1,54 @@
+id: np-pairwise-distances
+title: Distances par paires sans boucle
+domain: numpy
+difficulty: medium
+minutes: 10
+interview: true
+tags: [broadcasting, None, vectorisation, kNN]
+cards: [np-newaxis, np-norm-axis]
+statement: |
+  Écris `pairwise_dist(A, B)` qui renvoie la matrice des **distances euclidiennes** entre chaque ligne de `A` (shape `(n, d)`) et chaque ligne de `B` (shape `(m, d)`). Résultat : shape `(n, m)`.
+
+  **Aucune boucle Python.** Question classique d'entretien ML : c'est le cœur d'un kNN ou d'un k-means vectorisé.
+
+  Bonus : la version « astuce » $\|a-b\|^2 = \|a\|^2 + \|b\|^2 - 2\,a \cdot b$ n'utilise qu'un produit matriciel et consomme beaucoup moins de mémoire.
+starter: |
+  import numpy as np
+
+
+  def pairwise_dist(A, B):
+      pass
+solution: |
+  import numpy as np
+
+
+  def pairwise_dist(A, B):
+      diff = A[:, None, :] - B[None, :, :]        # (n, 1, d) - (1, m, d) -> (n, m, d)
+      return np.sqrt((diff ** 2).sum(axis=-1))    # (n, m)
+tests:
+  - call: pairwise_dist(np.array([[0., 0.], [1., 1.]]), np.array([[3., 4.]]))
+    expected: np.array([[5.], [3.60555128]])
+  - call: pairwise_dist(np.zeros((2, 3)), np.zeros((4, 3)))
+    expected: np.zeros((2, 4))
+  - name: Cas aléatoire
+    call: pairwise_dist(np.random.default_rng(0).normal(size=(30, 5)), np.random.default_rng(1).normal(size=(20, 5)))
+    hidden: true
+  - name: Sans boucle Python
+    check: |
+      import inspect
+      src = inspect.getsource(pairwise_dist)
+      assert ' for ' not in src and 'while' not in src, "utilise le broadcasting plutôt qu'une boucle"
+hints:
+  - "Ajoute des axes pour que les shapes se broadcastent : `A[:, None, :]` est `(n, 1, d)` et `B[None, :, :]` est `(1, m, d)`."
+  - "Leur différence est `(n, m, d)` : il reste à sommer les carrés sur le dernier axe, puis prendre la racine."
+explanation: |
+  ```python
+  diff = A[:, None, :] - B[None, :, :]       # (n, m, d)
+  D = np.sqrt((diff ** 2).sum(axis=-1))      # (n, m)
+
+  # Version mémoire O(n·m) au lieu de O(n·m·d) :
+  sq = (A**2).sum(1)[:, None] + (B**2).sum(1)[None, :] - 2 * A @ B.T
+  D = np.sqrt(np.maximum(sq, 0))             # max : erreurs d'arrondi négatives
+  ```
+  - `None` (ou `np.newaxis`) insère un axe de taille 1 : c'est l'outil n°1 pour piloter le broadcasting.
+  - En vrai : `scipy.spatial.distance.cdist(A, B)` ou `sklearn.metrics.pairwise_distances`.

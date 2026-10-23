@@ -1,0 +1,201 @@
+id: pandas-essentials
+title: Pandas — l'essentiel
+domain: pandas
+description: Sélection, filtres, groupby, merge, pivot, dates, nettoyage. La syntaxe qu'on oublie toujours.
+cards:
+  - id: pd-loc-row
+    prompt: "Avec loc : les colonnes name et age des lignes où age > 30."
+    setup: |-
+      import pandas as pd
+      df = pd.DataFrame({'name': ['a', 'b', 'c'], 'age': [25, 35, 45], 'city': ['P', 'L', 'P']})
+    answer: |-
+      df.loc[df['age'] > 30, ['name', 'age']]
+  - id: pd-iloc
+    prompt: "Les 2 premières lignes et les 2 premières colonnes (par position)."
+    setup: |-
+      import pandas as pd
+      df = pd.DataFrame({'a': [1, 2, 3], 'b': [4, 5, 6], 'c': [7, 8, 9]})
+    answer: |-
+      df.iloc[:2, :2]
+    note: "`iloc` : positions (fin **exclue**). `loc` : étiquettes (fin **incluse** !)."
+  - id: pd-filter-and
+    prompt: "Les lignes où city vaut 'P' ET age < 40."
+    setup: |-
+      import pandas as pd
+      df = pd.DataFrame({'age': [25, 35, 45], 'city': ['P', 'L', 'P']})
+    answer: |-
+      df[(df['city'] == 'P') & (df['age'] < 40)]
+  - id: pd-isin
+    prompt: "Les lignes dont city est 'P' ou 'M' (isin)."
+    setup: |-
+      import pandas as pd
+      df = pd.DataFrame({'city': ['P', 'L', 'M', 'P']})
+    answer: |-
+      df[df['city'].isin(['P', 'M'])]
+  - id: pd-query
+    prompt: "Même filtre avec query : age > 30 et city == 'P'."
+    setup: |-
+      import pandas as pd
+      df = pd.DataFrame({'age': [25, 35, 45], 'city': ['P', 'L', 'P']})
+    answer: |-
+      df.query("age > 30 and city == 'P'")
+  - id: pd-assign
+    prompt: "Une copie de df avec une colonne total = qty * price (assign)."
+    setup: |-
+      import pandas as pd
+      df = pd.DataFrame({'qty': [1, 2], 'price': [10.0, 5.0]})
+    answer: |-
+      df.assign(total=df['qty'] * df['price'])
+  - id: pd-sort-values
+    prompt: "Trier par city croissant puis age décroissant."
+    setup: |-
+      import pandas as pd
+      df = pd.DataFrame({'age': [25, 35, 45, 30], 'city': ['P', 'L', 'P', 'L']})
+    answer: |-
+      df.sort_values(['city', 'age'], ascending=[True, False])
+  - id: pd-groupby-sum
+    prompt: "Somme de amount par city (une Series)."
+    setup: |-
+      import pandas as pd
+      df = pd.DataFrame({'city': ['P', 'L', 'P'], 'amount': [10, 20, 5]})
+    answer: |-
+      df.groupby('city')['amount'].sum()
+  - id: pd-value-counts
+    prompt: "Proportion de chaque valeur de city."
+    setup: |-
+      import pandas as pd
+      df = pd.DataFrame({'city': ['P', 'L', 'P', 'P']})
+    answer: |-
+      df['city'].value_counts(normalize=True)
+  - id: pd-nunique
+    prompt: "Nombre de clients distincts par city."
+    setup: |-
+      import pandas as pd
+      df = pd.DataFrame({'city': ['P', 'P', 'L', 'P'], 'client': ['a', 'b', 'c', 'a']})
+    answer: |-
+      df.groupby('city')['client'].nunique()
+  - id: pd-named-agg
+    prompt: "Par city : n (nombre de lignes) et total (somme de amount), city restant une colonne."
+    setup: |-
+      import pandas as pd
+      df = pd.DataFrame({'city': ['P', 'L', 'P'], 'amount': [10, 20, 5]})
+    answer: |-
+      df.groupby('city', as_index=False).agg(n=('amount', 'count'), total=('amount', 'sum'))
+  - id: pd-transform
+    prompt: "Pour chaque ligne, le total de amount de sa city (même longueur que df)."
+    setup: |-
+      import pandas as pd
+      df = pd.DataFrame({'city': ['P', 'L', 'P'], 'amount': [10, 20, 5]})
+    answer: |-
+      df.groupby('city')['amount'].transform('sum')
+    note: "`transform` garde l'alignement sur les lignes d'origine, `agg` réduit à une ligne par groupe."
+  - id: pd-groupby-cumsum
+    prompt: "Cumul de amount par client, dans l'ordre des lignes."
+    setup: |-
+      import pandas as pd
+      df = pd.DataFrame({'client': ['a', 'b', 'a', 'a'], 'amount': [1, 2, 3, 4]})
+    answer: |-
+      df.groupby('client')['amount'].cumsum()
+  - id: pd-isna-sum
+    prompt: "Nombre de valeurs manquantes par colonne."
+    setup: |-
+      import numpy as np
+      import pandas as pd
+      df = pd.DataFrame({'a': [1, np.nan, 3], 'b': [None, None, 'x']})
+    answer: |-
+      df.isna().sum()
+  - id: pd-fillna-median
+    prompt: "La colonne age avec les NaN remplacés par la médiane de age."
+    setup: |-
+      import numpy as np
+      import pandas as pd
+      df = pd.DataFrame({'age': [20, np.nan, 40, 30]})
+    answer: |-
+      df['age'].fillna(df['age'].median())
+  - id: pd-drop-duplicates
+    prompt: "Supprimer les doublons sur la colonne email en gardant la dernière occurrence."
+    setup: |-
+      import pandas as pd
+      df = pd.DataFrame({'email': ['a', 'b', 'a'], 'v': [1, 2, 3]})
+    answer: |-
+      df.drop_duplicates(subset='email', keep='last')
+  - id: pd-str-methods
+    prompt: "La colonne email nettoyée : sans espaces autour et en minuscules."
+    setup: |-
+      import pandas as pd
+      df = pd.DataFrame({'email': ['  A@X.com', 'b@y.COM ']})
+    answer: |-
+      df['email'].str.strip().str.lower()
+  - id: pd-rename
+    prompt: "Renommer la colonne old en new."
+    setup: |-
+      import pandas as pd
+      df = pd.DataFrame({'old': [1], 'keep': [2]})
+    answer: |-
+      df.rename(columns={'old': 'new'})
+  - id: pd-merge-left
+    prompt: "Jointure à gauche de orders avec customers sur la colonne cid."
+    setup: |-
+      import pandas as pd
+      orders = pd.DataFrame({'oid': [1, 2, 3], 'cid': [10, 20, 30]})
+      customers = pd.DataFrame({'cid': [10, 20], 'name': ['a', 'b']})
+    answer: |-
+      orders.merge(customers, on='cid', how='left')
+  - id: pd-merge-indicator
+    prompt: "Merge externe de a et b sur k avec une colonne indiquant l'origine de chaque ligne."
+    setup: |-
+      import pandas as pd
+      a = pd.DataFrame({'k': [1, 2]})
+      b = pd.DataFrame({'k': [2, 3]})
+    answer: |-
+      a.merge(b, on='k', how='outer', indicator=True)
+  - id: pd-pivot-table
+    prompt: "Tableau croisé : city en lignes, cat en colonnes, somme de v, 0 si absent."
+    setup: |-
+      import pandas as pd
+      df = pd.DataFrame({'city': ['P', 'P', 'L'], 'cat': ['x', 'y', 'x'], 'v': [1, 2, 3]})
+    answer: |-
+      df.pivot_table(index='city', columns='cat', values='v', aggfunc='sum', fill_value=0)
+  - id: pd-to-datetime
+    prompt: "Convertir la colonne date (texte) en datetime."
+    setup: |-
+      import pandas as pd
+      df = pd.DataFrame({'date': ['2024-01-15', '2024-02-01']})
+    answer: |-
+      pd.to_datetime(df['date'])
+  - id: pd-dt-accessor
+    prompt: "Le mois (1-12) de chaque date de la colonne d (déjà en datetime)."
+    setup: |-
+      import pandas as pd
+      df = pd.DataFrame({'d': pd.to_datetime(['2024-01-15', '2024-03-02'])})
+    answer: |-
+      df['d'].dt.month
+  - id: pd-resample
+    prompt: "Somme de v par mois (étiquette = 1er du mois), df ayant un DatetimeIndex."
+    setup: |-
+      import pandas as pd
+      df = pd.DataFrame({'v': [1, 2, 3]}, index=pd.to_datetime(['2024-01-05', '2024-01-20', '2024-02-03']))
+    answer: |-
+      df['v'].resample('MS').sum()
+  - id: pd-cut
+    prompt: "Découper age en tranches [0, 18), [18, 65), [65, inf) étiquetées young, adult, senior."
+    setup: |-
+      import numpy as np
+      import pandas as pd
+      age = pd.Series([10, 30, 70])
+    answer: |-
+      pd.cut(age, bins=[0, 18, 65, np.inf], right=False, labels=['young', 'adult', 'senior'])
+  - id: pd-map-dict
+    prompt: "Remplacer les codes de s grâce au dict {'P': 'Paris', 'L': 'Lyon'}."
+    setup: |-
+      import pandas as pd
+      s = pd.Series(['P', 'L', 'P'])
+    answer: |-
+      s.map({'P': 'Paris', 'L': 'Lyon'})
+    note: "Les valeurs absentes du dict deviennent NaN avec `map` ; `replace` les laisse intactes."
+  - id: pd-read-csv
+    kind: reveal
+    prompt: "Lire un CSV séparé par des points-virgules, en parsant la colonne date."
+    answer: |-
+      pd.read_csv('data.csv', sep=';', parse_dates=['date'])
+    note: "Autres options utiles : `usecols=`, `dtype=`, `nrows=`, `encoding='latin-1'`, `decimal=','`."

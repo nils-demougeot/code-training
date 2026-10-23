@@ -1,0 +1,232 @@
+id: torch-digits
+title: "PyTorch : reconnaître des chiffres manuscrits"
+domain: dl
+difficulty: medium
+hours: 1.5
+engine: local
+summary: Du DataLoader au réseau convolutif. Entraîne un MLP puis un CNN sur des images de chiffres et compare-les (runner local requis).
+intro: |
+  Le dataset `digits` de scikit-learn : 1 797 images de chiffres manuscrits en **8×8 pixels** (une version miniature de MNIST qui s'entraîne en quelques secondes sur CPU).
+
+  Déjà chargés : `images` (np.ndarray `(1797, 8, 8)`, valeurs de 0 à 16) et `labels` (`(1797,)`, de 0 à 9).
+
+  ⚠️ Ce projet nécessite le **runner local** avec PyTorch (`pip install torch`), voir Réglages → Moteur d'exécution.
+setup: |
+  import numpy as np
+  import torch
+  from sklearn.datasets import load_digits
+  _digits = load_digits()
+  images = _digits.images.astype(np.float32)
+  labels = _digits.target
+starter: |
+  import numpy as np
+  import torch
+  from torch import nn
+  from torch.utils.data import DataLoader, TensorDataset
+
+
+  # Étape 1 ─ données
+  def make_loaders(images, labels, batch_size=64, seed=0):
+      pass
+
+
+  # Étape 2 ─ MLP
+  class MLP(nn.Module):
+      def __init__(self):
+          super().__init__()
+          pass
+
+      def forward(self, x):
+          pass
+
+
+  # Étape 3 ─ entraînement / évaluation
+  def train_epoch(model, loader, optimizer, loss_fn):
+      pass
+
+
+  def evaluate(model, loader):
+      pass
+
+
+  def fit(model, train_loader, test_loader, epochs=15, lr=1e-3):
+      pass
+
+
+  # Étape 4 ─ CNN
+  class CNN(nn.Module):
+      def __init__(self):
+          super().__init__()
+          pass
+
+      def forward(self, x):
+          pass
+
+
+  print(images.shape, labels[:10])
+solution: |
+  import numpy as np
+  import torch
+  from torch import nn
+  from torch.utils.data import DataLoader, TensorDataset
+
+
+  def make_loaders(images, labels, batch_size=64, seed=0):
+      g = torch.Generator().manual_seed(seed)
+      X = torch.tensor(images / 16.0, dtype=torch.float32).unsqueeze(1)   # (N, 1, 8, 8)
+      y = torch.tensor(labels, dtype=torch.long)
+      perm = torch.randperm(len(X), generator=g)
+      n_test = int(0.2 * len(X))
+      test_idx, train_idx = perm[:n_test], perm[n_test:]
+      train = DataLoader(TensorDataset(X[train_idx], y[train_idx]), batch_size=batch_size, shuffle=True, generator=g)
+      test = DataLoader(TensorDataset(X[test_idx], y[test_idx]), batch_size=256)
+      return train, test
+
+
+  class MLP(nn.Module):
+      def __init__(self):
+          super().__init__()
+          self.net = nn.Sequential(
+              nn.Flatten(),
+              nn.Linear(64, 128), nn.ReLU(),
+              nn.Linear(128, 10),
+          )
+
+      def forward(self, x):
+          return self.net(x)
+
+
+  def train_epoch(model, loader, optimizer, loss_fn):
+      model.train()
+      total = 0.0
+      for xb, yb in loader:
+          optimizer.zero_grad()
+          loss = loss_fn(model(xb), yb)
+          loss.backward()
+          optimizer.step()
+          total += loss.item() * len(xb)
+      return total / len(loader.dataset)
+
+
+  def evaluate(model, loader):
+      model.eval()
+      correct = 0
+      with torch.no_grad():
+          for xb, yb in loader:
+              correct += (model(xb).argmax(dim=1) == yb).sum().item()
+      return correct / len(loader.dataset)
+
+
+  def fit(model, train_loader, test_loader, epochs=15, lr=1e-3):
+      optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+      loss_fn = nn.CrossEntropyLoss()
+      history = []
+      for _ in range(epochs):
+          loss = train_epoch(model, train_loader, optimizer, loss_fn)
+          history.append((loss, evaluate(model, test_loader)))
+      return history
+
+
+  class CNN(nn.Module):
+      def __init__(self):
+          super().__init__()
+          self.features = nn.Sequential(
+              nn.Conv2d(1, 16, kernel_size=3, padding=1), nn.ReLU(),
+              nn.MaxPool2d(2),                                   # 8x8 -> 4x4
+              nn.Conv2d(16, 32, kernel_size=3, padding=1), nn.ReLU(),
+          )
+          self.head = nn.Sequential(nn.Flatten(), nn.Linear(32 * 4 * 4, 10))
+
+      def forward(self, x):
+          return self.head(self.features(x))
+steps:
+  - title: Tenseurs et DataLoaders
+    instructions: |
+      `make_loaders(images, labels, batch_size=64, seed=0)` renvoie `(train_loader, test_loader)` :
+
+      - `X` : tenseur float32 de shape `(N, 1, 8, 8)` (un **canal**, comme une image en niveaux de gris), valeurs **divisées par 16** pour être dans `[0, 1]` ;
+      - `y` : tenseur `torch.long` ;
+      - 20 % des images en test, tirées au hasard avec un `torch.Generator().manual_seed(seed)` ;
+      - train : mélangé (`shuffle=True`), batch `batch_size`. Test : non mélangé.
+    hints:
+      - "`torch.tensor(images / 16.0, dtype=torch.float32).unsqueeze(1)` ajoute l'axe du canal."
+      - "`perm = torch.randperm(len(X), generator=g)`, puis découpe les indices."
+      - "`DataLoader(TensorDataset(X_tr, y_tr), batch_size=64, shuffle=True)`."
+    tests:
+      - name: Batches au bon format
+        check: |
+          train, test = make_loaders(images, labels)
+          xb, yb = next(iter(train))
+          assert tuple(xb.shape) == (64, 1, 8, 8), f"batch X : {tuple(xb.shape)}"
+          assert xb.dtype == torch.float32 and yb.dtype == torch.long, f"dtypes {xb.dtype}, {yb.dtype}"
+          assert float(xb.max()) <= 1.0, "les pixels doivent être normalisés dans [0, 1]"
+          assert len(train.dataset) + len(test.dataset) == 1797 and abs(len(test.dataset) - 359) <= 1
+  - title: Un MLP
+    instructions: |
+      `MLP` : `Flatten → Linear(64, 128) → ReLU → Linear(128, 10)`. La sortie : des **logits** `(N, 10)`.
+
+      Combien de paramètres ? (Calcule-le avant de vérifier.)
+    hints:
+      - "`nn.Flatten()` transforme `(N, 1, 8, 8)` en `(N, 64)`."
+      - "Range tout dans `self.net = nn.Sequential(...)`."
+    tests:
+      - name: Shape et paramètres
+        check: |
+          m = MLP()
+          out = m(torch.zeros(5, 1, 8, 8))
+          assert tuple(out.shape) == (5, 10), f"sortie {tuple(out.shape)}"
+          n = sum(p.numel() for p in m.parameters())
+          assert n == 64 * 128 + 128 + 128 * 10 + 10, f"{n} paramètres"
+  - title: Boucle d'entraînement
+    instructions: |
+      1. `train_epoch(model, loader, optimizer, loss_fn)` : une époque, renvoie la **loss moyenne** (float).
+      2. `evaluate(model, loader)` : accuracy (float), en mode `eval` et sans gradient.
+      3. `fit(model, train_loader, test_loader, epochs=15, lr=1e-3)` : `Adam` + `CrossEntropyLoss` ; renvoie la liste `[(loss_train, acc_test), ...]` d'une entrée par époque.
+
+      Objectif : **> 93 %** d'accuracy en test avec le MLP.
+    hints:
+      - "Les 4 temps : `zero_grad`, forward + loss, `backward`, `step`."
+      - "Loss moyenne : accumule `loss.item() * len(xb)` puis divise par `len(loader.dataset)`."
+    tests:
+      - name: MLP > 93 %
+        check: |
+          torch.manual_seed(0)
+          train, test = make_loaders(images, labels)
+          history = fit(MLP(), train, test, epochs=15)
+          assert len(history) == 15, f"{len(history)} époques"
+          loss0, loss_end, acc = history[0][0], history[-1][0], history[-1][1]
+          assert loss_end < loss0, f"la loss ne diminue pas : {loss0:.3f} → {loss_end:.3f}"
+          assert acc > 0.93, f"accuracy test {acc:.1%}"
+  - title: Un petit CNN
+    instructions: |
+      `CNN` :
+
+      ```
+      Conv2d(1, 16, 3, padding=1) → ReLU → MaxPool2d(2)       # (N, 16, 4, 4)
+      Conv2d(16, 32, 3, padding=1) → ReLU                     # (N, 32, 4, 4)
+      Flatten → Linear(32 * 4 * 4, 10)
+      ```
+
+      Entraîne-le avec `fit` (même code !) et compare au MLP : accuracy et nombre de paramètres. Essaie ensuite sans le `MaxPool2d`.
+    hints:
+      - "`padding=1` avec un noyau 3×3 conserve la taille 8×8 ; `MaxPool2d(2)` la divise par 2."
+      - "En cas de doute sur une shape, fais un `print(x.shape)` dans `forward` et lance Exécuter avec `CNN()(torch.zeros(2, 1, 8, 8))`."
+    tests:
+      - name: Shapes intermédiaires
+        check: |
+          out = CNN()(torch.zeros(3, 1, 8, 8))
+          assert tuple(out.shape) == (3, 10), f"sortie {tuple(out.shape)}"
+      - name: CNN > 95 %
+        check: |
+          torch.manual_seed(0)
+          train, test = make_loaders(images, labels)
+          acc = fit(CNN(), train, test, epochs=15)[-1][1]
+          assert acc > 0.95, f"accuracy test {acc:.1%}"
+outro: |
+  Tu as parcouru toute la chaîne PyTorch. Ce qu'il faut savoir expliquer en entretien :
+
+  - **Pourquoi un CNN bat un MLP sur les images** : les convolutions partagent leurs poids (invariance par translation) et exploitent la structure locale des pixels, avec bien moins de paramètres par couche.
+  - **Le rôle du pooling** : réduire la résolution, élargir le champ réceptif, gagner un peu d'invariance.
+  - **train() / eval()** et **no_grad()** : pourquoi ils comptent.
+
+  Pour aller plus loin : passe sur GPU (`.to(device)`), ajoute `BatchNorm2d` et `Dropout`, ou télécharge le vrai MNIST avec `torchvision`.

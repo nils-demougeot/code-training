@@ -1,0 +1,123 @@
+id: sklearn
+title: scikit-learn — pipelines & évaluation
+domain: ml
+description: Split, pipelines, ColumnTransformer, validation croisée, recherche d'hyperparamètres, métriques.
+cards:
+  - id: sk-split-stratify
+    prompt: "Split 80/20 de X, y, stratifié sur y, avec random_state=0 (les 4 tableaux)."
+    setup: |-
+      import numpy as np
+      from sklearn.model_selection import train_test_split
+      X = np.arange(40).reshape(20, 2)
+      y = np.array([0] * 10 + [1] * 10)
+    answer: |-
+      train_test_split(X, y, test_size=0.2, stratify=y, random_state=0)
+    note: "Ordre de retour : `X_train, X_test, y_train, y_test`."
+  - id: sk-fit-predict
+    prompt: "Entraîner une LogisticRegression sur X, y puis prédire les classes de X (une expression)."
+    setup: |-
+      from sklearn.datasets import load_iris
+      from sklearn.linear_model import LogisticRegression
+      X, y = load_iris(return_X_y=True)
+    answer: |-
+      LogisticRegression(max_iter=1000).fit(X, y).predict(X)
+    loose: true
+  - id: sk-predict-proba
+    prompt: "Probabilités de la classe positive (1) pour chaque ligne de X_test."
+    setup: |-
+      import numpy as np
+      from sklearn.linear_model import LogisticRegression
+      X = np.array([[0.], [1.], [2.], [3.]])
+      y = np.array([0, 0, 1, 1])
+      model = LogisticRegression().fit(X, y)
+      X_test = np.array([[1.5], [0.2]])
+    answer: |-
+      model.predict_proba(X_test)[:, 1]
+  - id: sk-accuracy
+    prompt: "Accuracy de y_pred par rapport à y_true (fonction de sklearn.metrics)."
+    setup: |-
+      from sklearn.metrics import accuracy_score
+      y_true = [0, 1, 1, 0]
+      y_pred = [0, 1, 0, 0]
+    answer: |-
+      accuracy_score(y_true, y_pred)
+  - id: sk-confusion-matrix
+    prompt: "Matrice de confusion de y_true et y_pred."
+    setup: |-
+      from sklearn.metrics import confusion_matrix
+      y_true = [0, 1, 1, 0, 1]
+      y_pred = [0, 1, 0, 1, 1]
+    answer: |-
+      confusion_matrix(y_true, y_pred)
+    note: "Lignes = vraies classes, colonnes = prédictions : `[[TN, FP], [FN, TP]]` en binaire."
+  - id: sk-make-pipeline
+    prompt: "Pipeline StandardScaler puis LogisticRegression, avec étapes nommées automatiquement."
+    kind: reveal
+    answer: |-
+      make_pipeline(StandardScaler(), LogisticRegression())
+    note: "Noms auto : `'standardscaler'`, `'logisticregression'`. Avec `Pipeline([('scaler', ...), ('clf', ...)])` tu choisis les noms."
+  - id: sk-cross-val-score
+    prompt: "Moyenne des F1 d'une validation croisée à 5 folds du modèle model sur X, y."
+    setup: |-
+      from sklearn.datasets import load_breast_cancer
+      from sklearn.model_selection import cross_val_score
+      from sklearn.tree import DecisionTreeClassifier
+      X, y = load_breast_cancer(return_X_y=True)
+      model = DecisionTreeClassifier(max_depth=3, random_state=0)
+    answer: |-
+      cross_val_score(model, X, y, cv=5, scoring='f1').mean()
+  - id: sk-pipeline-step-param
+    kind: reveal
+    prompt: "Grille de GridSearchCV pour le paramètre C de l'étape nommée clf d'un pipeline."
+    answer: |-
+      {'clf__C': [0.01, 0.1, 1, 10]}
+    note: "Double underscore : `<étape>__<paramètre>`, récursif : `prep__num__imputer__strategy`."
+  - id: sk-gridsearch
+    kind: reveal
+    prompt: "Lancer une GridSearchCV à 5 folds sur pipe avec la grille grid, et récupérer le meilleur modèle."
+    answer: |-
+      search = GridSearchCV(pipe, grid, cv=5, scoring='f1', n_jobs=-1)
+      search.fit(X_train, y_train)
+      best = search.best_estimator_      # déjà ré-entraîné sur tout X_train
+      search.best_params_, search.best_score_
+  - id: sk-column-transformer
+    kind: reveal
+    prompt: "ColumnTransformer : StandardScaler sur num_cols, OneHotEncoder sur cat_cols."
+    answer: |-
+      ColumnTransformer([
+          ('num', StandardScaler(), num_cols),
+          ('cat', OneHotEncoder(handle_unknown='ignore'), cat_cols),
+      ])
+    note: "Par défaut, les colonnes non citées sont **supprimées** (`remainder='drop'`)."
+  - id: sk-onehot-unknown
+    kind: reveal
+    prompt: "OneHotEncoder qui ne plante pas sur une catégorie inconnue à la prédiction."
+    answer: |-
+      OneHotEncoder(handle_unknown='ignore')
+  - id: sk-simple-imputer
+    kind: reveal
+    prompt: "Imputer les valeurs manquantes numériques par la médiane."
+    answer: |-
+      SimpleImputer(strategy='median')
+    note: "Stratégies : `'mean'`, `'median'`, `'most_frequent'`, `'constant'` (+ `fill_value=`)."
+  - id: sk-fit-transform-test
+    kind: reveal
+    prompt: "Standardiser X_train et X_test correctement (sans fuite de données)."
+    answer: |-
+      scaler = StandardScaler()
+      X_train_s = scaler.fit_transform(X_train)
+      X_test_s = scaler.transform(X_test)      # jamais fit sur le test
+  - id: sk-classification-report
+    kind: reveal
+    prompt: "Afficher precision, recall, F1 et support pour chaque classe."
+    answer: |-
+      print(classification_report(y_test, y_pred))
+  - id: sk-roc-auc
+    prompt: "ROC AUC à partir des vrais labels et des scores de la classe positive."
+    setup: |-
+      from sklearn.metrics import roc_auc_score
+      y_true = [0, 0, 1, 1]
+      scores = [0.1, 0.4, 0.35, 0.8]
+    answer: |-
+      roc_auc_score(y_true, scores)
+    note: "L'AUC prend des **scores/probabilités**, pas des classes prédites."

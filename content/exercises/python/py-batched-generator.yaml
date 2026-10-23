@@ -1,0 +1,60 @@
+id: py-batched-generator
+title: Générateur de mini-batches
+domain: python
+difficulty: medium
+minutes: 7
+tags: [générateur, yield, itertools]
+cards: [py-yield-from, py-islice]
+statement: |
+  Écris un **générateur** `batched(iterable, n)` qui produit des listes de `n` éléments consécutifs. Le dernier batch peut être plus court.
+
+  ```python
+  list(batched(range(7), 3))  # [[0, 1, 2], [3, 4, 5], [6]]
+  ```
+
+  - Il doit fonctionner sur **n'importe quel itérable**, y compris un générateur infini (ne pas tout convertir en liste !).
+  - Lève `ValueError` si `n < 1`.
+
+  C'est ce que fait un `DataLoader` quand il découpe un dataset en mini-batches.
+starter: |
+  def batched(iterable, n):
+      pass
+solution: |
+  from itertools import islice
+
+
+  def batched(iterable, n):
+      if n < 1:
+          raise ValueError("n doit être >= 1")
+      it = iter(iterable)
+      while batch := list(islice(it, n)):
+          yield batch
+tests:
+  - call: list(batched(range(7), 3))
+    expected: "[[0, 1, 2], [3, 4, 5], [6]]"
+  - call: "list(batched('abcd', 2))"
+    expected: "[['a', 'b'], ['c', 'd']]"
+  - call: list(batched([], 4))
+    expected: "[]"
+  - name: Fonctionne sur un itérable infini
+    check: |
+      import itertools
+      gen = batched(itertools.count(), 2)
+      assert next(gen) == [0, 1] and next(gen) == [2, 3]
+  - name: n invalide
+    check: |
+      try:
+          list(batched([1, 2], 0))
+      except ValueError:
+          pass
+      else:
+          raise AssertionError("batched(..., 0) devrait lever ValueError")
+hints:
+  - "`it = iter(iterable)` crée un itérateur qu'on peut consommer petit à petit."
+  - "`itertools.islice(it, n)` prend au plus n éléments de l'itérateur."
+  - "Le *walrus operator* `while batch := list(islice(it, n)):` s'arrête quand le batch est vide."
+explanation: |
+  - Une fonction contenant `yield` renvoie un **générateur** : rien n'est calculé avant le premier `next()`.
+  - Un itérateur se **consomme** : après un parcours, il est vide (piège fréquent avec les générateurs).
+  - `itertools.batched(iterable, n)` existe depuis Python 3.12 (renvoie des tuples).
+  - Pour lever une erreur *à l'appel* plutôt qu'au premier `next()`, il faut séparer la validation dans une fonction normale qui renvoie le générateur.

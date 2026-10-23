@@ -1,0 +1,191 @@
+id: python-core
+title: Python essentiel
+domain: python
+description: Compréhensions, dicts, tri, slicing, itérateurs. Les réflexes à avoir sans réfléchir.
+cards:
+  - id: py-listcomp-filter
+    prompt: "Liste des carrés des nombres pairs de nums (une compréhension)."
+    setup: |-
+      nums = [1, 2, 3, 4, 5, 6]
+    answer: |-
+      [n ** 2 for n in nums if n % 2 == 0]
+    note: "Le `if` à la fin **filtre**. Un `x if c else y` placé **avant** le `for` transforme."
+  - id: py-dictcomp
+    prompt: "Dict {mot: longueur} pour chaque mot de words (compréhension de dict)."
+    setup: |-
+      words = ['data', 'ia', 'python']
+    answer: |-
+      {w: len(w) for w in words}
+  - id: py-counter
+    prompt: "Compter les occurrences de chaque lettre de s (objet Counter)."
+    setup: |-
+      from collections import Counter
+      s = 'banana'
+    answer: |-
+      Counter(s)
+    note: "`Counter(s).most_common(2)` → les 2 plus fréquents."
+  - id: py-sorted-key
+    prompt: "Trier pairs par score décroissant, puis par nom croissant (nouvelle liste)."
+    setup: |-
+      pairs = [('bob', 3), ('ana', 5), ('cy', 3)]
+    answer: |-
+      sorted(pairs, key=lambda p: (-p[1], p[0]))
+    note: "Le tuple trie sur plusieurs critères ; le signe `-` inverse un critère numérique."
+  - id: py-zip
+    prompt: "Construire un dict {nom: score} à partir des listes names et scores."
+    setup: |-
+      names = ['a', 'b', 'c']
+      scores = [1, 2, 3]
+    answer: |-
+      dict(zip(names, scores))
+  - id: py-enumerate
+    prompt: "Liste de tuples (rang, élément) avec un rang qui commence à 1."
+    setup: |-
+      items = ['x', 'y', 'z']
+    answer: |-
+      list(enumerate(items, start=1))
+  - id: py-fstring
+    prompt: "f-string qui affiche ratio en pourcentage avec 1 décimale (ex. 12.3%)."
+    setup: |-
+      ratio = 0.1234
+    answer: |-
+      f"{ratio:.1%}"
+    note: "`:.2f` (2 décimales), `:,` (séparateur de milliers), `:>8` (aligné à droite), `!r` (repr)."
+  - id: py-slice-reverse
+    prompt: "La liste a à l'envers (slicing, sans modifier a)."
+    setup: |-
+      a = [1, 2, 3, 4]
+    answer: |-
+      a[::-1]
+  - id: py-slice-last
+    prompt: "Les 3 derniers éléments de a."
+    setup: |-
+      a = list(range(10))
+    answer: |-
+      a[-3:]
+  - id: py-yield-from
+    prompt: "Générateur gen(xs) qui renvoie chaque élément de xs puis de reversed(xs), en utilisant yield from. Stocke list(gen([1, 2])) dans out."
+    kind: stmt
+    var: out
+    answer: |-
+      def gen(xs):
+          yield from xs
+          yield from reversed(xs)
+      out = list(gen([1, 2]))
+  - id: py-isinstance
+    prompt: "Tester si x est une liste OU un tuple (un seul appel)."
+    setup: |-
+      x = (1, 2)
+    answer: |-
+      isinstance(x, (list, tuple))
+  - id: py-defaultdict
+    prompt: "Regrouper les mots de words par première lettre dans un defaultdict(list) nommé groups."
+    kind: stmt
+    var: groups
+    loose: true
+    setup: |-
+      from collections import defaultdict
+      words = ['ane', 'bus', 'arbre']
+    answer: |-
+      groups = defaultdict(list)
+      for w in words:
+          groups[w[0]].append(w)
+    note: "`defaultdict(int)` pour compter, `defaultdict(list)` pour regrouper, `defaultdict(set)` pour dédoublonner."
+  - id: py-dict-get
+    prompt: "Lire d['z'] en renvoyant 0 si la clé n'existe pas."
+    setup: |-
+      d = {'a': 1}
+    answer: |-
+      d.get('z', 0)
+  - id: py-islice
+    prompt: "Les 5 premiers éléments d'un itérateur infini it, sous forme de liste."
+    setup: |-
+      import itertools
+      it = itertools.count(10)
+    answer: |-
+      list(itertools.islice(it, 5))
+  - id: py-set-ops
+    prompt: "Éléments présents dans a ET dans b (ensembles)."
+    setup: |-
+      a = {1, 2, 3}
+      b = {2, 3, 4}
+    answer: |-
+      a & b
+    note: "`a | b` union, `a - b` différence, `a ^ b` différence symétrique. Test d'appartenance en O(1)."
+  - id: py-any-all
+    prompt: "True si au moins un nombre de nums est négatif."
+    setup: |-
+      nums = [3, -1, 2]
+    answer: |-
+      any(n < 0 for n in nums)
+  - id: py-max-key
+    prompt: "Le mot le plus long de words (avec max)."
+    setup: |-
+      words = ['ia', 'python', 'data']
+    answer: |-
+      max(words, key=len)
+  - id: py-unpacking
+    prompt: "Déballer seq en first (premier élément) et rest (le reste, en liste)."
+    kind: stmt
+    var: rest
+    setup: |-
+      seq = [10, 20, 30, 40]
+    answer: |-
+      first, *rest = seq
+  - id: py-join
+    prompt: "Concaténer les chaînes de parts séparées par une virgule et un espace."
+    setup: |-
+      parts = ['a', 'b', 'c']
+    answer: |-
+      ', '.join(parts)
+    note: "`+=` sur des chaînes dans une boucle est O(n²) ; `join` est O(n)."
+  - id: py-dict-merge
+    prompt: "Fusionner d1 et d2 dans un nouveau dict (d2 l'emporte en cas de conflit)."
+    setup: |-
+      d1 = {'a': 1, 'b': 2}
+      d2 = {'b': 3}
+    answer: |-
+      d1 | d2
+    note: "Python ≥ 3.9. Avant : `{**d1, **d2}`."
+  - id: py-dict-sort-values
+    prompt: "Les clés de d triées par valeur décroissante."
+    setup: |-
+      d = {'a': 3, 'b': 7, 'c': 1}
+    answer: |-
+      sorted(d, key=d.get, reverse=True)
+  - id: py-property
+    kind: reveal
+    prompt: "Exposer self._x en lecture seule via un attribut x (propriété)."
+    answer: |-
+      @property
+      def x(self):
+          return self._x
+    note: "Sans `@x.setter`, l'affectation `obj.x = ...` lève `AttributeError`."
+  - id: py-raise
+    kind: reveal
+    prompt: "Lever une erreur si amount n'est pas strictement positif."
+    answer: |-
+      if amount <= 0:
+          raise ValueError(f"amount doit être > 0, reçu {amount}")
+    note: "`ValueError` : bonne type, mauvaise valeur. `TypeError` : mauvais type. `KeyError` / `IndexError` : accès."
+  - id: py-decorator-wraps
+    kind: reveal
+    prompt: "Squelette d'un décorateur qui préserve le nom et la docstring de la fonction."
+    answer: |-
+      import functools
+
+      def deco(func):
+          @functools.wraps(func)
+          def wrapper(*args, **kwargs):
+              return func(*args, **kwargs)
+          return wrapper
+  - id: py-mutable-default
+    kind: reveal
+    prompt: "Corriger : def add(x, acc=[]): acc.append(x); return acc"
+    answer: |-
+      def add(x, acc=None):
+          if acc is None:
+              acc = []
+          acc.append(x)
+          return acc
+    note: "Les valeurs par défaut sont évaluées **une seule fois**, à la définition : la même liste est partagée entre les appels."

@@ -1,0 +1,50 @@
+id: py-comprehensions
+title: Compréhensions de liste
+domain: python
+difficulty: easy
+minutes: 4
+tags: [list comprehension, filtrage]
+cards: [py-listcomp-filter, py-dictcomp]
+statement: |
+  Écris `squares_of_evens(nums)` qui renvoie la **liste des carrés des nombres pairs** de `nums`, dans l'ordre d'origine.
+
+  Puis écris `length_index(words)` qui renvoie un **dictionnaire** `{mot: longueur}`, en ignorant les mots vides.
+
+  Contrainte : une seule ligne par fonction (compréhension de liste et de dict).
+starter: |
+  def squares_of_evens(nums):
+      pass
+
+
+  def length_index(words):
+      pass
+solution: |
+  def squares_of_evens(nums):
+      return [n * n for n in nums if n % 2 == 0]
+
+
+  def length_index(words):
+      return {w: len(w) for w in words if w}
+tests:
+  - call: squares_of_evens([1, 2, 3, 4, 5, 6])
+    expected: "[4, 16, 36]"
+  - call: squares_of_evens([])
+    expected: "[]"
+  - call: "length_index(['data', '', 'ia'])"
+    expected: "{'data': 4, 'ia': 2}"
+  - call: squares_of_evens([-2, -3, 0])
+    hidden: true
+  - call: "length_index([])"
+    hidden: true
+hints:
+  - "La forme générale : `[expression for x in iterable if condition]`."
+  - "Pour un dict : `{cle: valeur for x in iterable if condition}`. Une chaîne vide est « falsy », `if w` suffit."
+explanation: |
+  ```python
+  [f(x) for x in xs if cond(x)]          # liste
+  {k(x): v(x) for x in xs if cond(x)}    # dict
+  {f(x) for x in xs}                     # set
+  (f(x) for x in xs)                     # générateur (paresseux)
+  ```
+  - Le `if` **à la fin** filtre. Un `if/else` **avant** le `for` transforme : `[x if x > 0 else 0 for x in xs]`.
+  - Préfère une compréhension à `map`/`filter` + `lambda` : c'est plus lisible et c'est le style attendu en entretien.

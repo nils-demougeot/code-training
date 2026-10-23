@@ -1,0 +1,50 @@
+id: algo-valid-parentheses
+title: Parenthèses équilibrées
+domain: algo
+difficulty: easy
+minutes: 6
+interview: true
+tags: [pile, stack]
+cards: [cx-list-append-pop]
+statement: |
+  Écris `is_valid(s)` qui renvoie `True` si la chaîne `s`, composée de `()[]{}`, est **bien parenthésée** : chaque ouvrante est fermée par la bonne fermante, dans le bon ordre.
+
+  ```python
+  is_valid("([]{})")  # True
+  is_valid("([)]")    # False
+  ```
+starter: |
+  def is_valid(s):
+      pass
+solution: |
+  def is_valid(s):
+      pairs = {')': '(', ']': '[', '}': '{'}
+      stack = []
+      for ch in s:
+          if ch in pairs:
+              if not stack or stack.pop() != pairs[ch]:
+                  return False
+          else:
+              stack.append(ch)
+      return not stack
+tests:
+  - call: is_valid("([]{})")
+    expected: "True"
+  - call: is_valid("([)]")
+    expected: "False"
+  - call: is_valid("")
+    expected: "True"
+  - call: is_valid("((")
+    expected: "False"
+  - call: is_valid("}")
+    hidden: true
+  - call: is_valid("{[()()]}[]")
+    hidden: true
+hints:
+  - "La dernière ouvrante rencontrée doit être la première fermée : c'est une **pile** (LIFO)."
+  - "En Python, une liste fait une pile parfaite : `append` et `pop` en O(1)."
+  - "N'oublie pas les deux cas d'échec : fermante sans ouvrante (pile vide), et ouvrantes restantes à la fin."
+explanation: |
+  - **Pile** (LIFO) : `list.append` / `list.pop()`. **File** (FIFO) : `collections.deque` avec `append` / `popleft` (pas `list.pop(0)`, qui est O(n)).
+  - Pattern « dernier ouvert, premier fermé » : parenthèses, balises HTML, évaluation d'expressions, annulation (undo).
+  - Complexité O(n) en temps et en mémoire.

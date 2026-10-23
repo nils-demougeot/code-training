@@ -1,0 +1,69 @@
+id: axes-broadcasting
+title: Axes, shapes et broadcasting
+domain: numpy
+summary: Comprendre une fois pour toutes axis=0 / axis=1, keepdims et les règles du broadcasting.
+body: |
+  ## axis : l'axe qui disparaît
+
+  `a.sum(axis=k)` **supprime l'axe k** de la shape.
+
+  ```python
+  a = np.ones((3, 4))      # 3 lignes, 4 colonnes
+  a.sum(axis=0).shape      # (4,)  → on a « écrasé » les lignes : un résultat par colonne
+  a.sum(axis=1).shape      # (3,)  → un résultat par ligne
+  a.sum().shape            # ()    → un seul nombre
+  ```
+
+  Moyen mnémotechnique : **axis=0 descend le long des lignes**. Pour un dataset `X (n_samples, n_features)` :
+
+  - `X.mean(axis=0)` → moyenne de chaque **feature** (ce que fait `StandardScaler`) ;
+  - `X.mean(axis=1)` → moyenne de chaque **exemple**.
+
+  En 3D (batch d'images `(N, H, W)`), `axis=(1, 2)` réduit chaque image à un nombre.
+
+  > Le lab **Shapes, axes et broadcasting** le montre visuellement.
+
+  ## Les règles du broadcasting
+
+  Pour combiner deux tableaux de shapes différentes, NumPy :
+
+  1. **aligne les shapes à droite** ;
+  2. compare axe par axe : OK si les tailles sont **égales** ou si l'une vaut **1** (elle est étirée) ;
+  3. un axe manquant à gauche compte comme 1.
+
+  ```text
+  (100, 3) - (3,)      →  (100, 3) - (1, 3)    → (100, 3)   ✓ centrer les colonnes
+  (100, 3) - (100,)    →  3 ≠ 100                           ✗ ValueError
+  (100, 3) - (100, 1)                          → (100, 3)   ✓ centrer les lignes
+  (5, 1)   + (1, 4)                            → (5, 4)     ✓ « produit extérieur »
+  (32, 10, 64) + (64,)                         → (32, 10, 64) ✓ biais d'une couche
+  ```
+
+  ## keepdims=True : le réflexe
+
+  ```python
+  X / X.sum(axis=1)                  # (n, d) / (n,)   ✗
+  X / X.sum(axis=1, keepdims=True)   # (n, d) / (n, 1) ✓
+  X / X.sum(axis=1)[:, None]         # équivalent
+  ```
+
+  ## Ajouter des axes : None / np.newaxis
+
+  ```python
+  v = np.arange(3)       # (3,)
+  v[:, None]             # (3, 1)
+  v[None, :]             # (1, 3)
+  A[:, None, :] - B[None, :, :]   # (n, 1, d) - (1, m, d) → (n, m, d) : toutes les paires
+  ```
+
+  ## reshape vs transpose
+
+  - `reshape` **relit** les données dans l'ordre mémoire (ligne par ligne). `np.arange(6).reshape(2, 3)` → `[[0 1 2], [3 4 5]]`.
+  - `transpose` / `.T` **échange les axes**. `(2, 3)` → `(3, 2)` avec `a.T[i, j] == a[j, i]`.
+  - Passer `(N, H, W, C)` à `(N, C, H, W)` : c'est un `transpose(0, 3, 1, 2)`, **jamais** un `reshape` (qui mélangerait les pixels).
+
+  ## Checklist anti-bug
+
+  1. Écris les shapes en commentaire à chaque ligne : `# (n, d) @ (d, h) -> (n, h)`.
+  2. Méfie-toi des shapes `(n,)` : beaucoup de bugs viennent d'un vecteur 1D qui broadcast dans le mauvais sens.
+  3. Vérifie avec des tailles **toutes différentes** (n=5, d=3, h=4) : une erreur de shape apparaît immédiatement, au lieu d'être masquée par un carré 3×3.

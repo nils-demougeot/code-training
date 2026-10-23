@@ -1,0 +1,51 @@
+id: algo-two-sum
+title: Two Sum
+domain: algo
+difficulty: easy
+minutes: 6
+interview: true
+tags: [hash map, O(n)]
+cards: [cx-dict-lookup]
+statement: |
+  Le grand classique. Étant donné une liste d'entiers `nums` et un entier `target`, renvoie les **indices** `(i, j)` avec `i < j` tels que `nums[i] + nums[j] == target`.
+
+  - Il existe **exactement une** solution.
+  - On ne peut pas utiliser deux fois le même élément.
+  - Objectif : **O(n)** (une seule passe), pas O(n²).
+starter: |
+  def two_sum(nums, target):
+      pass
+solution: |
+  def two_sum(nums, target):
+      seen = {}  # valeur -> indice
+      for j, x in enumerate(nums):
+          if target - x in seen:
+              return (seen[target - x], j)
+          seen[x] = j
+tests:
+  - call: two_sum([2, 7, 11, 15], 9)
+    expected: (0, 1)
+  - call: two_sum([3, 2, 4], 6)
+    expected: (1, 2)
+  - call: two_sum([3, 3], 6)
+    expected: (0, 1)
+  - name: Grande entrée (O(n) requis)
+    call: two_sum(list(range(200_000)), 399_997)
+    expected: (199_998, 199_999)
+  - call: two_sum([-5, 10, 4, -1], 3)
+    hidden: true
+hints:
+  - "La version naïve teste toutes les paires : O(n²). Comment savoir en O(1) si le complément `target - x` a déjà été vu ?"
+  - "Un dict `{valeur: indice}` rempli au fur et à mesure."
+  - "Teste le complément **avant** d'insérer `x`, pour ne pas réutiliser le même élément."
+explanation: |
+  ```python
+  seen = {}
+  for j, x in enumerate(nums):
+      if target - x in seen:          # O(1) en moyenne
+          return seen[target - x], j
+      seen[x] = j
+  ```
+  - **Pattern** : « ai-je déjà vu X ? » → `set` / `dict`. Échange de la mémoire O(n) contre du temps.
+  - Variante triée : deux pointeurs (début/fin) en O(n) et O(1) de mémoire.
+  - En entretien : annonce d'abord la force brute O(n²), puis optimise. Mentionne les cas limites (doublons, négatifs).

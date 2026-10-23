@@ -1,0 +1,59 @@
+id: pd-features
+title: Feature engineering vectorisé
+domain: pandas
+difficulty: easy
+minutes: 6
+shared: shop_df
+tags: [cut, np.where, map, vectorisation]
+cards: [pd-cut, pd-map-dict]
+statement: |
+  Écris `add_features(df)` qui renvoie une copie de `df` avec 4 nouvelles colonnes, **sans `apply` ni boucle** :
+
+  | colonne | définition |
+  |---|---|
+  | `total` | `qty * price` |
+  | `is_weekend` | `True` si la commande a lieu samedi ou dimanche |
+  | `price_band` | `'low'` si `price < 40`, `'mid'` si `40 <= price < 150`, `'high'` sinon (type `str`) |
+  | `region` | `'Nord'` pour Paris, `'Sud'` pour Marseille et Bordeaux, `'Centre'` pour Lyon |
+starter: |
+  import numpy as np
+  import pandas as pd
+
+
+  def add_features(df):
+      pass
+solution: |
+  import numpy as np
+  import pandas as pd
+
+
+  def add_features(df):
+      out = df.copy()
+      out['total'] = out['qty'] * out['price']
+      out['is_weekend'] = pd.to_datetime(out['date']).dt.dayofweek >= 5
+      out['price_band'] = np.select(
+          [out['price'] < 40, out['price'] < 150], ['low', 'mid'], default='high'
+      ).astype(str)
+      out['region'] = out['city'].map({'Paris': 'Nord', 'Marseille': 'Sud', 'Bordeaux': 'Sud', 'Lyon': 'Centre'})
+      return out
+tests:
+  - call: add_features(orders)[['total', 'is_weekend', 'price_band', 'region']]
+  - name: Pas de apply
+    check: |
+      import inspect
+      assert '.apply(' not in inspect.getsource(add_features), "essaie sans apply : opérations vectorisées uniquement"
+  - call: add_features(make_orders(100, seed=8))[['price_band', 'region']].value_counts().sort_index()
+    hidden: true
+hints:
+  - "Booléen vectorisé : `pd.to_datetime(df['date']).dt.dayofweek >= 5`."
+  - "Plusieurs seuils : `np.select([cond1, cond2], ['low', 'mid'], default='high')` ou `pd.cut(df.price, bins=[0, 40, 150, np.inf], right=False, labels=[...])`."
+  - "Correspondance valeur → valeur : `s.map({'Paris': 'Nord', ...})`."
+explanation: |
+  ```python
+  np.where(cond, a, b)                                  # if/else
+  np.select([c1, c2], [v1, v2], default=v3)             # if/elif/else
+  pd.cut(x, bins=[0, 40, 150, np.inf], right=False, labels=['low', 'mid', 'high'])
+  s.map(dict_ou_fonction)                               # correspondance
+  ```
+  - `apply(axis=1)` exécute une fonction Python **par ligne** : 10 à 100× plus lent que la version vectorisée.
+  - `pd.cut` renvoie un `Categorical` (pratique pour l'ordre, à convertir avec `.astype(str)` si besoin).

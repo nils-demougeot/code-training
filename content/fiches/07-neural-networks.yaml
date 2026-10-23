@@ -1,0 +1,72 @@
+id: neural-networks
+title: Réseaux de neurones, ce qu'il se passe vraiment
+domain: dl
+summary: Couches, activations, large vs profond, initialisation, backprop, optimiseurs, régularisation et normalisation.
+body: |
+  ## Ce que calcule un MLP
+
+  Chaque couche : $h = \sigma(xW + b)$. Un réseau = une **composition** de couches : $f(x) = W_3\,\sigma(W_2\,\sigma(W_1 x))$.
+
+  - Sans activation non linéaire, tout se résume à **une seule** transformation linéaire.
+  - Chaque neurone ReLU « plie » l'espace le long d'un hyperplan ; les couches suivantes combinent ces plis.
+
+  ## Large vs profond
+
+  | | Large (peu de couches, beaucoup de neurones) | Profond (beaucoup de couches) |
+  |---|---|---|
+  | Intuition | somme de nombreuses features simples | features **hiérarchiques** (bords → formes → objets) |
+  | Expressivité | universelle en théorie, mais peut demander énormément de neurones | le nombre de régions linéaires croît **exponentiellement** avec la profondeur |
+  | Paramètres | beaucoup | moins pour la même expressivité |
+  | Optimisation | facile | difficile : gradients qui s'évanouissent ou explosent |
+  | Remèdes | — | ReLU, init He, BatchNorm/LayerNorm, **connexions résiduelles** |
+
+  En pratique : profondeur modérée + largeur suffisante, choisies par validation. Et une couche trop étroite est un **goulot d'étranglement** qui détruit l'information.
+
+  > Expérimente dans le lab **Réseau de neurones : large ou profond ?**
+
+  ## Activations
+
+  | Activation | Formule | Usage |
+  |---|---|---|
+  | ReLU | max(0, x) | couches cachées par défaut |
+  | GELU / SiLU | versions lisses de ReLU | transformers, CNN modernes |
+  | sigmoïde | 1/(1+e⁻ˣ) | sortie **binaire** / multi-label |
+  | tanh | (eˣ−e⁻ˣ)/(eˣ+e⁻ˣ) | RNN, sorties dans [−1, 1] |
+  | softmax | eᶻⁱ/Σeᶻʲ | sortie **multi-classe** |
+
+  ## Entraînement : la boucle
+
+  1. **Forward** : calcul des prédictions et de la loss.
+  2. **Backward** : la règle de dérivation en chaîne donne $\partial L / \partial \theta$ pour chaque paramètre, couche par couche, de la sortie vers l'entrée.
+  3. **Mise à jour** : $\theta \leftarrow \theta - \eta\,\nabla_\theta L$.
+
+  Pour une couche $Y = XW$ : `dW = X.T @ dY`, `dX = dY @ W.T`. Le gradient a toujours la **shape du paramètre**.
+
+  ## Optimiseurs
+
+  - **SGD** : simple, bruité ; généralise souvent bien.
+  - **Momentum** : moyenne mobile des gradients → amortit les zigzags.
+  - **Adam** : momentum + pas adaptatif par paramètre → robuste, défaut raisonnable (`lr=1e-3`).
+  - **AdamW** : Adam avec weight decay découplé (standard pour les transformers).
+  - **Scheduler** : diminuer le learning rate au fil de l'entraînement (cosine, step, warmup).
+
+  ## Diagnostiquer avec les courbes
+
+  | Symptôme | Cause probable | Action |
+  |---|---|---|
+  | loss train ne baisse pas | lr trop petit/grand, bug, modèle trop petit | vérifier sur un mini-batch qu'on peut overfitter |
+  | loss → NaN | lr trop grand, log(0) | baisser lr, gradient clipping, loss stable |
+  | train ↓, val ↑ | overfitting | régularisation, données, early stopping |
+  | train et val hauts | underfitting | modèle plus gros, entraîner plus longtemps |
+
+  ## Régularisation et normalisation
+
+  - **Weight decay (L2)** : pénalise les grands poids.
+  - **Dropout** : éteint des neurones au hasard en **train** (rien en eval).
+  - **Early stopping** : arrêter quand la loss de validation remonte.
+  - **Data augmentation** : plus de données « gratuites » (images, audio).
+  - **BatchNorm / LayerNorm** : stabilisent les activations, permettent des lr plus grands.
+
+  ## Initialisation
+
+  Ni zéro (symétrie : tous les neurones restent identiques) ni trop grand (explosion). **He** $\mathcal N(0, 2/n_{in})$ pour ReLU, **Xavier** pour tanh. Les frameworks le font pour toi.
