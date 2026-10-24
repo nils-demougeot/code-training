@@ -1,0 +1,53 @@
+id: bl-perceptron
+title: L'algorithme du perceptron
+domain: ml
+difficulty: medium
+statement: |
+  Remets dans l'ordre l'algorithme du **perceptron** (Rosenblatt) pour des étiquettes `y ∈ {-1, +1}` :
+
+  pour chaque exemple **mal classé** (`y · (x·w + b) ≤ 0`), on corrige `w += y·x` et `b += y`. On arrête dès qu'une epoch se termine sans erreur.
+
+  Renvoie `(w, b)`.
+setup: |
+  import numpy as np
+  _rng = np.random.default_rng(3)
+  X = _rng.normal(size=(80, 2))
+  y = np.where(X @ np.array([2.0, -1.0]) + 0.5 > 0, 1, -1)
+  X = X + 0.3 * y[:, None] * np.array([2.0, -1.0]) / np.sqrt(5)
+solution: |
+  import numpy as np
+
+
+  def perceptron(X, y, epochs=1000):
+      w = np.zeros(X.shape[1])
+      b = 0.0
+      for _ in range(epochs):
+          errors = 0
+          for xi, yi in zip(X, y):
+              if yi * (xi @ w + b) <= 0:
+                  w += yi * xi
+                  b += yi
+                  errors += 1
+          if errors == 0:
+              break
+      return w, b
+tests:
+  - name: Sépare parfaitement des données séparables
+    check: |
+      w, b = perceptron(X, y)
+      assert (np.sign(X @ w + b) == y).all()
+  - call: perceptron(X, y)
+  - name: Cas minimal
+    check: |
+      w, b = perceptron(np.array([[1.0], [-1.0]]), np.array([1, -1]))
+      assert w[0] * 1 + b > 0 and w[0] * -1 + b < 0
+distractors:
+  - line: "if yi * (xi @ w + b) < 0:"
+    replaces: "if yi * (xi @ w + b) <= 0:"
+  - line: "w += xi"
+    replaces: "w += yi * xi"
+explanation: |
+  - Le perceptron est un classifieur linéaire : il prédit `sign(x·w + b)`.
+  - La mise à jour pousse `w` vers `x` pour un positif mal classé, et l'en éloigne pour un négatif.
+  - Théorème de convergence : si les données sont **linéairement séparables**, l'algorithme s'arrête en un nombre fini d'erreurs. Sinon il boucle : d'où la régression logistique et le SVM (marge).
+  - Piège : avec `< 0`, le point de départ `w = 0` ne déclenche jamais de mise à jour (`0 < 0` est faux).

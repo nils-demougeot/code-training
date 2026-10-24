@@ -1,0 +1,39 @@
+id: bl-parse-numbers
+title: Parser des nombres avec try / except / else
+domain: python
+difficulty: easy
+statement: |
+  Remets dans l'ordre `parse_numbers(lines)` qui lit des lignes de texte :
+
+  - on ignore les lignes vides et les commentaires (commençant par `#`) ;
+  - on accepte la virgule décimale (`"2,5"` → `2.5`) ;
+  - une ligne invalide n'arrête pas le traitement : on note son **numéro** (à partir de 1).
+
+  Renvoie `(valeurs, numéros_des_lignes_invalides)`.
+solution: |
+  def parse_numbers(lines):
+      values, errors = [], []
+      for number, line in enumerate(lines, start=1):
+          line = line.strip()
+          if not line or line.startswith('#'):
+              continue
+          try:
+              value = float(line.replace(',', '.'))
+          except ValueError:
+              errors.append(number)
+          else:
+              values.append(value)
+      return values, errors
+tests:
+  - call: parse_numbers(["1", " 2,5 ", "", "# commentaire", "abc", "3e2"])
+  - call: parse_numbers(["x", "y"])
+  - call: parse_numbers([])
+distractors:
+  - line: "for number, line in enumerate(lines):"
+    replaces: "for number, line in enumerate(lines, start=1):"
+  - line: "value = float(line)"
+    replaces: "value = float(line.replace(',', '.'))"
+explanation: |
+  - Le bloc `else` d'un `try` ne s'exécute que si **aucune** exception n'a été levée : on n'y met que ce qui dépend du succès.
+  - On attrape l'exception **précise** (`ValueError`), jamais un `except:` nu qui masquerait aussi les bugs (`NameError`, `KeyboardInterrupt`…).
+  - `enumerate(lines, start=1)` donne des numéros de ligne « humains ».

@@ -1,0 +1,85 @@
+id: bl-union-find
+title: Union-Find (ensembles disjoints)
+domain: algo
+difficulty: medium
+statement: |
+  Remets dans l'ordre une structure **Union-Find** avec compression de chemin et union par taille, puis `count_groups(n, pairs)` qui compte les groupes connectés parmi `n` éléments reliés par des paires.
+
+  - `find(x)` renvoie le représentant (la racine) du groupe de `x` ;
+  - `union(a, b)` fusionne les deux groupes (la petite racine est rattachée à la grande), met à jour `size` et `count`, et renvoie `False` si `a` et `b` étaient déjà ensemble ;
+  - `size[r]` est la taille du groupe de racine `r`.
+solution: |
+  class UnionFind:
+      def __init__(self, n):
+          self.parent = list(range(n))
+          self.size = [1] * n
+          self.count = n
+
+      def find(self, x):
+          while self.parent[x] != x:
+              self.parent[x] = self.parent[self.parent[x]]
+              x = self.parent[x]
+          return x
+
+      def union(self, a, b):
+          ra, rb = self.find(a), self.find(b)
+          if ra == rb:
+              return False
+          if self.size[ra] < self.size[rb]:
+              ra, rb = rb, ra
+          self.parent[rb] = ra
+          self.size[ra] += self.size[rb]
+          self.count -= 1
+          return True
+
+
+  def count_groups(n, pairs):
+      uf = UnionFind(n)
+      for a, b in pairs:
+          uf.union(a, b)
+      return uf.count
+tests:
+  - call: count_groups(5, [(0, 1), (1, 2), (3, 4)])
+  - call: count_groups(4, [])
+  - name: union renvoie False dans le même groupe
+    check: |
+      uf = UnionFind(3)
+      assert uf.union(0, 1) is True
+      assert uf.union(1, 0) is False and uf.count == 2
+  - name: Tailles des groupes
+    check: |
+      uf = UnionFind(6)
+      for a, b in [(0, 1), (2, 3), (1, 3), (4, 5)]:
+          uf.union(a, b)
+      assert uf.size[uf.find(0)] == 4 and uf.size[uf.find(5)] == 2
+  - name: Comparaison avec un parcours de graphe (graphes aléatoires)
+    check: |
+      import random
+      rng = random.Random(1)
+      for _ in range(100):
+          n = rng.randint(1, 15)
+          pairs = [(rng.randrange(n), rng.randrange(n)) for _ in range(rng.randint(0, 12))]
+          adj = {i: set() for i in range(n)}
+          for a, b in pairs:
+              adj[a].add(b)
+              adj[b].add(a)
+          seen, groups = set(), 0
+          for s in range(n):
+              if s not in seen:
+                  groups += 1
+                  stack = [s]
+                  while stack:
+                      u = stack.pop()
+                      if u not in seen:
+                          seen.add(u)
+                          stack.extend(adj[u])
+          assert count_groups(n, pairs) == groups, (n, pairs)
+distractors:
+  - line: "if ra != rb:"
+    replaces: "if ra == rb:"
+  - line: "self.parent[ra] = rb"
+    replaces: "self.parent[rb] = ra"
+explanation: |
+  - **Compression de chemin** : en remontant, chaque nœud pointe vers son grand-parent, ce qui aplatit l'arbre.
+  - **Union par taille** : on accroche le petit arbre sous le grand, la hauteur reste en O(log n).
+  - Avec les deux, chaque opération coûte quasiment O(1) (fonction d'Ackermann inverse). Usages : composantes connexes, Kruskal, détection de cycle.

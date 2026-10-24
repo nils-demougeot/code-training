@@ -1,12 +1,12 @@
 import confetti from 'canvas-confetti'
 import clsx from 'clsx'
 import {
-  ArrowLeft, ArrowRight, BookOpenCheck, Brain, CheckCircle2, Clock, Cpu, Eye, Gauge, Lightbulb, Lock, Medal, Mic,
+  ArrowLeft, ArrowRight, BookMarked, BookOpenCheck, Brain, CheckCircle2, Clock, Cpu, Eye, Gauge, Lightbulb, Lock, Medal, Mic,
   NotebookPen, Puzzle, RotateCcw, Sparkles, Timer, X,
 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { docLibForDomain } from '@/components/DocBrowser'
+import { DocBrowser, docLibForDomain } from '@/components/DocBrowser'
 import { CodeBlock, Markdown } from '@/components/Markdown'
 import { DifficultyBadge, DomainChip, Empty, Tabs } from '@/components/ui'
 import { SplitPane, Workspace } from '@/components/Workspace'
@@ -17,7 +17,7 @@ import { exerciseXp, useProgress } from '@/lib/progress'
 import { formatInterval, scheduleAfterSolve, type Grade } from '@/lib/srs'
 import type { Exercise, RunResult, TestResult } from '@/lib/types'
 
-type Tab = 'statement' | 'hints' | 'solution' | 'learn' | 'notes'
+type Tab = 'statement' | 'hints' | 'solution' | 'learn' | 'doc' | 'notes'
 
 function useTimer(resetKey: string) {
   const [start, setStart] = useState(() => Date.now())
@@ -211,6 +211,7 @@ function ExerciseView({ ex }: { ex: Exercise }) {
     ...(solved || solutionOpen
       ? [{ id: 'learn' as Tab, label: <><BookOpenCheck className="size-3.5" />À retenir</> }]
       : []),
+    { id: 'doc', label: <><BookMarked className="size-3.5" />Doc</> },
     { id: 'notes', label: <NotebookPen className="size-3.5" aria-label="Notes" /> },
   ]
   // In recall mode only the statement stays visible.
@@ -298,7 +299,8 @@ function ExerciseView({ ex }: { ex: Exercise }) {
         <Tabs className="mt-4 -mb-1" tabs={tabs} value={tab} onChange={setTab} />
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5">
+      <div className={clsx('min-h-0 flex-1', tab === 'doc' ? 'flex flex-col' : 'overflow-y-auto px-5 py-5')}>
+        {tab === 'doc' && <DocBrowser initialLib={docLibForDomain(ex.domain, requireLocal)} />}
         {tab === 'statement' && (
           <div className="space-y-5">
             {reviewDue && !recall && (

@@ -1,0 +1,80 @@
+id: bl-shapes
+title: Héritage et polymorphisme
+domain: python
+difficulty: easy
+statement: |
+  Remets dans l'ordre une petite hiérarchie de formes :
+
+  - `Shape` est la classe de base : `area()` lève `NotImplementedError`, et deux formes se **comparent par leur aire** (`__lt__`) ;
+  - `Rectangle(width, height)` et `Circle(radius)` héritent de `Shape` ;
+  - `Square(side)` **est un** `Rectangle` dont les deux côtés valent `side` (il réutilise le constructeur parent) ;
+  - `largest(shapes)` renvoie la forme d'aire maximale.
+solution: |
+  import math
+
+
+  class Shape:
+      def area(self):
+          raise NotImplementedError
+
+      def __lt__(self, other):
+          return self.area() < other.area()
+
+
+  class Rectangle(Shape):
+      def __init__(self, width, height):
+          self.width = width
+          self.height = height
+
+      def area(self):
+          return self.width * self.height
+
+
+  class Square(Rectangle):
+      def __init__(self, side):
+          super().__init__(side, side)
+
+
+  class Circle(Shape):
+      def __init__(self, radius):
+          self.radius = radius
+
+      def area(self):
+          return math.pi * self.radius ** 2
+
+
+  def largest(shapes):
+      return max(shapes)
+tests:
+  - name: Aires
+    check: |
+      assert Square(3).area() == 9
+      assert Rectangle(2, 5).area() == 10
+      assert abs(Circle(1).area() - math.pi) < 1e-12
+  - name: Un carré est un rectangle
+    check: |
+      s = Square(2)
+      assert isinstance(s, Rectangle) and isinstance(s, Shape)
+      assert (s.width, s.height) == (2, 2)
+  - name: Tri et maximum par aire
+    check: |
+      shapes = [Circle(1), Square(1), Rectangle(1, 4)]
+      assert [type(s).__name__ for s in sorted(shapes)] == ['Square', 'Circle', 'Rectangle']
+      assert type(largest(shapes)).__name__ == 'Rectangle'
+  - name: La base est abstraite
+    check: |
+      try:
+          Shape().area()
+      except NotImplementedError:
+          pass
+      else:
+          raise AssertionError('NotImplementedError attendue')
+distractors:
+  - line: "super().__init__(side)"
+    replaces: "super().__init__(side, side)"
+  - line: "class Square(Shape):"
+    replaces: "class Square(Rectangle):"
+explanation: |
+  - `super().__init__(...)` appelle le constructeur de la classe **parente** : `Square` n'a pas à recopier ce que fait `Rectangle`.
+  - Le **polymorphisme** : `max`, `sorted` ou `largest` manipulent des `Shape` sans savoir lesquelles ; chaque classe fournit sa propre `area()`.
+  - Définir `__lt__` suffit pour `sorted` et `max`. Pour toutes les comparaisons, voir `functools.total_ordering`. Pour une vraie classe abstraite, voir le module `abc` (`ABC`, `@abstractmethod`).

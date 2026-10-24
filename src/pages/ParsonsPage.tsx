@@ -1,29 +1,21 @@
-import {
-  closestCorners, DndContext, DragOverlay, KeyboardSensor, PointerSensor, TouchSensor, useDroppable, useSensor, useSensors,
-  type DragEndEvent, type DragOverEvent, type DragStartEvent,
-} from '@dnd-kit/core'
-import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
-import { CSS } from '@dnd-kit/utilities'
 import clsx from 'clsx'
 import {
-  ArrowLeft, ArrowRight, ArrowUp, CheckCircle2, ChevronLeft, ChevronRight, Eye, GripVertical, Lightbulb, Loader2, Play, Puzzle,
-  Send, Shuffle, X,
+  ArrowLeft, ArrowRight, CheckCircle2, Eye, Lightbulb, Loader2, Play, Puzzle, Send, Shuffle,
 } from 'lucide-react'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { CodeBlock, highlight, Markdown } from '@/components/Markdown'
+import { CodeBlock, Markdown } from '@/components/Markdown'
 import { OutputPanel } from '@/components/OutputPanel'
 import { DifficultyBadge, DomainChip, Empty } from '@/components/ui'
 import { SplitPane } from '@/components/Workspace'
 import { parsonsById, parsonsProblems, setupOf, toPython } from '@/lib/content'
 import { runCode, runTests } from '@/lib/engine'
-import { assemble, distractorBlocks, MAX_INDENT, shuffled, toBlocks, type ParsonsBlock } from '@/lib/parsons'
+import { assemble, distractorBlocks, shuffled, toBlocks, type ParsonsBlock } from '@/lib/parsons'
 import { useProgress } from '@/lib/progress'
 import type { ParsonsProblem, RunResult } from '@/lib/types'
 import { celebrate } from './ExercisePage'
+import { ParsonsBoard, type BoardState } from './ParsonsBoard'
 
-/** Width of one indentation level on screen. */
-const STEP = 28
 const MODE_KEY = 'ct.parsons.mode'
 
 interface Mode {
@@ -41,11 +33,7 @@ function loadMode(): Mode {
   }
 }
 
-interface Board {
-  pool: string[]
-  program: string[]
-  indents: Record<string, number>
-}
+type Board = BoardState
 
 const blockText = (b: ParsonsBlock) => b.lines.join('\n')
 
@@ -92,8 +80,6 @@ function ParsonsGame({ problem }: { problem: ParsonsProblem }) {
   const [solvedNow, setSolvedNow] = useState<{ xp: number } | null>(null)
   const [hint, setHint] = useState<{ id: string | null; text: string } | null>(null)
   const [showSolution, setShowSolution] = useState(false)
-  const [activeId, setActiveId] = useState<string | null>(null)
-  const programRef = useRef<HTMLDivElement>(null)
 
   const setMode = (m: Mode) => {
     setModeState(m)
@@ -112,101 +98,6 @@ function ParsonsGame({ problem }: { problem: ParsonsProblem }) {
 
   const program = () =>
     assemble(board.program.map((bid) => ({ block: blocks.get(bid)!, indent: indentOf(bid) })))
-
-  // ------------------------------------------------------------- board moves
-
-  const containerOf = (bid: string): 'pool' | 'program' | null =>
-    bid === 'pool' || bid === 'program' ? bid : board.pool.includes(bid) ? 'pool' : board.program.includes(bid) ? 'program' : null
-
-  const toProgram = (bid: string, at?: number) => {
-    changed()
-    setBoard((b) => {
-      const prog = b.program.filter((x) => x !== bid)
-      const pos = at ?? prog.length
-      prog.splice(pos, 0, bid)
-      // A new line starts at the indentation of the line above (the usual editor behaviour).
-      const above = prog[pos - 1]
-      const indent = b.indents[bid] ?? (above ? b.indents[above] ?? 0 : 0)
-      return { pool: b.pool.filter((x) => x !== bid), program: prog, indents: { ...b.indents, [bid]: indent } }
-    })
-  }
-
-  const toPool = (bid: string) => {
-    changed()
-    setBoard((b) => {
-      const indents = { ...b.indents }
-      delete indents[bid]
-      return { pool: [...b.pool, bid], program: b.program.filter((x) => x !== bid), indents }
-    })
-  }
-
-  const shiftIndent = (bid: string, delta: number) => {
-    if (!indentMode) return
-    changed()
-    setBoard((b) => ({
-      ...b,
-      indents: { ...b.indents, [bid]: Math.max(0, Math.min(MAX_INDENT, (b.indents[bid] ?? 0) + delta)) },
-    }))
-  }
-
-  const moveInProgram = (bid: string, delta: number) => {
-    changed()
-    setBoard((b) => {
-      const i = b.program.indexOf(bid)
-      const j = i + delta
-      if (i < 0 || j < 0 || j >= b.program.length) return b
-      return { ...b, program: arrayMove(b.program, i, j) }
-    })
-  }
-
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 120, tolerance: 6 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
-  )
-
-  const onDragStart = (e: DragStartEvent) => setActiveId(String(e.active.id))
-
-  const onDragOver = ({ active, over }: DragOverEvent) => {
-    if (!over) return
-    const from = containerOf(String(active.id))
-    const to = containerOf(String(over.id))
-    if (!from || !to || from === to) return
-    setBoard((b) => {
-      const src = b[from].filter((x) => x !== active.id)
-      const dst = b[to].slice()
-      const overIndex = dst.indexOf(String(over.id))
-      dst.splice(overIndex >= 0 ? overIndex : dst.length, 0, String(active.id))
-      return { ...b, [from]: src, [to]: dst }
-    })
-  }
-
-  const onDragEnd = ({ active, over }: DragEndEvent) => {
-    setActiveId(null)
-    const bid = String(active.id)
-    const where = containerOf(bid)
-    if (!where) return
-    changed()
-    setBoard((b) => {
-      let list = b[where]
-      if (over && containerOf(String(over.id)) === where && over.id !== where) {
-        const i = list.indexOf(bid)
-        const j = list.indexOf(String(over.id))
-        if (i >= 0 && j >= 0 && i !== j) list = arrayMove(list, i, j)
-      }
-      const indents = { ...b.indents }
-      if (where === 'program') {
-        // The indentation follows where the block was dropped horizontally.
-        const rect = active.rect.current.translated
-        const box = programRef.current?.getBoundingClientRect()
-        if (rect && box) indents[bid] = Math.max(0, Math.min(MAX_INDENT, Math.round((rect.left - box.left - 12) / STEP)))
-        else indents[bid] ??= 0
-      } else {
-        delete indents[bid]
-      }
-      return { ...b, [where]: list, indents }
-    })
-  }
 
   // ------------------------------------------------------------- actions
 
@@ -288,7 +179,6 @@ function ParsonsGame({ problem }: { problem: ParsonsProblem }) {
   })
 
   const solved = !!pp?.solvedAt
-  const active = activeId ? blocks.get(activeId) : undefined
 
   // ------------------------------------------------------------- layout
 
@@ -320,9 +210,11 @@ function ParsonsGame({ problem }: { problem: ParsonsProblem }) {
       </div>
       <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-5 py-5">
         <div className="rounded-xl border border-accent/25 bg-accent/[0.06] p-3 text-xs leading-relaxed text-muted">
-          Glisse les blocs dans <b className="text-fg">ton programme</b> (ou clique dessus), dans le bon ordre.
+          Construis <b className="text-fg">ton programme</b> dans le bon ordre : un clic sur un bloc l’ajoute sous la ligne sélectionnée,
+          un glisser-déposer le place exactement où la ligne en pointillés l’indique.
           {indentMode && (
-            <> Indente-les en les lâchant plus à droite, avec les flèches, ou avec <kbd>Tab</kbd> / <kbd>Maj+Tab</kbd> sur un bloc sélectionné.</>
+            <> L’indentation se règle en glissant plus à gauche ou plus à droite (le niveau s’affiche), ou avec <kbd>Tab</kbd> / <kbd>Maj+Tab</kbd> sur la ligne sélectionnée.
+            Après une ligne qui finit par <code>:</code>, le bloc ajouté par clic est indenté automatiquement.</>
           )}
           {trapsMode && <> Attention : certains blocs sont des <b className="text-warn">pièges</b> à laisser de côté.</>}
           {' '}Valide avec <kbd>Ctrl+Maj+Entrée</kbd> : les tests de l’exercice tournent sur ton programme.
@@ -375,46 +267,18 @@ function ParsonsGame({ problem }: { problem: ParsonsProblem }) {
         </div>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto p-3">
-        <DndContext sensors={sensors} collisionDetection={closestCorners} onDragStart={onDragStart} onDragOver={onDragOver} onDragEnd={onDragEnd} onDragCancel={() => setActiveId(null)}>
-          <div className="grid gap-3 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
-            <Column id="pool" title="Blocs disponibles" count={board.pool.length} empty="Tous les blocs sont placés.">
-              {board.pool.map((bid) => (
-                <SortableBlock key={bid} id={bid} block={blocks.get(bid)!} language={problem.language} indent={0} onClick={() => toProgram(bid)} />
-              ))}
-            </Column>
-            <Column
-              id="program"
-              title="Ton programme"
-              count={board.program.length}
-              empty="Glisse ou clique des blocs ici."
-              innerRef={programRef}
-              guides={indentMode}
-            >
-              {board.program.map((bid, i) => (
-                <SortableBlock
-                  key={bid}
-                  id={bid}
-                  block={blocks.get(bid)!}
-                  language={problem.language}
-                  indent={indentOf(bid)}
-                  inProgram
-                  canIndent={indentMode}
-                  highlighted={hint?.id === bid}
-                  onIndent={(d) => shiftIndent(bid, d)}
-                  onMove={(d) => moveInProgram(bid, d)}
-                  onRemove={() => toPool(bid)}
-                  isFirst={i === 0}
-                />
-              ))}
-            </Column>
-          </div>
-          <DragOverlay>
-            {active && (
-              <BlockView block={active} language={problem.language} className="cursor-grabbing border-accent/60 shadow-2xl shadow-black/60" />
-            )}
-          </DragOverlay>
-        </DndContext>
+      <div className="min-h-0 flex-1 overflow-y-auto p-3" data-scroll>
+        <ParsonsBoard
+          blocks={blocks}
+          state={board}
+          onChange={(b) => {
+            changed()
+            setBoard(b)
+          }}
+          indentMode={indentMode}
+          language={problem.language}
+          highlighted={hint?.id}
+        />
 
         {hint && (
           <div className="mt-3 flex items-start gap-2 rounded-xl border border-warn/30 bg-warn/[0.06] p-3 text-sm text-warn">
@@ -480,181 +344,6 @@ function Toggle({ on, onClick, label, title, disabled }: { on: boolean; onClick:
         <span className={clsx('absolute top-0.5 size-2.5 rounded-full bg-white transition-all', on ? 'left-3' : 'left-0.5')} />
       </span>
       {label}
-    </button>
-  )
-}
-
-function Column({
-  id, title, count, empty, children, innerRef, guides,
-}: {
-  id: string
-  title: string
-  count: number
-  empty: string
-  children: React.ReactNode
-  innerRef?: React.Ref<HTMLDivElement>
-  guides?: boolean
-}) {
-  const { setNodeRef, isOver } = useDroppable({ id })
-  const items = (Array.isArray(children) ? children : [children]).flat().map((c) => (c as { key: string }).key)
-  return (
-    <div className="min-w-0">
-      <div className="mb-1.5 flex items-center justify-between px-1 text-xs text-faint">
-        <span className="section-title">{title}</span>
-        <span>{count}</span>
-      </div>
-      <SortableContext id={id} items={items} strategy={verticalListSortingStrategy}>
-        <div
-          ref={(node) => {
-            setNodeRef(node)
-            if (typeof innerRef === 'function') innerRef(node)
-            else if (innerRef) (innerRef as React.MutableRefObject<HTMLDivElement | null>).current = node
-          }}
-          className={clsx(
-            'min-h-40 space-y-1.5 rounded-2xl border border-dashed p-3 transition',
-            isOver ? 'border-accent/60 bg-accent/[0.05]' : 'border-line bg-white/[0.015]',
-          )}
-          style={
-            guides
-              ? {
-                  backgroundImage: `repeating-linear-gradient(to right, rgb(255 255 255 / 0.05) 0 1px, transparent 1px ${STEP}px)`,
-                  backgroundPosition: '12px 0',
-                }
-              : undefined
-          }
-        >
-          {count === 0 && <div className="flex h-32 items-center justify-center text-center text-xs text-faint">{empty}</div>}
-          {children}
-        </div>
-      </SortableContext>
-    </div>
-  )
-}
-
-function BlockView({
-  block, language, className, children, highlighted, wrap,
-}: {
-  block: ParsonsBlock
-  language?: string
-  className?: string
-  children?: React.ReactNode
-  highlighted?: boolean
-  /** Wrap long lines (narrow pool column) instead of scrolling. */
-  wrap?: boolean
-}) {
-  return (
-    <div
-      className={clsx(
-        'group relative flex min-w-0 items-stretch rounded-lg border bg-[#11131c] font-mono text-[12.5px] leading-relaxed transition',
-        highlighted ? 'border-warn/70 ring-2 ring-warn/30' : 'border-white/10 hover:border-white/25',
-        className,
-      )}
-    >
-      <span className="flex items-center px-1 text-faint">
-        <GripVertical className="size-3.5" />
-      </span>
-      <pre className={clsx('min-w-0 flex-1 py-1.5 pr-2 text-[#c0caf5]', wrap ? 'whitespace-pre-wrap break-all' : 'overflow-x-auto')}>
-        <code dangerouslySetInnerHTML={{ __html: highlight(blockText(block), language === 'sql' ? 'sql' : 'python') }} />
-      </pre>
-      {children}
-    </div>
-  )
-}
-
-function SortableBlock({
-  id, block, language, indent, inProgram, canIndent, highlighted, onClick, onIndent, onMove, onRemove, isFirst,
-}: {
-  id: string
-  block: ParsonsBlock
-  language?: string
-  indent: number
-  inProgram?: boolean
-  canIndent?: boolean
-  highlighted?: boolean
-  onClick?: () => void
-  onIndent?: (delta: number) => void
-  onMove?: (delta: number) => void
-  onRemove?: () => void
-  isFirst?: boolean
-}) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id })
-  const onKeyDown = (e: React.KeyboardEvent) => {
-    if (!inProgram) {
-      if (e.key === 'Enter') {
-        // Enter adds the block; Space still starts a keyboard drag (dnd-kit).
-        e.preventDefault()
-        onClick?.()
-      }
-      return
-    }
-    if (e.key === 'Tab' && canIndent) {
-      e.preventDefault()
-      onIndent?.(e.shiftKey ? -1 : 1)
-    } else if (e.altKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
-      e.preventDefault()
-      onMove?.(e.key === 'ArrowUp' ? -1 : 1)
-    } else if (e.key === 'Delete' || e.key === 'Backspace') {
-      e.preventDefault()
-      onRemove?.()
-    }
-  }
-  return (
-    <div
-      ref={setNodeRef}
-      style={{ transform: CSS.Translate.toString(transform), transition, marginLeft: indent * STEP }}
-      className={clsx('group/block touch-manipulation outline-none focus-visible:[&>div]:border-accent', isDragging && 'opacity-30')}
-      {...attributes}
-      {...listeners}
-      onKeyDown={(e) => {
-        onKeyDown(e)
-        if (!e.defaultPrevented) listeners?.onKeyDown?.(e)
-      }}
-      onClick={inProgram ? undefined : onClick}
-      data-block={id}
-    >
-      <BlockView block={block} language={language} highlighted={highlighted} wrap={!inProgram} className={clsx(!inProgram && 'cursor-pointer')}>
-        {inProgram && (
-          <span
-            className="absolute top-1/2 right-1 hidden -translate-y-1/2 items-center gap-0.5 rounded-md border border-white/10 bg-[#11131c]/95 px-0.5 shadow-lg group-hover/block:flex group-focus/block:flex"
-            onPointerDown={(e) => e.stopPropagation()}
-          >
-            {canIndent && (
-              <>
-                <IconButton title="Désindenter (Maj+Tab)" onClick={() => onIndent?.(-1)} disabled={indent === 0}>
-                  <ChevronLeft className="size-3.5" />
-                </IconButton>
-                <IconButton title="Indenter (Tab)" onClick={() => onIndent?.(1)} disabled={indent >= MAX_INDENT}>
-                  <ChevronRight className="size-3.5" />
-                </IconButton>
-              </>
-            )}
-            <IconButton title="Monter (Alt+↑)" onClick={() => onMove?.(-1)} disabled={isFirst}>
-              <ArrowUp className="size-3.5" />
-            </IconButton>
-            <IconButton title="Retirer (Suppr)" onClick={() => onRemove?.()}>
-              <X className="size-3.5" />
-            </IconButton>
-          </span>
-        )}
-      </BlockView>
-    </div>
-  )
-}
-
-function IconButton({ children, onClick, title, disabled }: { children: React.ReactNode; onClick: () => void; title: string; disabled?: boolean }) {
-  return (
-    <button
-      type="button"
-      className="rounded p-1 text-muted hover:bg-white/10 hover:text-fg disabled:pointer-events-none disabled:opacity-30"
-      onClick={(e) => {
-        e.stopPropagation()
-        onClick()
-      }}
-      title={title}
-      aria-label={title}
-      disabled={disabled}
-    >
-      {children}
     </button>
   )
 }

@@ -1,0 +1,54 @@
+id: bl-rnn
+title: Passe avant d'un RNN
+domain: dl
+difficulty: medium
+statement: |
+  Remets dans l'ordre la **passe avant** d'un réseau récurrent simple (Elman) sur une séquence `xs` de forme `(T, d_in)` :
+
+  $$h_t = \tanh(x_t W_x + h_{t-1} W_h + b) \qquad y_t = h_t W_y + b_y$$
+
+  Renvoie `(ys (T × d_out), hs (T × d_h), h_final)`.
+setup: |
+  import numpy as np
+  _rng = np.random.default_rng(0)
+  T, D_IN, D_H, D_OUT = 6, 3, 4, 2
+  XS = _rng.normal(size=(T, D_IN))
+  H0 = np.zeros(D_H)
+  PARAMS = (
+      _rng.normal(0, 0.5, (D_IN, D_H)), _rng.normal(0, 0.5, (D_H, D_H)), np.zeros(D_H),
+      _rng.normal(0, 0.5, (D_H, D_OUT)), np.zeros(D_OUT),
+  )
+solution: |
+  import numpy as np
+
+
+  def rnn_forward(xs, h0, Wx, Wh, b, Wy, by):
+      h = h0
+      hs, ys = [], []
+      for x in xs:
+          h = np.tanh(x @ Wx + h @ Wh + b)
+          y = h @ Wy + by
+          hs.append(h)
+          ys.append(y)
+      return np.stack(ys), np.stack(hs), h
+tests:
+  - name: Formes
+    check: |
+      ys, hs, h = rnn_forward(XS, H0, *PARAMS)
+      assert ys.shape == (T, D_OUT) and hs.shape == (T, D_H) and h.shape == (D_H,)
+  - name: L'état dépend du passé
+    check: |
+      _, hs1, _ = rnn_forward(XS, H0, *PARAMS)
+      _, hs2, _ = rnn_forward(XS[1:], H0, *PARAMS)
+      assert not np.allclose(hs1[-1], hs2[-1])
+  - call: np.round(rnn_forward(XS, H0, *PARAMS)[0], 8)
+  - call: np.round(rnn_forward(XS, H0, *PARAMS)[2], 8)
+distractors:
+  - line: "h = np.tanh(x @ Wx + h0 @ Wh + b)"
+    replaces: "h = np.tanh(x @ Wx + h @ Wh + b)"
+  - line: "return np.stack(ys), np.stack(hs), h0"
+    replaces: "return np.stack(ys), np.stack(hs), h"
+explanation: |
+  - Les **mêmes poids** sont réutilisés à chaque pas de temps : le nombre de paramètres ne dépend pas de la longueur de la séquence.
+  - L'état caché `h` est la « mémoire » : il résume tout le passé. Le gradient remonte à travers tous les pas (*backpropagation through time*), d'où les gradients qui explosent ou s'évanouissent, et les LSTM/GRU.
+  - En PyTorch : `nn.RNN(d_in, d_h, batch_first=True)`.

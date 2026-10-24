@@ -1,0 +1,54 @@
+id: bl-transformer-ffn
+title: Sous-couche feed-forward d'un Transformer
+domain: dl
+difficulty: medium
+statement: |
+  Remets dans l'ordre la sous-couche **feed-forward** d'un bloc Transformer (version *post-LN* du papier original) :
+
+  1. `layer_norm(x, gamma, beta)` normalise **chaque vecteur** (dernier axe) : moyenne 0, variance 1, puis `gamma * x̂ + beta` ;
+  2. `feed_forward` applique `Linear → ReLU → Linear` ;
+  3. `ffn_block` ajoute la **connexion résiduelle** puis normalise : `LayerNorm(x + FFN(x))`.
+setup: |
+  import numpy as np
+  _rng = np.random.default_rng(0)
+  X = _rng.normal(2.0, 3.0, (5, 8))
+  PARAMS = (_rng.normal(0, 0.3, (8, 32)), np.zeros(32), _rng.normal(0, 0.3, (32, 8)), np.zeros(8), np.ones(8), np.zeros(8))
+solution: |
+  import numpy as np
+
+
+  def layer_norm(x, gamma, beta, eps=1e-5):
+      mean = x.mean(axis=-1, keepdims=True)
+      var = x.var(axis=-1, keepdims=True)
+      x_hat = (x - mean) / np.sqrt(var + eps)
+      return gamma * x_hat + beta
+
+
+  def feed_forward(x, W1, b1, W2, b2):
+      hidden = np.maximum(0, x @ W1 + b1)
+      return hidden @ W2 + b2
+
+
+  def ffn_block(x, params):
+      W1, b1, W2, b2, gamma, beta = params
+      return layer_norm(x + feed_forward(x, W1, b1, W2, b2), gamma, beta)
+tests:
+  - name: LayerNorm normalise chaque ligne
+    check: |
+      out = layer_norm(X, np.ones(8), np.zeros(8))
+      assert np.allclose(out.mean(axis=1), 0) and np.allclose(out.var(axis=1), 1, atol=1e-4)
+  - name: gamma et beta
+    check: |
+      out = layer_norm(X, np.full(8, 2.0), np.full(8, 1.0))
+      assert np.allclose(out.mean(axis=1), 1) and np.allclose(out.std(axis=1), 2, atol=1e-3)
+  - call: np.round(ffn_block(X, PARAMS), 8)
+distractors:
+  - line: "mean = x.mean(axis=0, keepdims=True)"
+    replaces: "mean = x.mean(axis=-1, keepdims=True)"
+  - line: "return layer_norm(feed_forward(x, W1, b1, W2, b2), gamma, beta)"
+    replaces: "return layer_norm(x + feed_forward(x, W1, b1, W2, b2), gamma, beta)"
+explanation: |
+  - **LayerNorm** normalise chaque token sur ses features (dernier axe), indépendamment du batch, contrairement à BatchNorm (axe du batch).
+  - La **connexion résiduelle** `x + F(x)` laisse passer le gradient directement : indispensable pour empiler des dizaines de couches.
+  - Les Transformers récents utilisent plutôt le *pre-LN* : `x + F(LayerNorm(x))`, plus stable à entraîner.
+  - La couche cachée est typiquement 4 fois plus large que le modèle (ici 8 → 32).

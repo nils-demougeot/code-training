@@ -11,12 +11,15 @@ import { FilterButton } from './ExerciseList'
 
 type Source = 'all' | 'parsons' | 'exercise' | 'todo'
 
+/** Dedicated problems come first: they were written for blocks, not converted from exercises. */
+const DEFAULT_SOURCE: Source = 'parsons'
+
 export default function Blocks() {
   const [params, setParams] = useSearchParams()
   const navigate = useNavigate()
   const p = useProgress((s) => s.p)
   const domain = (params.get('domain') as Domain | null) ?? null
-  const source = (params.get('source') as Source | null) ?? 'all'
+  const source = (params.get('source') as Source | null) ?? DEFAULT_SOURCE
   const setParam = (key: string, value: string | null) => {
     const next = new URLSearchParams(params)
     if (value === null) next.delete(key)
@@ -58,12 +61,12 @@ export default function Blocks() {
 
       <div className="card mb-6 flex flex-wrap items-center gap-2 p-4">
         {([
-          ['all', 'Tous'],
           ['parsons', 'Spécial blocs'],
+          ['all', 'Tous'],
           ['exercise', 'Issus des exercices'],
           ['todo', 'À faire'],
         ] as [Source, string][]).map(([s, label]) => (
-          <FilterButton key={s} active={source === s} onClick={() => setParam('source', s === 'all' ? null : s)}>
+          <FilterButton key={s} active={source === s} onClick={() => setParam('source', s === DEFAULT_SOURCE ? null : s)}>
             {label}
           </FilterButton>
         ))}

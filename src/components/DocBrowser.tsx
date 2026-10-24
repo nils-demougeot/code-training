@@ -154,7 +154,7 @@ export function DocBrowser({
   const shown = hits.length ? hits : globalHits
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full min-h-0 flex-1 flex-col">
       <div className="space-y-3 border-b border-line p-4">
         <div className="flex items-center gap-2">
           <BookMarked className="size-4 text-accent" />

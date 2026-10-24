@@ -1,0 +1,53 @@
+id: bl-permutations
+title: Permutations par backtracking
+domain: algo
+difficulty: medium
+statement: |
+  Remets dans l'ordre `permutations(items)` qui renvoie **toutes** les permutations de `items` (liste de listes), par **backtracking** :
+
+  on choisit un élément pas encore utilisé, on l'ajoute, on explore récursivement, puis on **annule** ce choix.
+
+  L'ordre attendu est celui obtenu en essayant les éléments de gauche à droite (comme `itertools.permutations`).
+solution: |
+  def permutations(items):
+      result = []
+      used = [False] * len(items)
+      current = []
+
+      def backtrack():
+          if len(current) == len(items):
+              result.append(current[:])
+              return
+          for i, x in enumerate(items):
+              if used[i]:
+                  continue
+              used[i] = True
+              current.append(x)
+              backtrack()
+              current.pop()
+              used[i] = False
+
+      backtrack()
+      return result
+tests:
+  - call: permutations([1, 2, 3])
+  - call: permutations([])
+  - name: Identique à itertools.permutations
+    check: |
+      import itertools
+      for items in (['a'], ['a', 'b'], [3, 1, 2, 0], list('abcde')):
+          assert permutations(items) == [list(p) for p in itertools.permutations(items)]
+distractors:
+  - line: "result.append(current)"
+    replaces: "result.append(current[:])"
+  - line: "if not used[i]:"
+    replaces: "if used[i]:"
+explanation: |
+  Le schéma du **backtracking** : *choisir → explorer → annuler*.
+  ```python
+  current.append(x); used[i] = True     # choisir
+  backtrack()                           # explorer
+  current.pop(); used[i] = False        # annuler
+  ```
+  - `current[:]` enregistre une **copie** : `current` est vidée à la fin, et toutes les entrées de `result` pointeraient vers la même liste.
+  - n! permutations : on ne peut pas faire mieux que O(n · n!).

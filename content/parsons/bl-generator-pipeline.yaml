@@ -1,0 +1,48 @@
+id: bl-generator-pipeline
+title: Pipeline de générateurs
+domain: python
+difficulty: medium
+statement: |
+  Remets dans l'ordre un **pipeline paresseux** qui traite un fichier `nom;âge` ligne par ligne :
+
+  1. `read_records(lines)` **produit** (`yield`) les champs de chaque ligne utile (on saute les lignes vides et les commentaires `#`) ;
+  2. `valid(records)` **produit** `(nom, âge_entier)` en ignorant les âges non numériques ;
+  3. `adults(lines, min_age)` renvoie la liste des noms des personnes majeures.
+solution: |
+  def read_records(lines):
+      for line in lines:
+          line = line.strip()
+          if line and not line.startswith('#'):
+              yield line.split(';')
+
+
+  def valid(records):
+      for name, age in records:
+          if age.isdigit():
+              yield name, int(age)
+
+
+  def adults(lines, min_age=18):
+      return [name for name, age in valid(read_records(lines)) if age >= min_age]
+setup: |
+  LINES = ["# nom;age", "Alice;34", "", "Bruno;17", "Chloé;abc", "David;18", "  Emma;52  "]
+tests:
+  - call: adults(LINES)
+  - call: adults(LINES, min_age=40)
+  - name: Paresseux (fonctionne sur un flux infini)
+    check: |
+      import itertools, types
+      gen = read_records(LINES)
+      assert isinstance(gen, types.GeneratorType)
+      infinite = (f"p{i};{i}" for i in itertools.count())
+      first = list(itertools.islice(valid(read_records(infinite)), 3))
+      assert first == [('p0', 0), ('p1', 1), ('p2', 2)]
+distractors:
+  - line: "return line.split(';')"
+    replaces: "yield line.split(';')"
+  - line: "if age.isdigit:"
+    replaces: "if age.isdigit():"
+explanation: |
+  - Un générateur ne calcule une valeur que quand on la lui **demande** : le pipeline ne garde qu'une ligne en mémoire, même pour un fichier de 10 Go (ou un flux infini).
+  - Chaîner des générateurs (`valid(read_records(...))`) est l'équivalent Python des pipes Unix.
+  - Piège : `age.isdigit` sans parenthèses est la **méthode** elle-même, toujours « vraie ».

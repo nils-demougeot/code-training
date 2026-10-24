@@ -1,0 +1,43 @@
+id: bl-markov
+title: Loi stationnaire d'une chaîne de Markov
+domain: stats
+difficulty: medium
+statement: |
+  Remets dans l'ordre `stationary(P)` qui calcule la **loi stationnaire** π d'une chaîne de Markov par **itération de la puissance** :
+
+  - `P[i, j]` est la probabilité de passer de l'état `i` à l'état `j` (chaque **ligne** somme à 1) ;
+  - on part de la loi uniforme et on répète `π ← π P` (vecteur **ligne** × matrice) jusqu'à ce que π ne bouge plus.
+solution: |
+  import numpy as np
+
+
+  def stationary(P, tol=1e-12, max_iter=10_000):
+      P = np.asarray(P, dtype=float)
+      assert np.allclose(P.sum(axis=1), 1), 'chaque ligne doit sommer à 1'
+      pi = np.full(len(P), 1 / len(P))
+      for _ in range(max_iter):
+          new = pi @ P
+          if np.abs(new - pi).max() < tol:
+              break
+          pi = new
+      return new
+tests:
+  - name: Météo (soleil / pluie)
+    check: |
+      pi = stationary([[0.9, 0.1], [0.5, 0.5]])
+      assert np.allclose(pi, [5 / 6, 1 / 6]), pi
+  - name: Point fixe et distribution
+    check: |
+      P = np.array([[0.5, 0.3, 0.2], [0.2, 0.6, 0.2], [0.1, 0.2, 0.7]])
+      pi = stationary(P)
+      assert np.allclose(pi @ P, pi) and abs(pi.sum() - 1) < 1e-9 and (pi > 0).all()
+  - call: np.round(stationary([[0.0, 1.0, 0.0], [0.5, 0.0, 0.5], [0.4, 0.0, 0.6]]), 8)
+distractors:
+  - line: "new = P @ pi"
+    replaces: "new = pi @ P"
+  - line: "assert np.allclose(P.sum(axis=0), 1), 'chaque ligne doit sommer à 1'"
+    replaces: "assert np.allclose(P.sum(axis=1), 1), 'chaque ligne doit sommer à 1'"
+explanation: |
+  - π est **stationnaire** si `π P = π` : c'est un vecteur propre **à gauche** de P pour la valeur propre 1.
+  - Pour une chaîne irréductible et apériodique, `π P^n` converge vers π quel que soit le point de départ.
+  - π(i) est la proportion du temps passé dans l'état i à long terme. C'est le principe de PageRank, et des méthodes MCMC.

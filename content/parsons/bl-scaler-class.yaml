@@ -1,0 +1,62 @@
+id: bl-scaler-class
+title: Un transformeur façon scikit-learn
+domain: ml
+difficulty: easy
+statement: |
+  Remets dans l'ordre une classe `StandardScaler` qui imite l'API de scikit-learn :
+
+  - `fit(X)` **apprend** la moyenne et l'écart-type de chaque colonne (un écart-type nul est remplacé par 1) et renvoie `self` ;
+  - `transform(X)` applique `(X - moyenne) / écart-type` avec les paramètres **appris** ;
+  - `fit_transform(X)` enchaîne les deux ;
+  - `inverse_transform(Z)` revient à l'échelle d'origine.
+setup: |
+  import numpy as np
+  _rng = np.random.default_rng(1)
+  X_train = np.column_stack([_rng.normal(50, 10, 100), _rng.normal(0, 2, 100), np.full(100, 7.0)])
+  X_test = np.column_stack([_rng.normal(50, 10, 20), _rng.normal(0, 2, 20), np.full(20, 7.0)])
+solution: |
+  import numpy as np
+
+
+  class StandardScaler:
+      def fit(self, X):
+          self.mean_ = X.mean(axis=0)
+          self.scale_ = X.std(axis=0)
+          self.scale_[self.scale_ == 0] = 1.0
+          return self
+
+      def transform(self, X):
+          return (X - self.mean_) / self.scale_
+
+      def fit_transform(self, X):
+          return self.fit(X).transform(X)
+
+      def inverse_transform(self, Z):
+          return Z * self.scale_ + self.mean_
+tests:
+  - name: fit_transform centre et réduit (colonne constante → 0)
+    check: |
+      Z = StandardScaler().fit_transform(X_train)
+      assert np.allclose(Z[:, :2].mean(axis=0), 0) and np.allclose(Z[:, :2].std(axis=0), 1)
+      assert np.allclose(Z[:, 2], 0)
+  - name: Le test utilise les paramètres du train
+    check: |
+      s = StandardScaler().fit(X_train)
+      assert np.allclose(s.transform(X_test), (X_test - X_train.mean(axis=0)) / np.where(X_train.std(axis=0) == 0, 1, X_train.std(axis=0)))
+  - name: Aller-retour
+    check: |
+      s = StandardScaler()
+      assert np.allclose(s.inverse_transform(s.fit_transform(X_train)), X_train)
+  - name: fit renvoie self
+    check: |
+      s = StandardScaler()
+      assert s.fit(X_train) is s
+distractors:
+  - line: "self.mean_ = X.mean(axis=1)"
+    replaces: "self.mean_ = X.mean(axis=0)"
+  - line: "return self.transform(X)"
+    replaces: "return self"
+explanation: |
+  - Convention scikit-learn : les attributs **appris** finissent par `_` (`mean_`, `scale_`), et `fit` renvoie `self` pour pouvoir chaîner.
+  - On fait `fit` sur le **train uniquement**, puis `transform` sur le train et le test : calculer la moyenne sur le test serait une **fuite de données**.
+  - C'est exactement ce que fait `sklearn.preprocessing.StandardScaler` (avec l'écart-type de population, `ddof=0`).

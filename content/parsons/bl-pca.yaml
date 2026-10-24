@@ -1,0 +1,64 @@
+id: bl-pca
+title: ACP avec la matrice de covariance
+domain: numpy
+difficulty: medium
+statement: |
+  Remets dans l'ordre une **analyse en composantes principales** avec NumPy :
+
+  1. centrer les données ;
+  2. calculer la matrice de covariance (`d × d`) ;
+  3. la diagonaliser (`np.linalg.eigh`, valeurs propres **croissantes**) ;
+  4. garder les `k` vecteurs propres de plus grandes valeurs propres ;
+  5. projeter les données centrées.
+
+  `pca(X, k)` renvoie `(X_projeté (n × k), composantes (k × d), part_de_variance_expliquée (k,))`.
+setup: |
+  import numpy as np
+  _rng = np.random.default_rng(0)
+  _latent = _rng.normal(size=(200, 2)) * [3.0, 1.0]
+  X = _latent @ np.array([[1.0, 0.5, 0.2], [-0.3, 1.0, 0.4]]) + _rng.normal(0, 0.1, (200, 3)) + [5, -2, 1]
+solution: |
+  import numpy as np
+
+
+  def pca(X, k):
+      mean = X.mean(axis=0)
+      Xc = X - mean
+      cov = Xc.T @ Xc / (len(X) - 1)
+      eigvals, eigvecs = np.linalg.eigh(cov)
+      order = np.argsort(eigvals)[::-1][:k]
+      components = eigvecs[:, order].T
+      explained = eigvals[order] / eigvals.sum()
+      return Xc @ components.T, components, explained
+tests:
+  - name: Formes
+    check: |
+      Z, C, r = pca(X, 2)
+      assert Z.shape == (200, 2) and C.shape == (2, 3) and r.shape == (2,)
+  - name: Variance expliquée (comparée à la SVD)
+    check: |
+      Xc = X - X.mean(axis=0)
+      S = np.linalg.svd(Xc, compute_uv=False)
+      _, _, r = pca(X, 3)
+      assert np.allclose(r, S ** 2 / (S ** 2).sum()), r
+  - name: Composantes = directions de la SVD (au signe près)
+    check: |
+      Xc = X - X.mean(axis=0)
+      _, _, Vt = np.linalg.svd(Xc)
+      _, C, _ = pca(X, 2)
+      assert np.allclose(np.abs(C), np.abs(Vt[:2]), atol=1e-8)
+  - name: Projection et composantes orthonormées
+    check: |
+      Z, C, _ = pca(X, 2)
+      assert np.allclose(C @ C.T, np.eye(2))
+      assert np.allclose(Z, (X - X.mean(axis=0)) @ C.T)
+      assert Z[:, 0].var() > Z[:, 1].var()
+distractors:
+  - line: "order = np.argsort(eigvals)[:k]"
+    replaces: "order = np.argsort(eigvals)[::-1][:k]"
+  - line: "components = eigvecs[order]"
+    replaces: "components = eigvecs[:, order].T"
+explanation: |
+  - Les **vecteurs propres** de la covariance sont les directions de variance maximale ; la **valeur propre** associée est la variance le long de cette direction.
+  - `eigh` (matrices symétriques) renvoie les vecteurs propres en **colonnes** et les valeurs propres en ordre croissant : il faut retrier.
+  - En pratique, on passe par la **SVD** de `Xc` (plus stable) : c'est ce que fait `sklearn.decomposition.PCA`. Le signe d'une composante est arbitraire.

@@ -1,0 +1,66 @@
+id: bl-naive-bayes
+title: Naive Bayes pour classer des messages
+domain: ml
+difficulty: hard
+statement: |
+  Remets dans l'ordre un **Naive Bayes multinomial** pour classer des textes (spam / ham) :
+
+  - `train_nb(docs, labels, alpha)` calcule pour chaque classe le **log-prior** `log P(classe)` et la **log-vraisemblance** de chaque mot du vocabulaire, avec un lissage de Laplace :
+
+    $$P(w \mid c) = \frac{n_{w,c} + \alpha}{n_c + \alpha \, |V|}$$
+
+  - `predict_nb(model, doc)` additionne le log-prior et les log-vraisemblances des mots connus, et renvoie la classe de **score maximal**.
+setup: |
+  DOCS = ["gagne argent vite", "argent gratuit gagne", "réunion demain matin", "projet réunion équipe", "demain projet code"]
+  LABELS = ["spam", "spam", "ham", "ham", "ham"]
+solution: |
+  import math
+  from collections import Counter, defaultdict
+
+
+  def train_nb(docs, labels, alpha=1.0):
+      vocab = {w for doc in docs for w in doc.split()}
+      priors = Counter(labels)
+      counts = defaultdict(Counter)
+      for doc, label in zip(docs, labels):
+          counts[label].update(doc.split())
+      model = {}
+      for label in priors:
+          total = sum(counts[label].values())
+          log_prior = math.log(priors[label] / len(labels))
+          log_lik = {w: math.log((counts[label][w] + alpha) / (total + alpha * len(vocab))) for w in vocab}
+          model[label] = (log_prior, log_lik)
+      return model
+
+
+  def predict_nb(model, doc):
+      scores = {}
+      for label, (log_prior, log_lik) in model.items():
+          scores[label] = log_prior + sum(log_lik[w] for w in doc.split() if w in log_lik)
+      return max(scores, key=scores.get)
+tests:
+  - name: Priors
+    check: |
+      m = train_nb(DOCS, LABELS)
+      assert abs(m['spam'][0] - math.log(2 / 5)) < 1e-12 and abs(m['ham'][0] - math.log(3 / 5)) < 1e-12
+  - name: Les probabilités de chaque classe somment à 1
+    check: |
+      m = train_nb(DOCS, LABELS)
+      for label, (_, log_lik) in m.items():
+          assert abs(sum(math.exp(v) for v in log_lik.values()) - 1) < 1e-9, label
+  - name: Lissage de Laplace (valeur exacte)
+    check: |
+      m = train_nb(DOCS, LABELS)
+      # 'argent' : 2 fois dans les 6 mots spam, vocabulaire de 10 mots
+      assert abs(m['spam'][1]['argent'] - math.log((2 + 1) / (6 + 10))) < 1e-12
+  - call: "[predict_nb(train_nb(DOCS, LABELS), d) for d in ['argent gratuit', 'réunion projet', 'gagne demain', 'mot inconnu']]"
+distractors:
+  - line: "log_lik = {w: math.log((counts[label][w] + alpha) / (total + alpha)) for w in vocab}"
+    replaces: "log_lik = {w: math.log((counts[label][w] + alpha) / (total + alpha * len(vocab))) for w in vocab}"
+  - line: "log_prior = math.log(priors[label])"
+    replaces: "log_prior = math.log(priors[label] / len(labels))"
+explanation: |
+  - « Naïf » : on suppose les mots **indépendants** sachant la classe, donc $P(\text{doc} \mid c) = \prod_w P(w \mid c)$.
+  - On travaille en **logarithmes** : un produit de petites probabilités devient une somme, sans underflow.
+  - Le **lissage** évite qu'un mot jamais vu dans une classe donne une probabilité nulle (et un log de 0). Le dénominateur `n_c + α|V|` garantit que les probabilités somment à 1.
+  - Un mot inconnu n'apporte rien : seul le prior départage, d'où `ham` pour `"mot inconnu"`.

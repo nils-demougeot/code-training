@@ -1,0 +1,56 @@
+id: bl-closures
+title: Fermetures et nonlocal
+domain: python
+difficulty: easy
+statement: |
+  Remets dans l'ordre deux **fabriques de fonctions** qui gardent un état entre les appels :
+
+  - `make_counter(start, step)` renvoie une fonction qui renvoie `start`, puis `start + step`, puis `start + 2*step`… ;
+  - `make_averager()` renvoie une fonction `add(x)` qui renvoie la **moyenne** de toutes les valeurs reçues jusqu'ici.
+solution: |
+  def make_counter(start=0, step=1):
+      count = start
+
+      def counter():
+          nonlocal count
+          value = count
+          count += step
+          return value
+
+      return counter
+
+
+  def make_averager():
+      total = 0.0
+      n = 0
+
+      def add(x):
+          nonlocal total, n
+          total += x
+          n += 1
+          return total / n
+
+      return add
+tests:
+  - name: Compteur
+    check: |
+      c = make_counter(10, 5)
+      assert [c(), c(), c()] == [10, 15, 20]
+  - name: Compteurs indépendants
+    check: |
+      a, b = make_counter(), make_counter()
+      a(); a()
+      assert a() == 2 and b() == 0
+  - name: Moyenne courante
+    check: |
+      avg = make_averager()
+      assert [avg(10), avg(20), avg(0)] == [10, 15, 10]
+distractors:
+  - line: "global count"
+    replaces: "nonlocal count"
+  - line: "nonlocal total"
+    replaces: "nonlocal total, n"
+explanation: |
+  - Une **fermeture** (closure) est une fonction qui capture des variables de la fonction englobante ; chaque appel à `make_counter` crée un état séparé.
+  - Pour **réaffecter** une variable capturée (`count += step`), il faut `nonlocal` ; sinon Python la considère comme locale et lève `UnboundLocalError`.
+  - `global` viserait une variable du module, pas celle de la fonction englobante.

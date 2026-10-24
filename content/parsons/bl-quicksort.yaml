@@ -1,0 +1,55 @@
+id: bl-quicksort
+title: Quicksort avec partition de Lomuto
+domain: algo
+difficulty: medium
+statement: |
+  Remets dans l'ordre un **quicksort en place** :
+
+  - `partition(a, lo, hi)` prend le dernier élément comme **pivot**, range à gauche tout ce qui est strictement plus petit, place le pivot juste après et renvoie sa position finale ;
+  - `quicksort(a, lo, hi)` partitionne puis trie récursivement les deux moitiés **sans** le pivot.
+
+  `quicksort(a)` trie la liste `a` elle-même et la renvoie.
+solution: |
+  def partition(a, lo, hi):
+      pivot = a[hi]
+      i = lo
+      for j in range(lo, hi):
+          if a[j] < pivot:
+              a[i], a[j] = a[j], a[i]
+              i += 1
+      a[i], a[hi] = a[hi], a[i]
+      return i
+
+
+  def quicksort(a, lo=0, hi=None):
+      if hi is None:
+          hi = len(a) - 1
+      if lo < hi:
+          p = partition(a, lo, hi)
+          quicksort(a, lo, p - 1)
+          quicksort(a, p + 1, hi)
+      return a
+tests:
+  - call: quicksort([5, 2, 9, 1, 5, 6])
+  - call: quicksort([])
+  - name: 300 listes aléatoires (avec doublons)
+    check: |
+      import random
+      rng = random.Random(0)
+      for _ in range(300):
+          data = [rng.randint(-10, 10) for _ in range(rng.randint(0, 25))]
+          assert quicksort(list(data)) == sorted(data), data
+  - name: Trie en place
+    check: |
+      a = [3, 1, 2]
+      quicksort(a)
+      assert a == [1, 2, 3]
+distractors:
+  - line: "quicksort(a, lo, p)"
+    replaces: "quicksort(a, lo, p - 1)"
+  - line: "a[i], a[lo] = a[lo], a[i]"
+    replaces: "a[i], a[hi] = a[hi], a[i]"
+explanation: |
+  - Invariant de la partition : `a[lo:i]` < pivot ≤ `a[i:j]`. À la fin, on échange `a[i]` et le pivot : il est à sa **place définitive**.
+  - On ne trie donc jamais le pivot de nouveau : `p - 1` et `p + 1`. Avec `p` à la place de `p - 1`, la récursion peut repartir sur le même intervalle à l'infini.
+  - Complexité : O(n log n) en moyenne, O(n²) si le pivot est toujours le plus grand (liste déjà triée avec ce choix de pivot). Choisir un pivot aléatoire évite ce cas.

@@ -1,0 +1,38 @@
+id: bl-sql-ranking
+title: Classement des clients par ville (CTE + fenêtre)
+domain: sql
+difficulty: medium
+language: sql
+shared: sql_shop
+statement: |
+  Remets dans l'ordre une requête qui calcule, pour chaque client, le montant total de ses commandes **livrées**, puis son **rang dans sa ville** (1 = plus gros client, ex aequo possibles).
+
+  On passe par une **CTE** `spent`, puis une fonction de fenêtre `RANK()`.
+
+  Colonnes : `city`, `name`, `total`, `rank_in_city`, triées par ville puis par rang.
+solution: |
+  WITH spent AS (
+  SELECT c.id, c.name, c.city, SUM(oi.quantity * p.price) AS total
+  FROM customers c
+  JOIN orders o ON o.customer_id = c.id
+  JOIN order_items oi ON oi.order_id = o.id
+  JOIN products p ON p.id = oi.product_id
+  WHERE o.status = 'livrée'
+  GROUP BY c.id, c.name, c.city
+  )
+  SELECT city, name, total,
+  RANK() OVER (PARTITION BY city ORDER BY total DESC) AS rank_in_city
+  FROM spent
+  ORDER BY city, rank_in_city
+tests:
+  - name: Résultat de la requête
+    call: q(QUERY)
+distractors:
+  - line: "RANK() OVER (ORDER BY total DESC) AS rank_in_city"
+    replaces: "RANK() OVER (PARTITION BY city ORDER BY total DESC) AS rank_in_city"
+  - line: "GROUP BY c.city"
+    replaces: "GROUP BY c.id, c.name, c.city"
+explanation: |
+  - Une **CTE** (`WITH nom AS (...)`) nomme un résultat intermédiaire : la requête se lit de haut en bas, étape par étape.
+  - `PARTITION BY city` recommence le classement dans chaque ville ; sans lui, le rang est global.
+  - `RANK()` laisse un trou après des ex aequo (1, 1, 3), `DENSE_RANK()` non (1, 1, 2), `ROW_NUMBER()` les départage arbitrairement.

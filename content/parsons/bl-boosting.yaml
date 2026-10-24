@@ -1,0 +1,61 @@
+id: bl-boosting
+title: Gradient boosting à la main
+domain: ml
+difficulty: hard
+statement: |
+  Remets dans l'ordre un **gradient boosting** pour la régression (perte quadratique) :
+
+  1. la prédiction de départ est la **moyenne** de `y` ;
+  2. à chaque tour, on calcule les **résidus** `y - prédiction` (l'opposé du gradient de la MSE) ;
+  3. on entraîne un petit arbre sur ces résidus ;
+  4. on ajoute sa prédiction, multipliée par le taux d'apprentissage `lr`.
+
+  `fit_boosting` renvoie `(base, arbres)` ; `predict_boosting(model, X, lr)` refait la somme sur de nouvelles données.
+setup: |
+  import numpy as np
+  _rng = np.random.default_rng(0)
+  X = _rng.uniform(-3, 3, (300, 1))
+  y = np.sin(X[:, 0]) * 2 + 0.3 * X[:, 0] ** 2 + _rng.normal(0, 0.1, 300)
+solution: |
+  import numpy as np
+  from sklearn.tree import DecisionTreeRegressor
+
+
+  def fit_boosting(X, y, n_trees=50, lr=0.1, max_depth=2):
+      base = y.mean()
+      pred = np.full(len(y), base)
+      trees = []
+      for _ in range(n_trees):
+          residuals = y - pred
+          tree = DecisionTreeRegressor(max_depth=max_depth, random_state=0)
+          tree.fit(X, residuals)
+          pred += lr * tree.predict(X)
+          trees.append(tree)
+      return base, trees
+
+
+  def predict_boosting(model, X, lr=0.1):
+      base, trees = model
+      pred = np.full(len(X), base)
+      for tree in trees:
+          pred += lr * tree.predict(X)
+      return pred
+tests:
+  - name: Bien meilleur que la moyenne
+    check: |
+      pred = predict_boosting(fit_boosting(X, y), X)
+      assert ((y - pred) ** 2).mean() < 0.1 * y.var()
+  - name: Plus d'arbres → erreur d'entraînement plus faible
+    check: |
+      mse = [((y - predict_boosting(fit_boosting(X, y, n_trees=n), X)) ** 2).mean() for n in (5, 20, 80)]
+      assert mse[0] > mse[1] > mse[2], mse
+  - call: np.round(predict_boosting(fit_boosting(X, y), np.array([[-2.0], [0.0], [2.5]])), 6)
+distractors:
+  - line: "residuals = y - base"
+    replaces: "residuals = y - pred"
+  - line: "pred = np.full(len(y), 0.0)"
+    replaces: "pred = np.full(len(y), base)"
+explanation: |
+  - Chaque arbre corrige les **erreurs** des précédents : c'est une descente de gradient dans l'espace des fonctions.
+  - Avec la MSE, le gradient négatif est exactement le résidu `y - pred`. Avec une autre perte (log-loss…), on ajuste l'arbre sur le gradient de cette perte.
+  - Un `lr` petit avec beaucoup d'arbres généralise mieux (*shrinkage*). XGBoost, LightGBM et CatBoost suivent ce principe, avec régularisation et histogrammes en plus.

@@ -1,0 +1,61 @@
+id: bl-iterator
+title: Le protocole itérateur
+domain: python
+difficulty: medium
+statement: |
+  Remets dans l'ordre un **itérable** `Countdown(start)` qui compte à rebours jusqu'à 0 inclus : `list(Countdown(3)) == [3, 2, 1, 0]`.
+
+  On sépare l'**itérable** (qu'on peut parcourir plusieurs fois) de son **itérateur** (`CountdownIterator`, qui garde la position courante) :
+
+  - `__iter__` de l'itérable renvoie un **nouvel** itérateur ;
+  - l'itérateur implémente `__iter__` (il se renvoie lui-même) et `__next__`, qui lève `StopIteration` à la fin.
+solution: |
+  class Countdown:
+      def __init__(self, start):
+          self.start = start
+
+      def __iter__(self):
+          return CountdownIterator(self.start)
+
+
+  class CountdownIterator:
+      def __init__(self, current):
+          self.current = current
+
+      def __iter__(self):
+          return self
+
+      def __next__(self):
+          if self.current < 0:
+              raise StopIteration
+          value = self.current
+          self.current -= 1
+          return value
+tests:
+  - call: list(Countdown(3))
+  - call: list(Countdown(0))
+  - name: Réutilisable
+    check: |
+      c = Countdown(2)
+      assert list(c) == [2, 1, 0] and list(c) == [2, 1, 0]
+      assert [(a, b) for a in c for b in c][:4] == [(2, 2), (2, 1), (2, 0), (1, 2)]
+  - name: next() et StopIteration
+    check: |
+      it = iter(Countdown(1))
+      assert iter(it) is it
+      assert next(it) == 1 and next(it) == 0
+      try:
+          next(it)
+      except StopIteration:
+          pass
+      else:
+          raise AssertionError('StopIteration attendue')
+distractors:
+  - line: "if self.current <= 0:"
+    replaces: "if self.current < 0:"
+  - line: "value = self.current - 1"
+    replaces: "value = self.current"
+explanation: |
+  - Une boucle `for x in obj` appelle `iter(obj)` puis `next(...)` jusqu'à `StopIteration`.
+  - Si l'itérable était son propre itérateur, on ne pourrait le parcourir qu'**une fois** (comme un générateur ou un fichier), et les boucles imbriquées se marcheraient dessus.
+  - En pratique, on écrit souvent `__iter__` comme un générateur : `yield from range(self.start, -1, -1)`.

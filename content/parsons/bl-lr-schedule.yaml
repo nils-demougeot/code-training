@@ -1,0 +1,42 @@
+id: bl-lr-schedule
+title: Warmup puis décroissance cosinus
+domain: dl
+difficulty: easy
+statement: |
+  Remets dans l'ordre `lr_at(step, base_lr, warmup, total)`, le taux d'apprentissage au pas `step` (à partir de 0) :
+
+  - pendant les `warmup` premiers pas, il **monte linéairement** : `base_lr × (step + 1) / warmup` ;
+  - ensuite, il **décroît en cosinus** de `base_lr` jusqu'à 0, atteint au pas `total` (et y reste) :
+
+  $$\eta = \frac{\eta_{max}}{2}\left(1 + \cos(\pi \cdot p)\right), \quad p = \min\left(1, \frac{step - warmup}{total - warmup}\right)$$
+solution: |
+  import math
+
+
+  def lr_at(step, base_lr, warmup, total):
+      if step < warmup:
+          return base_lr * (step + 1) / warmup
+      progress = (step - warmup) / max(1, total - warmup)
+      return 0.5 * base_lr * (1 + math.cos(math.pi * min(1.0, progress)))
+tests:
+  - name: Warmup linéaire
+    check: |
+      assert [lr_at(s, 1.0, 4, 20) for s in range(4)] == [0.25, 0.5, 0.75, 1.0]
+  - name: Sommet, milieu, fin
+    check: |
+      assert abs(lr_at(4, 1.0, 4, 20) - 1.0) < 1e-12
+      assert abs(lr_at(12, 1.0, 4, 20) - 0.5) < 1e-12
+      assert abs(lr_at(20, 1.0, 4, 20)) < 1e-12 and abs(lr_at(50, 1.0, 4, 20)) < 1e-12
+  - name: Décroissant après le warmup
+    check: |
+      lrs = [lr_at(s, 3e-4, 10, 100) for s in range(10, 120)]
+      assert all(a >= b for a, b in zip(lrs, lrs[1:]))
+distractors:
+  - line: "return base_lr * step / warmup"
+    replaces: "return base_lr * (step + 1) / warmup"
+  - line: "return 0.5 * base_lr * (1 + math.cos(min(1.0, progress)))"
+    replaces: "return 0.5 * base_lr * (1 + math.cos(math.pi * min(1.0, progress)))"
+explanation: |
+  - Le **warmup** évite de gros pas au début, quand les poids sont aléatoires et les statistiques d'Adam pas encore fiables.
+  - La décroissance **cosinus** reste haute longtemps puis ralentit en douceur ; c'est le planning standard des Transformers.
+  - En PyTorch : `torch.optim.lr_scheduler.LambdaLR` avec cette fonction, ou `get_cosine_schedule_with_warmup` de Hugging Face.

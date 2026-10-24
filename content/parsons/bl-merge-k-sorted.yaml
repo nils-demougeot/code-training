@@ -1,0 +1,43 @@
+id: bl-merge-k-sorted
+title: Fusionner k listes triées avec un tas
+domain: algo
+difficulty: medium
+statement: |
+  Remets dans l'ordre `merge_sorted(lists)` qui fusionne `k` listes **déjà triées** en une seule liste triée, avec un **tas** (`heapq`).
+
+  Le tas contient au plus un élément par liste : `(valeur, indice_de_la_liste, position)`.
+solution: |
+  import heapq
+
+
+  def merge_sorted(lists):
+      heap = []
+      for i, lst in enumerate(lists):
+          if lst:
+              heapq.heappush(heap, (lst[0], i, 0))
+      merged = []
+      while heap:
+          value, i, j = heapq.heappop(heap)
+          merged.append(value)
+          if j + 1 < len(lists[i]):
+              heapq.heappush(heap, (lists[i][j + 1], i, j + 1))
+      return merged
+tests:
+  - call: merge_sorted([[1, 4, 7], [2, 5, 8], [0, 9]])
+  - call: merge_sorted([[], [3], []])
+  - name: Listes aléatoires
+    check: |
+      import random
+      rng = random.Random(3)
+      for _ in range(100):
+          lists = [sorted(rng.randint(0, 50) for _ in range(rng.randint(0, 8))) for _ in range(rng.randint(0, 6))]
+          assert merge_sorted(lists) == sorted(x for l in lists for x in l), lists
+distractors:
+  - line: "heapq.heappush(heap, (lists[i][j], i, j + 1))"
+    replaces: "heapq.heappush(heap, (lists[i][j + 1], i, j + 1))"
+  - line: "if j < len(lists[i]):"
+    replaces: "if j + 1 < len(lists[i]):"
+explanation: |
+  - Le tas donne le minimum en O(log k) : la fusion coûte **O(N log k)** pour N éléments au total, mieux que de tout retrier (O(N log N)) quand k est petit.
+  - L'indice `i` dans le tuple départage deux valeurs égales sans comparer autre chose.
+  - En pratique : `heapq.merge(*lists)` fait exactement ça, de façon paresseuse. C'est aussi l'étape de fusion d'un tri externe (fichiers trop gros pour la mémoire).

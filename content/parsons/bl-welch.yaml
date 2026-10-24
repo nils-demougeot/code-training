@@ -1,0 +1,44 @@
+id: bl-welch
+title: Test t de Welch
+domain: stats
+difficulty: medium
+statement: |
+  Remets dans l'ordre `welch_t(a, b)` qui calcule la statistique du **test t de Welch** (deux échantillons, variances différentes) et ses **degrés de liberté** (formule de Welch–Satterthwaite) :
+
+  $$t = \frac{\bar a - \bar b}{\sqrt{\frac{s_a^2}{n_a} + \frac{s_b^2}{n_b}}} \qquad \nu = \frac{\left(\frac{s_a^2}{n_a} + \frac{s_b^2}{n_b}\right)^2}{\frac{(s_a^2/n_a)^2}{n_a - 1} + \frac{(s_b^2/n_b)^2}{n_b - 1}}$$
+
+  où $s^2$ est la variance **corrigée** (divisée par $n - 1$). Renvoie `(t, ddl)`.
+solution: |
+  import math
+
+
+  def welch_t(a, b):
+      na, nb = len(a), len(b)
+      ma, mb = sum(a) / na, sum(b) / nb
+      va = sum((x - ma) ** 2 for x in a) / (na - 1)
+      vb = sum((x - mb) ** 2 for x in b) / (nb - 1)
+      se = math.sqrt(va / na + vb / nb)
+      t = (ma - mb) / se
+      df = (va / na + vb / nb) ** 2 / ((va / na) ** 2 / (na - 1) + (vb / nb) ** 2 / (nb - 1))
+      return t, df
+tests:
+  - name: Valeurs calculées à la main
+    check: |
+      t, df = welch_t([1, 2, 3, 4], [2, 4, 6, 8])
+      assert abs(t - (-1.7320508)) < 1e-6 and abs(df - 4.4117647) < 1e-6, (t, df)
+  - call: welch_t([12.1, 11.8, 12.6, 12.0, 12.4, 11.9], [11.2, 11.9, 11.5, 11.0, 11.8])
+  - name: Antisymétrique
+    check: |
+      a, b = [5.0, 6.0, 7.5, 6.2], [4.0, 4.4, 5.1]
+      t1, d1 = welch_t(a, b)
+      t2, d2 = welch_t(b, a)
+      assert abs(t1 + t2) < 1e-12 and abs(d1 - d2) < 1e-12
+distractors:
+  - line: "va = sum((x - ma) ** 2 for x in a) / na"
+    replaces: "va = sum((x - ma) ** 2 for x in a) / (na - 1)"
+  - line: "se = math.sqrt(va + vb)"
+    replaces: "se = math.sqrt(va / na + vb / nb)"
+explanation: |
+  - Le dénominateur de `t` est l'**erreur standard** de la différence des moyennes : les variances s'additionnent, chacune divisée par la taille de son échantillon.
+  - Welch ne suppose pas des variances égales : c'est le choix par défaut raisonnable (`scipy.stats.ttest_ind(a, b, equal_var=False)`).
+  - La p-value bilatérale s'obtient ensuite avec la loi de Student : `2 * stats.t.sf(abs(t), df)`.

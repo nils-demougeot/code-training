@@ -1,0 +1,44 @@
+id: bl-reservoir
+title: Échantillonnage par réservoir
+domain: stats
+difficulty: medium
+statement: |
+  Remets dans l'ordre `reservoir_sample(stream, k, seed)` : tirer `k` éléments **uniformément** dans un flux dont on ne connaît pas la longueur, en une seule passe et avec une mémoire O(k).
+
+  - les `k` premiers éléments remplissent le réservoir ;
+  - l'élément d'indice `i` (à partir de 0) remplace ensuite une case au hasard avec probabilité `k / (i + 1)` : on tire `j` uniforme dans `[0, i]` et on remplace la case `j` si `j < k`.
+solution: |
+  import random
+
+
+  def reservoir_sample(stream, k, seed=0):
+      rng = random.Random(seed)
+      sample = []
+      for i, item in enumerate(stream):
+          if i < k:
+              sample.append(item)
+          else:
+              j = rng.randint(0, i)
+              if j < k:
+                  sample[j] = item
+      return sample
+tests:
+  - call: reservoir_sample(range(100), 5, seed=1)
+  - call: reservoir_sample(iter('abc'), 5)
+  - name: Uniforme (chaque élément tiré ≈ 30 % du temps)
+    check: |
+      from collections import Counter
+      counts = Counter()
+      for s in range(4000):
+          counts.update(reservoir_sample(range(10), 3, seed=s))
+      # attendu 4000 × 3/10 = 1200, écart-type ≈ 29
+      assert all(abs(counts[x] - 1200) < 150 for x in range(10)), counts
+distractors:
+  - line: "j = rng.randint(0, k)"
+    replaces: "j = rng.randint(0, i)"
+  - line: "if j <= k:"
+    replaces: "if j < k:"
+explanation: |
+  - Preuve par récurrence : après avoir vu `n` éléments, chacun est dans le réservoir avec probabilité `k/n`. Le nouvel élément entre avec probabilité `k/(n+1)`, et un élément déjà présent survit avec probabilité `1 - (k/(n+1))·(1/k) = n/(n+1)`.
+  - Utile pour échantillonner des logs, un flux réseau, une table trop grosse pour la mémoire.
+  - `random.randint(a, b)` inclut **les deux bornes**.

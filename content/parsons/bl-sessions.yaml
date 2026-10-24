@@ -1,0 +1,62 @@
+id: bl-sessions
+title: Découper des événements en sessions
+domain: pandas
+difficulty: hard
+statement: |
+  Remets dans l'ordre `sessionize(events, gap)` : une **session** d'un utilisateur se termine quand il s'écoule **plus de** `gap` (30 minutes) entre deux de ses événements.
+
+  1. trier par utilisateur puis par date ;
+  2. calculer l'écart avec l'événement **précédent du même utilisateur** ;
+  3. une nouvelle session commence au premier événement d'un utilisateur ou après un écart trop long ;
+  4. numéroter les sessions avec une somme cumulée ;
+  5. résumer chaque session : `user`, `start`, `end`, `n_events`, `duration_min`.
+setup: |
+  import pandas as pd
+  EVENTS = pd.DataFrame({
+      'user': ['b', 'a', 'a', 'b', 'a', 'a', 'b', 'a'],
+      'time': pd.to_datetime([
+          '2024-05-01 09:00', '2024-05-01 10:00', '2024-05-01 10:20', '2024-05-01 09:10',
+          '2024-05-01 10:50', '2024-05-01 11:30', '2024-05-01 12:00', '2024-05-01 11:35',
+      ]),
+  })
+solution: |
+  import pandas as pd
+
+
+  def sessionize(events, gap='30min'):
+      df = events.sort_values(['user', 'time']).reset_index(drop=True)
+      delta = df.groupby('user')['time'].diff()
+      new_session = delta.isna() | (delta > pd.Timedelta(gap))
+      df['session'] = new_session.cumsum()
+      summary = df.groupby('session').agg(
+          user=('user', 'first'),
+          start=('time', 'min'),
+          end=('time', 'max'),
+          n_events=('time', 'size'),
+      )
+      summary['duration_min'] = (summary['end'] - summary['start']).dt.total_seconds() / 60
+      return summary
+tests:
+  - call: sessionize(EVENTS)
+  - name: Sessions par utilisateur
+    check: |
+      s = sessionize(EVENTS)
+      assert s.groupby('user').size().to_dict() == {'a': 2, 'b': 2}
+  - name: Un écart d'exactement 30 min reste dans la session
+    check: |
+      s = sessionize(EVENTS)
+      first_a = s[s['user'] == 'a'].iloc[0]
+      assert first_a['n_events'] == 3 and first_a['duration_min'] == 50
+distractors:
+  - line: "delta = df['time'].diff()"
+    replaces: "delta = df.groupby('user')['time'].diff()"
+  - line: "new_session = delta > pd.Timedelta(gap)"
+    replaces: "new_session = delta.isna() | (delta > pd.Timedelta(gap))"
+explanation: |
+  Le motif **diff → condition → cumsum** découpe une série en segments :
+  ```python
+  new = df.groupby('user')['time'].diff() > seuil   # début de segment ?
+  df['segment'] = new.cumsum()                      # numéro de segment
+  ```
+  - Le `diff` doit être fait **par utilisateur** : sinon le premier événement de `b` est comparé au dernier de `a`.
+  - Le premier événement de chaque utilisateur a un `diff` manquant (`NaT`) et doit ouvrir une session.

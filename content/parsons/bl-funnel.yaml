@@ -1,0 +1,48 @@
+id: bl-funnel
+title: Entonnoir de conversion
+domain: pandas
+difficulty: medium
+statement: |
+  Remets dans l'ordre `funnel(events)` : à partir d'événements `(user, step)`, calcule l'**entonnoir de conversion** sur les étapes `visite → panier → paiement → achat`.
+
+  - un utilisateur compte **une seule fois** par étape, même s'il la répète ;
+  - les étapes sont dans l'ordre de l'entonnoir, et une étape jamais atteinte vaut 0 ;
+  - `from_previous` : taux par rapport à l'étape précédente ; `from_start` : taux par rapport à la première.
+
+  Renvoie un DataFrame indexé par étape avec les colonnes `users`, `from_previous`, `from_start`.
+setup: |
+  import pandas as pd
+  EVENTS = pd.DataFrame({
+      'user': [1, 1, 1, 2, 2, 3, 3, 3, 3, 4, 5, 5, 1, 1, 2],
+      'step': ['visite', 'panier', 'paiement', 'visite', 'panier', 'visite', 'panier', 'paiement', 'achat',
+               'visite', 'visite', 'visite', 'achat', 'panier', 'visite'],
+  })
+  NO_SALE = EVENTS[EVENTS['step'] != 'achat']
+solution: |
+  import pandas as pd
+
+  STEPS = ['visite', 'panier', 'paiement', 'achat']
+
+
+  def funnel(events):
+      reached = events.drop_duplicates(['user', 'step'])
+      counts = reached['step'].value_counts().reindex(STEPS, fill_value=0)
+      out = counts.to_frame('users')
+      out['from_previous'] = out['users'] / out['users'].shift(1)
+      out['from_start'] = out['users'] / out['users'].iloc[0]
+      return out
+tests:
+  - call: funnel(EVENTS)
+  - call: funnel(NO_SALE)
+  - name: Utilisateurs uniques par étape
+    check: |
+      assert funnel(EVENTS)['users'].tolist() == [5, 3, 2, 2]
+distractors:
+  - line: "reached = events"
+    replaces: "reached = events.drop_duplicates(['user', 'step'])"
+  - line: "counts = reached['step'].value_counts()"
+    replaces: "counts = reached['step'].value_counts().reindex(STEPS, fill_value=0)"
+explanation: |
+  - `drop_duplicates(['user', 'step'])` : on compte des **utilisateurs**, pas des événements.
+  - `value_counts()` trie par fréquence et ignore les étapes absentes : `reindex(STEPS, fill_value=0)` impose l'ordre métier et fait apparaître les zéros.
+  - `shift(1)` décale d'une ligne pour comparer chaque étape à la précédente (la première vaut `NaN`).
