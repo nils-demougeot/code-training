@@ -313,6 +313,29 @@ def check_parsons(items, only):
     return n
 
 
+def check_maths():
+    """Maths exercises (src/maths): many random instances of each, every answer recomputed
+    independently (scripts/maths_check.py), and every lesson/statement/correction rendered."""
+    if not shutil.which("node"):
+        warnings.append("node not found: maths exercises not checked")
+        return 0, 0
+    sys.path.insert(0, str(ROOT / "scripts"))
+    import maths_check
+
+    report = json.loads(subprocess.run(
+        ["node", str(ROOT / "scripts" / "maths-export.mjs"), "60"], capture_output=True, text=True, check=True, cwd=ROOT,
+    ).stdout)
+    for p in report["problems"]:
+        errors.append(f"maths {p}")
+    failed = {}
+    for inst in report["instances"]:
+        msg = maths_check.check_instance(inst)
+        if msg and inst["id"] not in failed:
+            failed[inst["id"]] = msg
+            errors.append(f"maths {inst['id']} (graine {inst['seed']}): {msg}")
+    return sum(len(c["exercises"]) for c in report["chapters"]), len(report["instances"])
+
+
 def check_git_levels():
     """Git simulator lessons: the reference solution reaches every goal (src/git/levels.ts)."""
     if not shutil.which("node"):
@@ -379,6 +402,7 @@ def main():
         parsons_items[item.get("id")] = item
     n_parsons = check_parsons(parsons_items, args.only)
     n_git = 0 if args.only and not args.only.startswith("git") else check_git_levels()
+    n_maths, n_maths_inst = (0, 0) if args.only and not args.only.startswith("maths") else check_maths()
 
     n_proj = 0
     for path in sorted((CONTENT / "projects").glob("*.yaml")):
@@ -415,7 +439,7 @@ def main():
             if key not in f:
                 errors.append(f"{path.name}: missing {key}")
 
-    print(f"\n{n_ex} exercices, {n_proj} projets, {n_cards} cartes, {n_quiz} questions de quiz, {n_docs} entrées de doc, {n_parsons} problèmes de blocs, {n_git} missions Git vérifiés.")
+    print(f"\n{n_ex} exercices, {n_proj} projets, {n_cards} cartes, {n_quiz} questions de quiz, {n_docs} entrées de doc, {n_parsons} problèmes de blocs, {n_git} missions Git, {n_maths} exercices de maths ({n_maths_inst} tirages) vérifiés.")
     for w in warnings:
         print(f"⚠️  {w}")
     for e in errors:

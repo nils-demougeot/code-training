@@ -44,11 +44,19 @@ export interface DesignProgress {
   updatedAt: number
 }
 
-/** Probability puzzle: closest guess, stars earned (0-3). */
-export interface PuzzleProgress {
-  guess: number
+/** Maths exercise: best stars (0-3) and number of correct answers. */
+export interface MathProgress {
   stars: number
-  at: number
+  solved: number
+  updatedAt: number
+}
+
+/** Maths chapter boss. */
+export interface BossProgress {
+  attempts: number
+  beatenAt?: number
+  /** Most lives left when beating it. */
+  bestLives: number
 }
 
 /** Code blocks (Parsons): which modes were solved at least once. */
@@ -95,7 +103,8 @@ export interface Progress {
   }
   interviews: InterviewRecord[]
   design: Record<string, DesignProgress>
-  puzzles: Record<string, PuzzleProgress>
+  maths: Record<string, MathProgress>
+  bosses: Record<string, BossProgress>
   parsons: Record<string, ParsonsProgress>
   git: Record<string, GitLevelProgress>
   badges: Record<string, number>
@@ -112,7 +121,8 @@ export const emptyProgress = (): Progress => ({
   quiz: { answered: 0, correct: 0, bestCombo: 0, bestScore: 0, seen: {} },
   interviews: [],
   design: {},
-  puzzles: {},
+  maths: {},
+  bosses: {},
   parsons: {},
   git: {},
   badges: {},
@@ -245,8 +255,16 @@ export const BADGES: BadgeDef[] = [
     test: (p) => Object.values(p.design ?? {}).some((d) => d.completedAt),
   },
   {
-    id: 'puzzles-5', emoji: '🎲', label: 'Intuition statistique', description: 'Obtenir 3 étoiles à 5 défis de probabilité',
-    test: (p) => Object.values(p.puzzles ?? {}).filter((x) => x.stars >= 3).length >= 5,
+    id: 'maths-boss', emoji: '👾', label: 'Tueur de boss', description: 'Vaincre le boss d’un chapitre de maths',
+    test: (p) => Object.values(p.bosses ?? {}).some((b) => b.beatenAt),
+  },
+  {
+    id: 'maths-20', emoji: '🧠', label: 'Calculateur', description: 'Obtenir 3 étoiles à 20 exercices de maths',
+    test: (p) => Object.values(p.maths ?? {}).filter((x) => x.stars >= 3).length >= 20,
+  },
+  {
+    id: 'maths-bosses', emoji: '👑', label: 'Maître des maths', description: 'Vaincre les 6 boss de maths',
+    test: (p) => Object.values(p.bosses ?? {}).filter((b) => b.beatenAt).length >= 6,
   },
   {
     id: 'parsons-10', emoji: '🧩', label: 'Assembleur', description: 'Remettre en ordre 10 programmes en blocs',
@@ -331,8 +349,13 @@ export function mergeProgress(local: Progress, remote: Progress): Progress {
     interviews: [...new Map([...r.interviews, ...local.interviews].map((i) => [i.id, i])).values()]
       .sort((a, b) => b.date - a.date),
     design: mergeRecords(local.design ?? {}, r.design ?? {}, (x, y) => newer(x, y)),
-    puzzles: mergeRecords(local.puzzles ?? {}, r.puzzles ?? {}, (x, y) =>
-      !x ? y : !y ? x : y.stars > x.stars || (y.stars === x.stars && y.at > x.at) ? y : x,
+    maths: mergeRecords(local.maths ?? {}, r.maths ?? {}, (x, y) =>
+      !x || !y ? (x ?? y) : { stars: Math.max(x.stars, y.stars), solved: Math.max(x.solved, y.solved), updatedAt: Math.max(x.updatedAt, y.updatedAt) },
+    ),
+    bosses: mergeRecords(local.bosses ?? {}, r.bosses ?? {}, (x, y) =>
+      !x || !y
+        ? (x ?? y)
+        : { attempts: Math.max(x.attempts, y.attempts), beatenAt: minDefined(x.beatenAt, y.beatenAt), bestLives: Math.max(x.bestLives, y.bestLives) },
     ),
     parsons: mergeRecords(local.parsons ?? {}, r.parsons ?? {}, (x, y) => {
       if (!x || !y) return x ?? y
@@ -400,7 +423,10 @@ interface ProgressStore {
   revealDesignStep: (caseId: string, stepId: string) => void
   setDesignChecked: (caseId: string, stepId: string, checked: number[]) => void
   completeDesign: (caseId: string) => void
-  answerPuzzle: (id: string, guess: number, stars: number) => void
+  /** Correct answer to a maths exercise; returns the XP earned. */
+  solveMath: (id: string, stars: number) => number
+  /** Boss fight finished (won or lost); returns the XP earned. */
+  finishBoss: (chapter: string, won: boolean, lives: number) => number
   /** Returns the XP earned (only the first time). */
   solveGitLevel: (id: string, commands: number) => number
   attemptParsons: (id: string) => void
@@ -696,18 +722,37 @@ export const useProgress = create<ProgressStore>((set, get) => {
       return xp
     },
 
-    answerPuzzle: (id, guess, stars) => {
-      const prev = get().p.puzzles?.[id]
-      // XP only for improving one's best result on a puzzle.
-      const xp = Math.max(0, stars - (prev?.stars ?? 0)) * 5
+    solveMath: (id, stars) => {
+      const prev = get().p.maths?.[id]
+      // A little XP for every correct answer, more for improving one's best result.
+      const xp = 2 + Math.max(0, stars - (prev?.stars ?? 0)) * 4
       commit(
         (p) => {
-          p.puzzles ??= {}
-          if (!prev || stars >= prev.stars) p.puzzles[id] = { guess, stars, at: Date.now() }
+          p.maths ??= {}
+          p.maths[id] = { stars: Math.max(stars, prev?.stars ?? 0), solved: (prev?.solved ?? 0) + 1, updatedAt: Date.now() }
         },
         xp,
-        'Défi de probabilité',
+        'Exercice de maths',
       )
+      return xp
+    },
+
+    finishBoss: (chapter, won, lives) => {
+      const prev = get().p.bosses?.[chapter]
+      const xp = won && !prev?.beatenAt ? 50 : won ? 10 : 0
+      commit(
+        (p) => {
+          p.bosses ??= {}
+          p.bosses[chapter] = {
+            attempts: (prev?.attempts ?? 0) + 1,
+            beatenAt: prev?.beatenAt ?? (won ? Date.now() : undefined),
+            bestLives: won ? Math.max(lives, prev?.bestLives ?? 0) : prev?.bestLives ?? 0,
+          }
+        },
+        xp,
+        'Boss de maths vaincu',
+      )
+      return xp
     },
   }
 })

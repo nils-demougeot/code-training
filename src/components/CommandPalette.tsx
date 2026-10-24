@@ -1,20 +1,21 @@
 import clsx from 'clsx'
-import { BookMarked, BookOpen, Boxes, Code2, CornerDownLeft, FlaskConical, Puzzle, Rocket, Search } from 'lucide-react'
+import { BookMarked, BookOpen, Boxes, Code2, CornerDownLeft, FlaskConical, Puzzle, Rocket, Search, Sigma } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { designCases, docLibraries, exercises, fiches, parsonsProblems, projects } from '@/lib/content'
 import { DOMAINS } from '@/lib/domains'
 import { LABS } from '@/labs/registry'
+import { CHAPTERS } from '@/maths'
 
 interface Item {
   id: string
   label: string
   sub: string
   to: string
-  kind: 'exercise' | 'fiche' | 'project' | 'lab' | 'doc' | 'design' | 'blocks'
+  kind: 'exercise' | 'fiche' | 'project' | 'lab' | 'doc' | 'design' | 'blocks' | 'maths'
 }
 
-const ICONS = { exercise: Code2, fiche: BookOpen, project: Rocket, lab: FlaskConical, doc: BookMarked, design: Boxes, blocks: Puzzle }
+const ICONS = { exercise: Code2, fiche: BookOpen, project: Rocket, lab: FlaskConical, doc: BookMarked, design: Boxes, blocks: Puzzle, maths: Sigma }
 
 function normalize(s: string) {
   return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
@@ -35,6 +36,10 @@ export function CommandPalette() {
       ...fiches.map((f) => ({ id: f.id, label: f.title, sub: `Fiche · ${f.summary}`, to: `/fiches/${f.id}`, kind: 'fiche' as const })),
       ...projects.map((p) => ({ id: p.id, label: p.title, sub: `Projet · ${p.summary}`, to: `/projets/${p.id}`, kind: 'project' as const })),
       ...LABS.map((l) => ({ id: l.id, label: l.title, sub: `Lab · ${l.summary}`, to: `/labs/${l.id}`, kind: 'lab' as const })),
+      ...CHAPTERS.flatMap((c) => [
+        { id: `maths-${c.id}`, label: c.title, sub: `Maths · ${c.summary}`, to: `/maths/${c.id}`, kind: 'maths' as const },
+        ...c.exercises.map((e) => ({ id: `maths-${e.id}`, label: e.title, sub: `Maths · ${c.title} · ${e.skill}`, to: `/maths/${c.id}?tab=exercices&ex=${e.id}`, kind: 'maths' as const })),
+      ]),
       ...designCases.map((c) => ({ id: c.id, label: c.title, sub: `Design ML · ${c.summary}`, to: `/design/${c.id}`, kind: 'design' as const })),
       ...parsonsProblems
         .filter((b) => b.source === 'parsons')

@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect } from 'react'
-import { Route, Routes } from 'react-router-dom'
+import { Navigate, Route, Routes } from 'react-router-dom'
 import { Layout } from './components/Layout'
 import { checkRunner, initBrowserEngine } from './lib/engine'
 import { useSettings } from './lib/settings'
@@ -21,7 +21,8 @@ const Profile = lazy(() => import('./pages/Profile'))
 const DocPage = lazy(() => import('./pages/DocPage'))
 const Design = lazy(() => import('./pages/Design'))
 const DesignCasePage = lazy(() => import('./pages/DesignCasePage'))
-const Stats = lazy(() => import('./pages/Stats'))
+const Maths = lazy(() => import('./pages/Maths'))
+const MathChapter = lazy(() => import('./pages/MathChapter'))
 const Blocks = lazy(() => import('./pages/Blocks'))
 const ParsonsPage = lazy(() => import('./pages/ParsonsPage'))
 const GitHome = lazy(() => import('./pages/GitHome'))
@@ -68,7 +69,9 @@ export default function App() {
           <Route path="/doc" element={<DocPage />} />
           <Route path="/design" element={<Design />} />
           <Route path="/design/:id" element={<DesignCasePage />} />
-          <Route path="/stats" element={<Stats />} />
+          <Route path="/maths" element={<Maths />} />
+          <Route path="/maths/:chapter" element={<MathChapter />} />
+          <Route path="/stats" element={<Navigate to="/maths" replace />} />
           <Route path="/blocs" element={<Blocks />} />
           <Route path="/blocs/:id" element={<ParsonsPage />} />
           <Route path="/git" element={<GitHome />} />
