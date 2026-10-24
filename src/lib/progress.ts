@@ -33,14 +33,18 @@ export interface ProjectProgress {
   updatedAt: number
 }
 
-export interface DesignProgress {
-  /** Free notes per step id. */
-  notes: Record<string, string>
-  /** Indices of the key points the user ticked, per step id. */
-  checked: Record<string, number[]>
-  /** Steps whose key points were revealed. */
-  revealed: string[]
-  completedAt?: number
+export type Medal = 'bronze' | 'silver' | 'gold'
+
+/** Kaggle-style competition: notebook cells, steps passed, best hidden-test score. */
+export const MEDALS: Medal[] = ['bronze', 'silver', 'gold']
+export const MEDAL_LABEL: Record<Medal, string> = { bronze: 'de bronze', silver: 'd’argent', gold: 'd’or' }
+
+export interface CompetitionProgress {
+  cells: Record<string, string>
+  stepsDone: string[]
+  submissions: number
+  best?: number
+  medal?: Medal
   updatedAt: number
 }
 
@@ -102,7 +106,7 @@ export interface Progress {
     seen: Record<string, { right: number; wrong: number; last: number }>
   }
   interviews: InterviewRecord[]
-  design: Record<string, DesignProgress>
+  competitions: Record<string, CompetitionProgress>
   maths: Record<string, MathProgress>
   bosses: Record<string, BossProgress>
   parsons: Record<string, ParsonsProgress>
@@ -120,7 +124,7 @@ export const emptyProgress = (): Progress => ({
   labs: {},
   quiz: { answered: 0, correct: 0, bestCombo: 0, bestScore: 0, seen: {} },
   interviews: [],
-  design: {},
+  competitions: {},
   maths: {},
   bosses: {},
   parsons: {},
@@ -251,8 +255,12 @@ export const BADGES: BadgeDef[] = [
     test: (p) => Object.values(p.exercises).filter((e) => e.optimal).length >= 3,
   },
   {
-    id: 'design-1', emoji: '🏗️', label: 'Architecte', description: 'Terminer un cas de design ML',
-    test: (p) => Object.values(p.design ?? {}).some((d) => d.completedAt),
+    id: 'comp-medal', emoji: '🥉', label: 'Sur le podium', description: 'Décrocher une médaille en compétition',
+    test: (p) => Object.values(p.competitions ?? {}).some((c) => c.medal),
+  },
+  {
+    id: 'comp-gold', emoji: '🥇', label: 'Grandmaster', description: 'Décrocher une médaille d’or en compétition',
+    test: (p) => Object.values(p.competitions ?? {}).some((c) => c.medal === 'gold'),
   },
   {
     id: 'maths-boss', emoji: '👾', label: 'Tueur de boss', description: 'Vaincre le boss d’un chapitre de maths',
@@ -348,7 +356,19 @@ export function mergeProgress(local: Progress, remote: Progress): Progress {
     },
     interviews: [...new Map([...r.interviews, ...local.interviews].map((i) => [i.id, i])).values()]
       .sort((a, b) => b.date - a.date),
-    design: mergeRecords(local.design ?? {}, r.design ?? {}, (x, y) => newer(x, y)),
+    competitions: mergeRecords(local.competitions ?? {}, r.competitions ?? {}, (x, y) => {
+      if (!x || !y) return x ?? y
+      const latest = y.updatedAt > x.updatedAt ? y : x
+      const rank = (m?: Medal) => (m ? MEDALS.indexOf(m) + 1 : 0)
+      return {
+        cells: latest.cells,
+        stepsDone: [...new Set([...x.stepsDone, ...y.stepsDone])],
+        submissions: Math.max(x.submissions, y.submissions),
+        best: rank(x.medal) >= rank(y.medal) ? x.best ?? y.best : y.best ?? x.best,
+        medal: rank(x.medal) >= rank(y.medal) ? x.medal : y.medal,
+        updatedAt: Math.max(x.updatedAt, y.updatedAt),
+      }
+    }),
     maths: mergeRecords(local.maths ?? {}, r.maths ?? {}, (x, y) =>
       !x || !y ? (x ?? y) : { stars: Math.max(x.stars, y.stars), solved: Math.max(x.solved, y.solved), updatedAt: Math.max(x.updatedAt, y.updatedAt) },
     ),
@@ -419,10 +439,11 @@ interface ProgressStore {
   labExperiment: (lab: string, experiment: string) => void
   finishInterview: (record: InterviewRecord) => void
   grantXp: (xp: number, label: string) => void
-  saveDesignNote: (caseId: string, stepId: string, text: string) => void
-  revealDesignStep: (caseId: string, stepId: string) => void
-  setDesignChecked: (caseId: string, stepId: string, checked: number[]) => void
-  completeDesign: (caseId: string) => void
+  saveCompetitionCell: (id: string, stepId: string, code: string) => void
+  /** Returns the XP earned (first time only). */
+  completeCompetitionStep: (id: string, stepId: string) => number
+  /** Records a scored submission; `better(a, b)` says whether score a beats score b. Returns the XP earned. */
+  submitCompetition: (id: string, score: number, medal: Medal | undefined, better: (a: number, b: number) => boolean) => number
   /** Correct answer to a maths exercise; returns the XP earned. */
   solveMath: (id: string, stars: number) => number
   /** Boss fight finished (won or lost); returns the XP earned. */
@@ -457,9 +478,9 @@ export const useProgress = create<ProgressStore>((set, get) => {
     set({ p, rewards: [...get().rewards, ...rewards].slice(-6) })
   }
 
-  const design = (p: Progress, id: string): DesignProgress => {
-    p.design ??= {}
-    return (p.design[id] ??= { notes: {}, checked: {}, revealed: [], updatedAt: Date.now() })
+  const competition = (p: Progress, id: string): CompetitionProgress => {
+    p.competitions ??= {}
+    return (p.competitions[id] ??= { cells: {}, stepsDone: [], submissions: 0, updatedAt: Date.now() })
   }
 
   const ex = (p: Progress, id: string): ExerciseProgress =>
@@ -648,38 +669,44 @@ export const useProgress = create<ProgressStore>((set, get) => {
 
     grantXp: (xp, label) => commit(() => {}, xp, label),
 
-    saveDesignNote: (caseId, stepId, text) =>
+    saveCompetitionCell: (id, stepId, code) =>
       commit((p) => {
-        const d = design(p, caseId)
-        d.notes[stepId] = text
-        d.updatedAt = Date.now()
+        const c = competition(p, id)
+        c.cells[stepId] = code
+        c.updatedAt = Date.now()
       }),
 
-    revealDesignStep: (caseId, stepId) =>
-      commit((p) => {
-        const d = design(p, caseId)
-        if (!d.revealed.includes(stepId)) d.revealed.push(stepId)
-        d.updatedAt = Date.now()
-      }),
-
-    setDesignChecked: (caseId, stepId, checked) =>
-      commit((p) => {
-        const d = design(p, caseId)
-        d.checked[stepId] = checked
-        d.updatedAt = Date.now()
-      }),
-
-    completeDesign: (caseId) => {
-      if (get().p.design?.[caseId]?.completedAt) return
+    completeCompetitionStep: (id, stepId) => {
+      if (get().p.competitions?.[id]?.stepsDone.includes(stepId)) return 0
       commit(
         (p) => {
-          const d = design(p, caseId)
-          d.completedAt = Date.now()
-          d.updatedAt = Date.now()
+          const c = competition(p, id)
+          c.stepsDone.push(stepId)
+          c.updatedAt = Date.now()
         },
-        40,
-        'Cas de design ML terminé',
+        10,
+        'Étape de compétition',
       )
+      return 10
+    },
+
+    submitCompetition: (id, score, medal, better) => {
+      const prev = get().p.competitions?.[id]
+      const rank = (m?: Medal) => (m ? MEDALS.indexOf(m) + 1 : 0)
+      // XP for each medal level reached for the first time.
+      const xp = [0, 20, 40, 70][rank(medal)] - [0, 20, 40, 70][rank(prev?.medal)]
+      commit(
+        (p) => {
+          const c = competition(p, id)
+          c.submissions += 1
+          if (c.best === undefined || better(score, c.best)) c.best = score
+          if (rank(medal) > rank(c.medal)) c.medal = medal
+          c.updatedAt = Date.now()
+        },
+        Math.max(0, xp),
+        medal ? `Médaille ${MEDAL_LABEL[medal]}` : 'Soumission',
+      )
+      return Math.max(0, xp)
     },
 
     solveGitLevel: (id, commands) => {

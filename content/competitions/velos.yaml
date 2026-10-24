@@ -1,0 +1,382 @@
+id: velos
+title: Rush hour à vélo
+emoji: 🚲
+difficulty: hard
+task: Régression (série temporelle)
+metric: mae
+metric_label: MAE (vélos / heure)
+higher_is_better: false
+shared: comp_velos
+summary: Prédis le nombre de vélos loués chaque heure pour placer les camions de redistribution. Le temps, l'heure et la pluie décident de tout.
+story: |
+  Un service de vélos en libre-service doit savoir **combien de vélos seront loués chaque heure** pour envoyer ses camions rééquilibrer les stations.
+
+  - `train` : les locations de 2024 heure par heure, du **1ᵉʳ au 21** de chaque mois ;
+  - `test` : les heures du **22 à la fin** de chaque mois, **sans** le nombre de locations.
+
+  Ta soumission est notée avec la **MAE** (erreur absolue moyenne, en vélos par heure) : plus elle est **basse**, mieux c'est.
+data: |
+  | Colonne | Description |
+  |---|---|
+  | `datetime` | date et heure, par exemple `'2024-03-14 08:00'` (texte) |
+  | `temperature` | température en °C |
+  | `humidite` | humidité relative en % (le capteur tombe parfois en panne et renvoie 0) |
+  | `vent` | vitesse du vent en km/h |
+  | `pluie` | il pleut pendant cette heure |
+  | `ferie` | jour férié |
+  | `locations` | **la cible** : nombre de vélos loués pendant l'heure (absente de `test`) |
+medals:
+  bronze: 20
+  silver: 13
+  gold: 8.5
+leaderboard:
+  - { name: meteo_france_fan, score: 6.9 }
+  - { name: velotaf_quotidien, score: 8.1 }
+  - { name: arbres_en_foret, score: 11.3 }
+  - { name: gradient_du_dimanche, score: 12.4 }
+  - { name: une_droite_par_heure, score: 18.6 }
+  - { name: juste_la_meteo, score: 49.2 }
+  - { name: la_moyenne, score: 55.5 }
+submission:
+  id: datetime
+  target: locations
+steps:
+  - id: explore
+    title: Explorer les données
+    goal: Comprendre ce qui fait varier la demande.
+    instructions: |
+      La colonne `datetime` est du texte : convertis-la avec `pd.to_datetime` pour en tirer l'heure. Calcule :
+
+      - `n_hours` : le nombre de lignes de `train` ;
+      - `mean_rentals` : le nombre moyen de locations par heure ;
+      - `peak_hour` : l'heure de la journée (0 à 23) où les locations sont **en moyenne** les plus nombreuses ;
+      - `rain_ratio` : la moyenne des locations quand il pleut, divisée par la moyenne quand il ne pleut pas.
+    starter: |
+      train.head()
+
+      n_hours = None
+      mean_rentals = None
+      peak_hour = None
+      rain_ratio = None
+    solution: |
+      train.head()
+
+      n_hours = len(train)
+      mean_rentals = train['locations'].mean()
+      hours = pd.to_datetime(train['datetime']).dt.hour
+      peak_hour = train.groupby(hours)['locations'].mean().idxmax()
+      by_rain = train.groupby('pluie')['locations'].mean()
+      rain_ratio = by_rain[True] / by_rain[False]
+      train.groupby(hours)['locations'].mean().round(1)
+    hints:
+      - "`pd.to_datetime(train['datetime']).dt.hour` donne l'heure ; on peut grouper par cette Series : `train.groupby(heures)['locations'].mean()`."
+      - "`.idxmax()` renvoie l'index (ici l'heure) de la plus grande moyenne."
+    tests:
+      - name: Nombre d'heures et moyenne
+        check: |
+          assert n_hours == len(_train0), n_hours
+          assert mean_rentals is not None and abs(mean_rentals - _train0['locations'].mean()) < 1e-9, mean_rentals
+      - name: Heure de pointe
+        check: |
+          h = pd.to_datetime(_train0['datetime']).dt.hour
+          assert peak_hour == _train0.groupby(h)['locations'].mean().idxmax(), peak_hour
+      - name: Effet de la pluie
+        check: |
+          m = _train0.groupby('pluie')['locations'].mean()
+          assert rain_ratio is not None and abs(rain_ratio - m[True] / m[False]) < 1e-9, rain_ratio
+    explanation: |
+      Deux pics par jour (8 h et 18 h) : ce sont les **trajets domicile-travail**. La pluie divise la demande par plus de deux.
+
+      L'heure est donc une variable essentielle… mais elle est **cachée** dans une chaîne de caractères : il faudra l'extraire.
+  - id: clean
+    title: Réparer les capteurs
+    goal: Remplacer les mesures impossibles et manquantes.
+    instructions: |
+      Écris `clean(df)`, qui renvoie une copie où :
+
+      - une `humidite` égale à **0** (capteur en panne) est remplacée par `HUM_MEDIAN`, la médiane des humidités **valides** (non nulles) du train ;
+      - une `temperature` manquante est **interpolée** (moyenne de l'heure d'avant et de l'heure d'après : `.interpolate()`), puis, s'il en reste, remplacée par `TEMP_MEDIAN`, la médiane du train.
+    starter: |
+      HUM_MEDIAN = None
+      TEMP_MEDIAN = None
+
+
+      def clean(df):
+          df = df.copy()
+          # à compléter
+          return df
+    solution: |
+      HUM_MEDIAN = train.loc[train['humidite'] > 0, 'humidite'].median()
+      TEMP_MEDIAN = train['temperature'].median()
+
+
+      def clean(df):
+          df = df.copy()
+          df['humidite'] = df['humidite'].replace(0, np.nan).fillna(HUM_MEDIAN)
+          df['temperature'] = df['temperature'].interpolate().fillna(TEMP_MEDIAN)
+          return df
+
+
+      clean(train).describe()
+    wrong:
+      - |
+        HUM_MEDIAN = train.loc[train['humidite'] > 0, 'humidite'].median()
+        TEMP_MEDIAN = train['temperature'].median()
+
+
+        def clean(df):
+            df = df.copy()
+            df['humidite'] = df['humidite'].fillna(HUM_MEDIAN)
+            df['temperature'] = df['temperature'].interpolate().fillna(TEMP_MEDIAN)
+            return df
+      - |
+        HUM_MEDIAN = train.loc[train['humidite'] > 0, 'humidite'].median()
+        TEMP_MEDIAN = train['temperature'].median()
+
+
+        def clean(df):
+            df = df.copy()
+            df['humidite'] = df['humidite'].replace(0, np.nan).fillna(HUM_MEDIAN)
+            df['temperature'] = df['temperature'].fillna(TEMP_MEDIAN)
+            return df
+    hints:
+      - "`s.replace(0, np.nan)` transforme les 0 en valeurs manquantes, qu'on remplit ensuite avec `.fillna(...)`."
+      - "Les lignes sont dans l'ordre chronologique : `.interpolate()` comble un trou avec la moyenne de ses voisins."
+    tests:
+      - name: Médianes du train
+        check: |
+          assert HUM_MEDIAN == _train0.loc[_train0['humidite'] > 0, 'humidite'].median(), HUM_MEDIAN
+          assert TEMP_MEDIAN == _train0['temperature'].median(), TEMP_MEDIAN
+      - name: Humidités réparées
+        check: |
+          c = clean(_test0.copy())
+          broken = _test0['humidite'] == 0
+          assert (c['humidite'] > 0).all(), "il reste des humidités nulles"
+          assert (c.loc[broken, 'humidite'] == HUM_MEDIAN).all()
+      - name: Températures interpolées
+        check: |
+          c = clean(_train0.copy())
+          assert c['temperature'].isna().sum() == 0, "il reste des températures manquantes"
+          i = int(_train0.index[_train0['temperature'].isna() & _train0['temperature'].shift(1).notna() & _train0['temperature'].shift(-1).notna()][0])
+          expected = (_train0['temperature'][i - 1] + _train0['temperature'][i + 1]) / 2
+          assert abs(c['temperature'][i] - expected) < 1e-9, f"ligne {i} : {c['temperature'][i]} au lieu de {expected}"
+      - name: Ne modifie pas le DataFrame reçu
+        check: |
+          data = _train0.copy()
+          clean(data)
+          assert (data['humidite'] == 0).sum() == (_train0['humidite'] == 0).sum() and data['temperature'].isna().sum() == _train0['temperature'].isna().sum()
+    explanation: |
+      Un 0 n'est pas toujours une valeur : ici c'est un **code d'erreur** déguisé. Repérer ces valeurs sentinelles (0, -1, 999…) fait partie du nettoyage.
+
+      Pour une série temporelle, l'**interpolation** est plus juste que la médiane globale : la température de 14 h ressemble à celle de 13 h et 15 h, pas à la médiane de l'année.
+  - id: features
+    title: Extraire le calendrier
+    goal: Donner au modèle l'heure, le jour et le type de journée.
+    instructions: |
+      Écris `add_features(df)`, qui renvoie une copie avec, à partir de `datetime` :
+
+      - `heure` (0-23), `jour_semaine` (0 = lundi, 6 = dimanche), `mois` (1-12) ;
+      - `weekend` : 1 le samedi et le dimanche, 0 sinon ;
+      - `jour_off` : 1 si c'est le week-end **ou** un jour férié, 0 sinon ;
+      - `pluie` et `ferie` convertis en entiers (0 ou 1).
+    starter: |
+      def add_features(df):
+          df = df.copy()
+          # à compléter
+          return df
+
+
+      add_features(clean(train)).head()
+    solution: |
+      def add_features(df):
+          df = df.copy()
+          dt = pd.to_datetime(df['datetime'])
+          df['heure'] = dt.dt.hour
+          df['jour_semaine'] = dt.dt.dayofweek
+          df['mois'] = dt.dt.month
+          df['weekend'] = (df['jour_semaine'] >= 5).astype(int)
+          df['jour_off'] = ((df['weekend'] == 1) | df['ferie']).astype(int)
+          df['pluie'] = df['pluie'].astype(int)
+          df['ferie'] = df['ferie'].astype(int)
+          return df
+
+
+      add_features(clean(train)).head()
+    wrong:
+      - |
+        def add_features(df):
+            df = df.copy()
+            dt = pd.to_datetime(df['datetime'])
+            df['heure'] = dt.dt.hour
+            df['jour_semaine'] = dt.dt.dayofweek
+            df['mois'] = dt.dt.month
+            df['weekend'] = (df['jour_semaine'] >= 5).astype(int)
+            df['jour_off'] = df['weekend']
+            df['pluie'] = df['pluie'].astype(int)
+            df['ferie'] = df['ferie'].astype(int)
+            return df
+    hints:
+      - "`dt = pd.to_datetime(df['datetime'])` puis `dt.dt.hour`, `dt.dt.dayofweek`, `dt.dt.month`."
+      - "`(condition1) | (condition2)` combine deux conditions booléennes ; `.astype(int)` les transforme en 0/1."
+    tests:
+      - name: Sur un petit exemple
+        check: |
+          mini = pd.DataFrame({
+              'datetime': ['2024-05-01 08:00', '2024-05-04 18:00', '2024-05-06 23:00'],
+              'pluie': [False, True, False], 'ferie': [True, False, False],
+          })
+          f = add_features(mini)
+          assert f['heure'].tolist() == [8, 18, 23], f['heure'].tolist()
+          assert f['jour_semaine'].tolist() == [2, 5, 0], f['jour_semaine'].tolist()
+          assert f['mois'].tolist() == [5, 5, 5]
+          assert f['weekend'].tolist() == [0, 1, 0], f['weekend'].tolist()
+          assert f['jour_off'].tolist() == [1, 1, 0], f['jour_off'].tolist()
+          assert f['pluie'].tolist() == [0, 1, 0] and f['ferie'].tolist() == [1, 0, 0]
+          assert 'heure' not in mini.columns, "add_features ne doit pas modifier le DataFrame reçu"
+    explanation: |
+      Un 1ᵉʳ mai (férié) ressemble à un dimanche : pas de trajets domicile-travail. La variable `jour_off` le dit explicitement au modèle, qui n'aurait pas pu le deviner avec seulement 11 jours fériés dans l'année.
+  - id: split
+    title: Une validation qui respecte le temps
+    goal: "Imiter le test : prédire des jours jamais vus."
+    instructions: |
+      Le test contient les jours **22 et suivants** de chaque mois. Un découpage aléatoire mettrait dans la validation des heures voisines d'heures d'entraînement (presque identiques) : le score serait trop optimiste.
+
+      - `full = add_features(clean(train))`, `X = full[FEATURES]`, `y = full['locations']` ;
+      - `is_val` : vrai pour les jours **15 à 21** du mois (`pd.to_datetime(full['datetime']).dt.day >= 15`) ;
+      - `X_tr, y_tr` = les autres lignes, `X_val, y_val` = celles de `is_val` ;
+      - `baseline_mae` : la MAE sur `y_val` d'une prédiction constante égale à la moyenne de `y_tr`.
+    starter: |
+      FEATURES = ['heure', 'jour_semaine', 'mois', 'weekend', 'jour_off', 'ferie', 'temperature', 'humidite', 'vent', 'pluie']
+
+      full = add_features(clean(train))
+      X = None
+      y = None
+      baseline_mae = None
+    solution: |
+      FEATURES = ['heure', 'jour_semaine', 'mois', 'weekend', 'jour_off', 'ferie', 'temperature', 'humidite', 'vent', 'pluie']
+
+      full = add_features(clean(train))
+      X = full[FEATURES]
+      y = full['locations']
+      is_val = pd.to_datetime(full['datetime']).dt.day >= 15
+      X_tr, y_tr = X[~is_val], y[~is_val]
+      X_val, y_val = X[is_val], y[is_val]
+      baseline_mae = float(np.mean(np.abs(y_val - y_tr.mean())))
+      baseline_mae
+    wrong:
+      - |
+        from sklearn.model_selection import train_test_split
+
+        FEATURES = ['heure', 'jour_semaine', 'mois', 'weekend', 'jour_off', 'ferie', 'temperature', 'humidite', 'vent', 'pluie']
+
+        full = add_features(clean(train))
+        X = full[FEATURES]
+        y = full['locations']
+        X_tr, X_val, y_tr, y_val = train_test_split(X, y, test_size=1 / 3, random_state=0)
+        baseline_mae = float(np.mean(np.abs(y_val - y_tr.mean())))
+    hints:
+      - "`X[~is_val]` garde les lignes où `is_val` est faux."
+      - "MAE : `np.mean(np.abs(y_val - prediction))`."
+    tests:
+      - name: X et y
+        check: |
+          assert X is not None and list(X.columns) == FEATURES and len(X) == len(_train0), "X doit contenir FEATURES pour chaque heure du train"
+          assert X.isna().sum().sum() == 0, "X contient des NaN"
+          assert (y.to_numpy() == _train0['locations'].to_numpy()).all()
+      - name: Validation = jours 15 à 21
+        check: |
+          days = pd.to_datetime(_train0['datetime']).dt.day
+          assert sorted(set(days[X_val.index])) == list(range(15, 22)), "X_val doit contenir exactement les jours 15 à 21"
+          assert days[X_tr.index].max() == 14 and len(X_tr) + len(X_val) == len(X)
+      - name: Baseline
+        check: |
+          assert baseline_mae is not None and abs(baseline_mae - np.mean(np.abs(y_val - y_tr.mean()))) < 1e-9, baseline_mae
+    explanation: |
+      Règle d'or : la validation doit ressembler au test. Pour des données temporelles, on valide sur une **période** que le modèle n'a pas vue, jamais sur des lignes tirées au hasard.
+  - id: model
+    title: Entraîner un modèle
+    goal: Capturer l'interaction entre l'heure et le type de journée.
+    instructions: |
+      Le pic de 8 h n'existe que les jours travaillés : l'effet de l'heure dépend de `jour_off`. Les arbres de décision capturent ces **interactions** tout seuls.
+
+      Entraîne `model = HistGradientBoostingRegressor(max_iter=300, learning_rate=0.08, random_state=0)` sur `X_tr, y_tr`, puis calcule `val_mae` sur la validation. Objectif : au plus **16** vélos/heure.
+    starter: |
+      from sklearn.ensemble import HistGradientBoostingRegressor
+
+      model = None
+      val_mae = None
+    solution: |
+      from sklearn.ensemble import HistGradientBoostingRegressor
+
+      model = HistGradientBoostingRegressor(max_iter=300, learning_rate=0.08, random_state=0)
+      model.fit(X_tr, y_tr)
+      val_mae = float(np.mean(np.abs(y_val - model.predict(X_val))))
+      val_mae
+    hints:
+      - "`model.fit(X_tr, y_tr)` puis `model.predict(X_val)`."
+      - "Une régression linéaire plafonne vers 45 : elle ne peut pas représenter deux pics par jour avec une seule pente pour `heure`."
+    tests:
+      - name: Le modèle est entraîné
+        check: |
+          from sklearn.utils.validation import check_is_fitted
+          assert model is not None, "model est vide"
+          check_is_fitted(model)
+      - name: val_mae est bien la MAE sur la validation
+        check: |
+          assert val_mae is not None and abs(val_mae - np.mean(np.abs(y_val - model.predict(X_val)))) < 1e-6, val_mae
+      - name: Au plus 16 vélos/heure d'erreur
+        check: |
+          assert val_mae <= 16, f"val_mae = {val_mae:.2f}"
+    explanation: |
+      Le boosting d'arbres découpe automatiquement « heure = 8 et jour travaillé » : c'est l'interaction qu'un modèle linéaire ne voit pas sans aide.
+
+      Pour viser l'or, observe les grosses erreurs de validation : après une averse, les rues restent mouillées… Une variable « il a plu dans les 2 heures précédentes » (avec `shift`) pourrait aider.
+  - id: submit
+    title: Soumettre
+    goal: Réentraîner sur tout le train et prédire chaque heure du test.
+    instructions: |
+      1. Réentraîne `model` sur tout `X, y` ;
+      2. prépare `X_test` avec `add_features(clean(test))` et les colonnes `FEATURES` ;
+      3. crée `submission` : colonnes `datetime` et `locations`, dans l'ordre de `test`. Un nombre de locations ne peut pas être négatif : `np.clip(predictions, 0, None)`.
+    starter: |
+      submission = None
+    solution: |
+      model.fit(X, y)
+      X_test = add_features(clean(test))[FEATURES]
+      submission = pd.DataFrame({'datetime': test['datetime'], 'locations': np.clip(model.predict(X_test), 0, None)})
+      submission.head()
+    hints:
+      - "`np.clip(valeurs, 0, None)` remplace les valeurs négatives par 0."
+    tests:
+      - name: Format de la soumission
+        check: |
+          assert isinstance(submission, pd.DataFrame), "submission doit être un DataFrame"
+          assert list(submission.columns) == ['datetime', 'locations'], list(submission.columns)
+          assert len(submission) == len(_test0) and (submission['datetime'].to_numpy() == _test0['datetime'].to_numpy()).all(), "il faut une ligne par heure de test, dans l'ordre"
+      - name: Des prédictions complètes et positives
+        check: |
+          p = submission['locations'].astype(float)
+          assert p.isna().sum() == 0, "il manque des prédictions"
+          assert (p >= 0).all(), "des locations négatives : pense à np.clip"
+    explanation: |
+      En production, ce modèle serait réentraîné régulièrement et alimenté par les **prévisions** météo, elles-mêmes incertaines : l'erreur réelle serait un peu plus grande.
+gold: |
+  from sklearn.ensemble import HistGradientBoostingRegressor
+
+  _calendar_features = add_features
+
+
+  def add_features(df):
+      df = _calendar_features(df)
+      # Il a plu dans les deux heures précédentes : les lignes sont dans l'ordre chronologique.
+      df['pluie_avant'] = ((df['pluie'].shift(1, fill_value=0) + df['pluie'].shift(2, fill_value=0)) > 0).astype(int)
+      return df
+
+
+  FEATURES = FEATURES + ['pluie_avant']
+  full = add_features(clean(train))
+  X = full[FEATURES]
+  X_tr, X_val = X[~is_val], X[is_val]
+  model = HistGradientBoostingRegressor(max_iter=300, learning_rate=0.08, random_state=0)
+  model.fit(X_tr, y_tr)
+  val_mae = float(np.mean(np.abs(y_val - model.predict(X_val))))

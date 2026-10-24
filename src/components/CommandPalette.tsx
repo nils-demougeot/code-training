@@ -1,8 +1,8 @@
 import clsx from 'clsx'
-import { BookMarked, BookOpen, Boxes, Code2, CornerDownLeft, FlaskConical, Puzzle, Rocket, Search, Sigma } from 'lucide-react'
+import { BookMarked, BookOpen, Code2, CornerDownLeft, FlaskConical, Puzzle, Rocket, Search, Sigma, Trophy } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { designCases, docLibraries, exercises, fiches, parsonsProblems, projects } from '@/lib/content'
+import { competitions, docLibraries, exercises, fiches, parsonsProblems, projects } from '@/lib/content'
 import { DOMAINS } from '@/lib/domains'
 import { LABS } from '@/labs/registry'
 import { CHAPTERS } from '@/maths'
@@ -12,10 +12,10 @@ interface Item {
   label: string
   sub: string
   to: string
-  kind: 'exercise' | 'fiche' | 'project' | 'lab' | 'doc' | 'design' | 'blocks' | 'maths'
+  kind: 'exercise' | 'fiche' | 'project' | 'lab' | 'doc' | 'competition' | 'blocks' | 'maths'
 }
 
-const ICONS = { exercise: Code2, fiche: BookOpen, project: Rocket, lab: FlaskConical, doc: BookMarked, design: Boxes, blocks: Puzzle, maths: Sigma }
+const ICONS = { exercise: Code2, fiche: BookOpen, project: Rocket, lab: FlaskConical, doc: BookMarked, competition: Trophy, blocks: Puzzle, maths: Sigma }
 
 function normalize(s: string) {
   return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
@@ -40,7 +40,7 @@ export function CommandPalette() {
         { id: `maths-${c.id}`, label: c.title, sub: `Maths · ${c.summary}`, to: `/maths/${c.id}`, kind: 'maths' as const },
         ...c.exercises.map((e) => ({ id: `maths-${e.id}`, label: e.title, sub: `Maths · ${c.title} · ${e.skill}`, to: `/maths/${c.id}?tab=exercices&ex=${e.id}`, kind: 'maths' as const })),
       ]),
-      ...designCases.map((c) => ({ id: c.id, label: c.title, sub: `Design ML · ${c.summary}`, to: `/design/${c.id}`, kind: 'design' as const })),
+      ...competitions.map((c) => ({ id: c.id, label: c.title, sub: `Compétition · ${c.summary}`, to: `/competitions/${c.id}`, kind: 'competition' as const })),
       ...parsonsProblems
         .filter((b) => b.source === 'parsons')
         .map((b) => ({ id: b.id, label: b.title, sub: `Blocs de code · ${DOMAINS[b.domain].label}`, to: `/blocs/${b.id}`, kind: 'blocks' as const })),

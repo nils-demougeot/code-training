@@ -189,25 +189,40 @@ export interface DocLibrary {
   sections: { title: string; entries: DocEntry[] }[]
 }
 
-// ---------------------------------------------------------------- ML system design
+// ---------------------------------------------------------------- ML competitions
 
-export interface DesignStep {
+export interface CompetitionStep {
   id: string
   title: string
-  question: string
-  points: string[]
-  answer: string
+  goal: string
+  instructions: string
+  starter: string
+  solution: string
+  hints: string[]
+  tests: TestCase[]
+  explanation: string
 }
 
-export interface DesignCase {
+/** Kaggle-style competition: a story, a dataset, a guided notebook and a hidden test set. */
+export interface Competition {
   id: string
   title: string
-  company: string
+  emoji: string
   difficulty: Difficulty
-  minutes: number
+  task: string
+  metric: string
+  metric_label: string
+  higher_is_better: boolean
+  shared: string
   summary: string
-  context: string
-  steps: DesignStep[]
+  story: string
+  data: string
+  medals: { bronze: number; silver: number; gold: number }
+  leaderboard: { name: string; score: number }[]
+  submission: { id: string; target: string }
+  steps: CompetitionStep[]
+  /** Model cell that reaches gold (checked by the validator, never shown). */
+  gold?: string
 }
 
 // ---------------------------------------------------------------- Parsons (code blocks)

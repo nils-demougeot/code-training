@@ -313,6 +313,72 @@ def check_parsons(items, only):
     return n
 
 
+COMPETITION_FIELDS = ["id", "title", "emoji", "difficulty", "task", "metric", "metric_label", "higher_is_better", "shared",
+                      "summary", "story", "data", "medals", "leaderboard", "submission", "steps", "gold"]
+STEP_FIELDS = ["id", "title", "goal", "instructions", "starter", "solution", "hints", "tests", "explanation"]
+
+
+def notebook(cells):
+    """The cells of a competition notebook run one after the other in the same namespace."""
+    return "\n\n".join(c.rstrip() for c in cells) + "\n"
+
+
+def competition_score(setup, code):
+    res = run({"mode": "run", "code": code + "\nprint('__SCORE__', repr(float(_score(submission))))\n", "setup": setup}, 600)
+    m = re.search(r"__SCORE__ ([0-9.eE+-]+)", res.get("stdout") or "")
+    return (float(m.group(1)) if m else None), res
+
+
+def check_competition(path, comp):
+    """Kaggle-style competition: each step of the reference notebook passes its tests, each starter
+    cell fails them, and the medals are calibrated (naive < bronze, reference >= silver, gold reachable)."""
+    name = f"compétition {comp.get('id', path.stem)}"
+    for key in COMPETITION_FIELDS:
+        if key not in comp:
+            errors.append(f"{name}: missing {key}")
+    if any(k not in comp for k in ("steps", "medals", "shared")):
+        return
+    setup = setup_of(comp)
+    better = (lambda a, b: a >= b) if comp["higher_is_better"] else (lambda a, b: a <= b)
+    medals = comp["medals"]
+    if not (better(medals["gold"], medals["silver"]) and better(medals["silver"], medals["bronze"])):
+        errors.append(f"{name}: medals out of order {medals}")
+    steps = comp["steps"]
+    solutions = [s["solution"] for s in steps]
+    for k, step in enumerate(steps):
+        sname = f"{name} › {step.get('id')}"
+        for key in STEP_FIELDS:
+            if key not in step:
+                errors.append(f"{sname}: missing {key}")
+        print(f"  · {sname}", flush=True)
+        res = run({"mode": "test", "code": notebook(solutions[: k + 1]), "setup": setup, "tests": step["tests"]}, 600)
+        if not res.get("ok") or res.get("passed") != res.get("total"):
+            errors.append(f"{sname}: the reference notebook fails\n{describe_failures(res)}")
+        for label, cell in [("starter", step["starter"])] + [(f"wrong #{i + 1}", w) for i, w in enumerate(step.get("wrong", []))]:
+            res = run({"mode": "test", "code": notebook(solutions[:k] + [cell]), "setup": setup, "tests": step["tests"]}, 600)
+            if res.get("ok") and res.get("total") and res.get("passed") == res.get("total"):
+                errors.append(f"{sname}: the {label} cell passes every test")
+    ref, res = competition_score(setup, notebook(solutions))
+    naive, _ = competition_score(setup, "submission = _naive_submission()")
+    model_step = next((i for i, s in enumerate(steps) if s["id"] == "model"), None)
+    gold = None
+    if model_step is not None:
+        cells = solutions[:model_step] + [comp["gold"]] + solutions[model_step + 1:]
+        gold, _ = competition_score(setup, notebook(cells))
+    else:
+        errors.append(f"{name}: no step with id 'model' (the gold solution replaces it)")
+    print(f"    naïf {naive} · référence {ref} · or {gold} · médailles {medals}", flush=True)
+    if ref is None:
+        errors.append(f"{name}: no score for the reference notebook\n{res.get('error')}")
+        return
+    if naive is None or better(naive, medals["bronze"]):
+        errors.append(f"{name}: the naive submission ({naive}) already earns bronze")
+    if not better(ref, medals["silver"]):
+        errors.append(f"{name}: the reference notebook ({ref}) does not reach silver ({medals['silver']})")
+    if gold is None or not better(gold, medals["gold"]):
+        errors.append(f"{name}: the gold solution ({gold}) does not reach gold ({medals['gold']})")
+
+
 def check_maths():
     """Maths exercises (src/maths): many random instances of each, every answer recomputed
     independently (scripts/maths_check.py), and every lesson/statement/correction rendered."""
@@ -404,6 +470,14 @@ def main():
     n_git = 0 if args.only and not args.only.startswith("git") else check_git_levels()
     n_maths, n_maths_inst = (0, 0) if args.only and not args.only.startswith("maths") else check_maths()
 
+    n_comp = 0
+    for path in sorted((CONTENT / "competitions").glob("*.yaml")):
+        comp = yaml.safe_load(path.read_text())
+        if args.only and args.only not in f"comp-{comp.get('id')}":
+            continue
+        n_comp += 1
+        check_competition(path, comp)
+
     n_proj = 0
     for path in sorted((CONTENT / "projects").glob("*.yaml")):
         pr = yaml.safe_load(path.read_text())
@@ -423,23 +497,13 @@ def main():
             continue
         n_docs += check_docs(path, lib)
 
-    for path in sorted((CONTENT / "design").glob("*.yaml")):
-        case = yaml.safe_load(path.read_text())
-        for key in ["id", "title", "company", "difficulty", "minutes", "summary", "context", "steps"]:
-            if key not in case:
-                errors.append(f"design {path.name}: missing {key}")
-        for step in case.get("steps", []):
-            for key in ["id", "title", "question", "points", "answer"]:
-                if not step.get(key):
-                    errors.append(f"design {case.get('id')} › {step.get('id')}: missing {key}")
-
     for path in sorted((CONTENT / "fiches").glob("*.yaml")):
         f = yaml.safe_load(path.read_text())
         for key in ["id", "title", "domain", "summary", "body"]:
             if key not in f:
                 errors.append(f"{path.name}: missing {key}")
 
-    print(f"\n{n_ex} exercices, {n_proj} projets, {n_cards} cartes, {n_quiz} questions de quiz, {n_docs} entrées de doc, {n_parsons} problèmes de blocs, {n_git} missions Git, {n_maths} exercices de maths ({n_maths_inst} tirages) vérifiés.")
+    print(f"\n{n_ex} exercices, {n_proj} projets, {n_cards} cartes, {n_quiz} questions de quiz, {n_docs} entrées de doc, {n_parsons} problèmes de blocs, {n_git} missions Git, {n_comp} compétitions, {n_maths} exercices de maths ({n_maths_inst} tirages) vérifiés.")
     for w in warnings:
         print(f"⚠️  {w}")
     for e in errors:

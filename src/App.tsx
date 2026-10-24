@@ -19,8 +19,8 @@ const FichePage = lazy(() => import('./pages/FichePage'))
 const Interview = lazy(() => import('./pages/Interview'))
 const Profile = lazy(() => import('./pages/Profile'))
 const DocPage = lazy(() => import('./pages/DocPage'))
-const Design = lazy(() => import('./pages/Design'))
-const DesignCasePage = lazy(() => import('./pages/DesignCasePage'))
+const Competitions = lazy(() => import('./pages/Competitions'))
+const CompetitionPage = lazy(() => import('./pages/CompetitionPage'))
 const Maths = lazy(() => import('./pages/Maths'))
 const MathChapter = lazy(() => import('./pages/MathChapter'))
 const Blocks = lazy(() => import('./pages/Blocks'))
@@ -67,8 +67,9 @@ export default function App() {
           <Route path="/entretien" element={<Interview />} />
           <Route path="/entretien/session" element={<Interview />} />
           <Route path="/doc" element={<DocPage />} />
-          <Route path="/design" element={<Design />} />
-          <Route path="/design/:id" element={<DesignCasePage />} />
+          <Route path="/competitions" element={<Competitions />} />
+          <Route path="/competitions/:id" element={<CompetitionPage />} />
+          <Route path="/design/*" element={<Navigate to="/competitions" replace />} />
           <Route path="/maths" element={<Maths />} />
           <Route path="/maths/:chapter" element={<MathChapter />} />
           <Route path="/stats" element={<Navigate to="/maths" replace />} />

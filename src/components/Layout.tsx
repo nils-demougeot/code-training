@@ -1,6 +1,6 @@
 import clsx from 'clsx'
 import {
-  BookMarked, BookOpen, Boxes, Code2, Cpu, Sigma, GitBranch, Flame, FlaskConical, Globe, LayoutDashboard, Layers, Menu, Mic, Puzzle, Rocket, Search,
+  BookMarked, BookOpen, Trophy, Code2, Cpu, Sigma, GitBranch, Flame, FlaskConical, Globe, LayoutDashboard, Layers, Menu, Mic, Puzzle, Rocket, Search,
   UserCircle2, X, Zap,
 } from 'lucide-react'
 import { useEffect, useId, useMemo, useState, type ReactNode } from 'react'
@@ -28,7 +28,7 @@ const NAV: { to: string; label: string; icon: typeof Code2; badge?: 'cards' }[] 
   { to: '/quiz', label: 'Quiz éclair', icon: Zap },
   { to: '/labs', label: 'Labs', icon: FlaskConical },
   { to: '/projets', label: 'Projets', icon: Rocket },
-  { to: '/design', label: 'Design ML', icon: Boxes },
+  { to: '/competitions', label: 'Compétitions', icon: Trophy },
   { to: '/maths', label: 'Maths', icon: Sigma },
   { to: '/git', label: 'Git & GitHub', icon: GitBranch },
   { to: '/fiches', label: 'Fiches', icon: BookOpen },

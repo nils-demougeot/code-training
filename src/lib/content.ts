@@ -1,6 +1,6 @@
 import { parse } from 'yaml'
 import { parsonsEligible, toBlocks } from './parsons'
-import type { DesignCase, Deck, DocLibrary, Domain, Exercise, Fiche, FlashCard, ParsonsProblem, Project, QuizQuestion } from './types'
+import type { Competition, Deck, DocLibrary, Domain, Exercise, Fiche, FlashCard, ParsonsProblem, Project, QuizQuestion } from './types'
 
 // All learning content lives in /content as YAML (code blocks need no escaping there)
 // and is bundled at build time.
@@ -23,7 +23,7 @@ const ficheFiles = import.meta.glob('/content/fiches/*.yaml', {
 const docFiles = import.meta.glob('/content/docs/*.yaml', {
   query: '?raw', import: 'default', eager: true,
 }) as Record<string, string>
-const designFiles = import.meta.glob('/content/design/*.yaml', {
+const competitionFiles = import.meta.glob('/content/competitions/*.yaml', {
   query: '?raw', import: 'default', eager: true,
 }) as Record<string, string>
 const parsonsFiles = import.meta.glob('/content/parsons/*.yaml', {
@@ -101,10 +101,11 @@ export const docLibraries: DocLibrary[] = Object.entries(docFiles)
   .map(([, raw]) => parse(raw) as DocLibrary)
 export const docLibraryById = new Map(docLibraries.map((l) => [l.id, l]))
 
-export const designCases: DesignCase[] = Object.entries(designFiles)
-  .sort(([a], [b]) => a.localeCompare(b))
-  .map(([, raw]) => parse(raw) as DesignCase)
-export const designCaseById = new Map(designCases.map((c) => [c.id, c]))
+const COMPETITION_ORDER = ['aurora', 'apparts', 'velos']
+export const competitions: Competition[] = Object.values(competitionFiles)
+  .map((raw) => parse(raw) as Competition)
+  .sort((a, b) => COMPETITION_ORDER.indexOf(a.id) - COMPETITION_ORDER.indexOf(b.id))
+export const competitionById = new Map(competitions.map((c) => [c.id, c]))
 
 /** Code-blocks problems: written ones first, then every eligible exercise. */
 export const parsonsProblems: ParsonsProblem[] = [

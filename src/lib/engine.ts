@@ -124,14 +124,14 @@ function resetWorker(reason: string) {
   pending.clear()
 }
 
-async function execBrowser<T>(payload: Payload, timeoutMs: number, onProgress?: (m: string) => void) {
+async function execBrowser<T>(payload: Payload, timeoutMs: number, onProgress?: (m: string) => void, extra: string[] = []) {
   await initBrowserEngine()
   const { set } = useEngine.getState()
   set({ status: 'busy' })
   // On timeout the worker is killed, which rejects the pending call with "timeout".
   let timer = setTimeout(() => resetWorker('timeout'), timeoutMs)
   try {
-    const result = await call<T>({ type: 'exec', payload, sources: sourcesOf(payload) }, (m) => {
+    const result = await call<T>({ type: 'exec', payload, sources: [...sourcesOf(payload), ...extra] }, (m) => {
       // Package downloads must not count against the user's time budget.
       clearTimeout(timer)
       timer = setTimeout(() => resetWorker('timeout'), timeoutMs + 60_000)
@@ -201,6 +201,8 @@ export interface ExecOptions {
   /** Forces the local runner (exercises that need PyTorch). */
   requireLocal?: boolean
   onProgress?: (msg: string) => void
+  /** More code whose imports must be loaded first (e.g. notebook cells embedded in the setup). */
+  importsFrom?: string[]
 }
 
 export function activeEngine(requireLocal = false): 'browser' | 'local' {
@@ -229,7 +231,7 @@ function execute<T>(payload: Payload, opts: ExecOptions): Promise<T> {
   const job = queue.then(() =>
     engine === 'local'
       ? execLocal<T>(payload, timeoutMs)
-      : execBrowser<T>(payload, timeoutMs, opts.onProgress),
+      : execBrowser<T>(payload, timeoutMs, opts.onProgress, opts.importsFrom),
   )
   queue = job.catch(() => {})
   return job

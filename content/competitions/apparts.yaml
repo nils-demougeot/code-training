@@ -1,0 +1,416 @@
+id: apparts
+title: Le juste prix à Lyon
+emoji: 🏠
+difficulty: medium
+task: Régression
+metric: rmse
+metric_label: RMSE (k€)
+higher_is_better: false
+shared: comp_apparts
+summary: Une agence immobilière veut estimer le prix de vente de ses appartements. Gare aux saisies farfelues dans l'historique !
+story: |
+  Une agence lyonnaise veut un **estimateur de prix** pour ses futurs mandats. Elle te confie :
+
+  - `train` : 2 243 ventes passées, avec leur prix (`prix`, en milliers d'euros) ;
+  - `test` : 752 appartements à estimer, **sans** le prix.
+
+  Ta soumission est notée avec la **RMSE** en k€ (racine de l'erreur quadratique moyenne) : plus elle est **basse**, mieux c'est. Attention, l'historique a été saisi à la main…
+data: |
+  | Colonne | Description |
+  |---|---|
+  | `id` | identifiant de l'annonce |
+  | `arrondissement` | arrondissement de Lyon (1 à 9) |
+  | `surface` | surface habitable en m² |
+  | `pieces` | nombre de pièces |
+  | `etage` | étage (0 = rez-de-chaussée) |
+  | `ascenseur`, `balcon` | équipements (booléens) |
+  | `annee_construction` | année de construction de l'immeuble |
+  | `dpe` | diagnostic de performance énergétique, de `A` (sobre) à `G` (passoire) |
+  | `prix` | **la cible** : prix de vente en k€ (absente de `test`) |
+medals:
+  bronze: 45
+  silver: 38
+  gold: 34
+leaderboard:
+  - { name: notaire_du_6e, score: 31.8 }
+  - { name: agent_immo_pro, score: 33.6 }
+  - { name: boosting_addict, score: 35.9 }
+  - { name: la_mediane, score: 41.7 }
+  - { name: regression_lineaire, score: 43.2 }
+  - { name: prix_au_m2, score: 44.8 }
+  - { name: oublie_les_outliers, score: 94.6 }
+  - { name: la_moyenne, score: 174.6 }
+submission:
+  id: id
+  target: prix
+steps:
+  - id: explore
+    title: Explorer les données
+    goal: Regarder les prix et repérer ce qui cloche.
+    instructions: |
+      Affiche `train.describe()`, puis calcule :
+
+      - `n_sales` : le nombre de ventes de `train` ;
+      - `median_price` : le prix médian (en k€) ;
+      - `price_m2_by_arr` : le **prix médian au m²** (en k€/m²) par arrondissement, une Series indexée par arrondissement ;
+      - `max_surface` : la plus grande surface du train. Est-elle crédible ?
+    starter: |
+      train.describe()
+
+      n_sales = None
+      median_price = None
+      price_m2_by_arr = None
+      max_surface = None
+    solution: |
+      train.describe()
+
+      n_sales = len(train)
+      median_price = train['prix'].median()
+      price_m2_by_arr = (train['prix'] / train['surface']).groupby(train['arrondissement']).median()
+      max_surface = train['surface'].max()
+      price_m2_by_arr.sort_values(ascending=False)
+    hints:
+      - "Le prix au m² est `train['prix'] / train['surface']` ; on peut grouper une Series par une autre : `s.groupby(train['arrondissement'])`."
+      - "`train['surface'].max()` : un appartement de plus de 10 000 m² ? Sans doute une surface saisie dans une autre unité."
+    tests:
+      - name: Nombre de ventes et prix médian
+        check: |
+          assert n_sales == len(_train0), n_sales
+          assert median_price is not None and abs(median_price - _train0['prix'].median()) < 1e-9, median_price
+      - name: Prix médian au m² par arrondissement
+        check: |
+          expected = (_train0['prix'] / _train0['surface']).groupby(_train0['arrondissement']).median()
+          assert price_m2_by_arr is not None and len(price_m2_by_arr) == 9, "il faut une valeur par arrondissement"
+          assert all(abs(price_m2_by_arr.loc[a] - expected.loc[a]) < 1e-9 for a in expected.index)
+      - name: La surface maximale
+        check: |
+          assert max_surface == _train0['surface'].max(), max_surface
+    explanation: |
+      Le 6ᵉ est l'arrondissement le plus cher au m², le 8ᵉ le moins cher : la localisation compte énormément, il faudra la donner au modèle.
+
+      Une surface de plusieurs milliers de m² pour un 3 pièces est une **erreur de saisie** (des dm² au lieu de m²). Ces quelques lignes peuvent ruiner un modèle linéaire : la RMSE est très sensible aux grosses erreurs.
+  - id: clean
+    title: Écarter les saisies aberrantes et compléter
+    goal: Nettoyer le train sans tricher sur le test.
+    instructions: |
+      1. Crée `train_ok` : les ventes du train dont la `surface` est **au plus 300 m²** (on écarte les saisies aberrantes ; on ne supprime **jamais** de lignes du test).
+      2. Calcule sur `train_ok` : `ETAGE_MEDIAN` (médiane de `etage`) et `ANNEE_MEDIAN` (médiane de `annee_construction`).
+      3. Écris `clean(df)`, qui renvoie une copie où `etage` et `annee_construction` manquants valent ces médianes, et `dpe` manquant vaut `'Inconnu'`.
+    starter: |
+      train_ok = None
+      ETAGE_MEDIAN = None
+      ANNEE_MEDIAN = None
+
+
+      def clean(df):
+          df = df.copy()
+          # à compléter
+          return df
+    solution: |
+      train_ok = train[train['surface'] <= 300].reset_index(drop=True)
+      ETAGE_MEDIAN = train_ok['etage'].median()
+      ANNEE_MEDIAN = train_ok['annee_construction'].median()
+
+
+      def clean(df):
+          df = df.copy()
+          df['etage'] = df['etage'].fillna(ETAGE_MEDIAN)
+          df['annee_construction'] = df['annee_construction'].fillna(ANNEE_MEDIAN)
+          df['dpe'] = df['dpe'].fillna('Inconnu')
+          return df
+
+
+      clean(train_ok).isna().sum()
+    wrong:
+      - |
+        train_ok = train[train['surface'] <= 300].reset_index(drop=True)
+        ETAGE_MEDIAN = train_ok['etage'].median()
+        ANNEE_MEDIAN = train_ok['annee_construction'].median()
+
+
+        def clean(df):
+            df = df.copy()
+            df['etage'] = df['etage'].fillna(ETAGE_MEDIAN)
+            df['annee_construction'] = df['annee_construction'].fillna(df['annee_construction'].median())
+            df['dpe'] = df['dpe'].fillna('Inconnu')
+            return df
+      - |
+        train_ok = train[train['surface'] < 300].reset_index(drop=True)
+        ETAGE_MEDIAN = train_ok['etage'].median()
+        ANNEE_MEDIAN = train_ok['annee_construction'].median()
+
+
+        def clean(df):
+            df = df.copy()
+            df = df.dropna()
+            return df
+    hints:
+      - "`train[train['surface'] <= 300]` garde les lignes qui vérifient la condition."
+      - "Les médianes se calculent sur `train_ok`, une seule fois, en dehors de `clean`."
+    tests:
+      - name: Les surfaces aberrantes sont écartées du train
+        check: |
+          keep = _train0['surface'] <= 300
+          assert train_ok is not None and len(train_ok) == keep.sum(), f"{None if train_ok is None else len(train_ok)} lignes au lieu de {keep.sum()}"
+          assert train_ok['surface'].max() <= 300
+      - name: Médianes calculées sur train_ok
+        check: |
+          ok = _train0[_train0['surface'] <= 300]
+          assert ETAGE_MEDIAN == ok['etage'].median() and ANNEE_MEDIAN == ok['annee_construction'].median(), (ETAGE_MEDIAN, ANNEE_MEDIAN)
+      - name: Plus aucun manquant (train et test)
+        check: |
+          for name, data in [('train', _train0), ('test', _test0)]:
+              left = clean(data.copy()).isna().sum()
+              assert left.sum() == 0, f"{name} : il reste des NaN dans {left[left > 0].to_dict()}"
+          c = clean(_test0.copy())
+          assert len(c) == len(_test0), "clean ne doit supprimer aucune ligne : il faudra prédire chaque appartement du test"
+          assert (c.loc[_test0['dpe'].isna(), 'dpe'] == 'Inconnu').all()
+          assert (c.loc[_test0['etage'].isna(), 'etage'] == ETAGE_MEDIAN).all()
+          assert (c.loc[_test0['annee_construction'].isna(), 'annee_construction'] == ANNEE_MEDIAN).all()
+      - name: Les valeurs de remplacement viennent de train_ok, pas des données reçues
+        check: |
+          mini = _test0.head(4).copy()
+          mini['annee_construction'] = [2020.0, 2020.0, 2020.0, np.nan]
+          mini['etage'] = [9.0, 9.0, 9.0, np.nan]
+          c = clean(mini)
+          assert c['annee_construction'].iloc[3] == ANNEE_MEDIAN and c['etage'].iloc[3] == ETAGE_MEDIAN, "utilise les médianes de train_ok"
+      - name: Ne modifie pas le DataFrame reçu
+        check: |
+          data = _test0.copy()
+          clean(data)
+          assert data.isna().sum().sum() == _test0.isna().sum().sum()
+    explanation: |
+      On peut retirer des lignes **d'entraînement** douteuses, jamais des lignes de test : en production, il faudra bien répondre pour chaque appartement.
+
+      Retirer 1 % de lignes aberrantes divise par deux l'erreur d'une régression linéaire ici : un seul point à 10 000 m² suffit à fausser toute la droite.
+  - id: features
+    title: Créer des variables
+    goal: Transformer les colonnes brutes en signaux utiles au modèle.
+    instructions: |
+      Écris `add_features(df)`, qui renvoie une copie avec :
+
+      - `age` : `2024 - annee_construction` ;
+      - `dpe_score` : `A` → 1, `B` → 2, …, `G` → 7, et `'Inconnu'` → 4 (la valeur du milieu) ;
+      - `surface_par_piece` : `surface / pieces` ;
+      - `ascenseur` et `balcon` convertis en entiers (0 ou 1).
+    starter: |
+      DPE_SCORE = {'A': 1, 'B': 2, 'C': 3, 'D': 4, 'E': 5, 'F': 6, 'G': 7}
+
+
+      def add_features(df):
+          df = df.copy()
+          # à compléter
+          return df
+
+
+      add_features(clean(train_ok)).head()
+    solution: |
+      DPE_SCORE = {'A': 1, 'B': 2, 'C': 3, 'D': 4, 'E': 5, 'F': 6, 'G': 7}
+
+
+      def add_features(df):
+          df = df.copy()
+          df['age'] = 2024 - df['annee_construction']
+          df['dpe_score'] = df['dpe'].map(DPE_SCORE).fillna(4)
+          df['surface_par_piece'] = df['surface'] / df['pieces']
+          df['ascenseur'] = df['ascenseur'].astype(int)
+          df['balcon'] = df['balcon'].astype(int)
+          return df
+
+
+      add_features(clean(train_ok)).head()
+    wrong:
+      - |
+        DPE_SCORE = {'A': 1, 'B': 2, 'C': 3, 'D': 4, 'E': 5, 'F': 6, 'G': 7}
+
+
+        def add_features(df):
+            df = df.copy()
+            df['age'] = 2024 - df['annee_construction']
+            df['dpe_score'] = df['dpe'].map(DPE_SCORE).fillna(0)
+            df['surface_par_piece'] = df['surface'] / df['pieces']
+            df['ascenseur'] = df['ascenseur'].astype(int)
+            df['balcon'] = df['balcon'].astype(int)
+            return df
+    hints:
+      - "`df['dpe'].map(DPE_SCORE)` traduit chaque lettre ; ce qui n'est pas dans le dictionnaire devient NaN, à remplir avec `.fillna(4)`."
+      - "Un booléen se convertit avec `.astype(int)`."
+    tests:
+      - name: Sur un petit exemple
+        check: |
+          mini = pd.DataFrame({
+              'surface': [40.0, 90.0], 'pieces': [2, 3], 'annee_construction': [1930.0, 2010.0],
+              'dpe': ['G', 'Inconnu'], 'ascenseur': [False, True], 'balcon': [True, False],
+          })
+          f = add_features(mini)
+          assert f['age'].tolist() == [94, 14], f['age'].tolist()
+          assert f['dpe_score'].tolist() == [7, 4], f['dpe_score'].tolist()
+          assert f['surface_par_piece'].tolist() == [20, 30], f['surface_par_piece'].tolist()
+          assert f['ascenseur'].tolist() == [0, 1] and f['balcon'].tolist() == [1, 0]
+          assert 'age' not in mini.columns, "add_features ne doit pas modifier le DataFrame reçu"
+      - name: Toutes les lettres du DPE sont traduites
+        check: |
+          f = add_features(clean(_train0.copy()))
+          assert f['dpe_score'].between(1, 7).all() and f['dpe_score'].isna().sum() == 0
+    explanation: |
+      Le DPE est une variable **ordinale** : `A < B < … < G`. La traduire en score garde cet ordre, ce que le one-hot perdrait.
+
+      Pour les arbres de décision, ces variables sont faciles à exploiter ; pour un modèle linéaire, il faudrait aussi penser aux interactions (surface × arrondissement).
+  - id: split
+    title: Validation et baseline
+    goal: Savoir ce que vaut une prédiction sans modèle.
+    instructions: |
+      - `X` : les colonnes `FEATURES` de `add_features(clean(train_ok))` ; `y` : le `prix` de `train_ok` ;
+      - `X_tr, X_val, y_tr, y_val` : `train_test_split(X, y, test_size=0.2, random_state=42)` ;
+      - `baseline_rmse` : la RMSE sur `y_val` d'une prédiction **constante** égale à la moyenne de `y_tr`.
+
+      La fonction `rmse(y_vrai, y_predit)` est fournie.
+    starter: |
+      from sklearn.model_selection import train_test_split
+
+
+      def rmse(y_true, y_pred):
+          return float(np.sqrt(np.mean((np.asarray(y_true) - np.asarray(y_pred)) ** 2)))
+
+
+      FEATURES = ['arrondissement', 'surface', 'pieces', 'etage', 'ascenseur', 'balcon', 'age', 'dpe_score', 'surface_par_piece']
+
+      X = None
+      y = None
+      baseline_rmse = None
+    solution: |
+      from sklearn.model_selection import train_test_split
+
+
+      def rmse(y_true, y_pred):
+          return float(np.sqrt(np.mean((np.asarray(y_true) - np.asarray(y_pred)) ** 2)))
+
+
+      FEATURES = ['arrondissement', 'surface', 'pieces', 'etage', 'ascenseur', 'balcon', 'age', 'dpe_score', 'surface_par_piece']
+
+      X = add_features(clean(train_ok))[FEATURES]
+      y = train_ok['prix']
+      X_tr, X_val, y_tr, y_val = train_test_split(X, y, test_size=0.2, random_state=42)
+      baseline_rmse = rmse(y_val, np.full(len(y_val), y_tr.mean()))
+      baseline_rmse
+    hints:
+      - "`np.full(len(y_val), y_tr.mean())` crée un tableau rempli de la moyenne."
+    tests:
+      - name: X, y et le découpage
+        check: |
+          import math
+          ok = _train0[_train0['surface'] <= 300]
+          assert X is not None and list(X.columns) == FEATURES and len(X) == len(ok), "X doit contenir FEATURES pour chaque ligne de train_ok"
+          assert X.isna().sum().sum() == 0, "X contient des NaN"
+          assert len(X_val) == math.ceil(0.2 * len(X)) and len(X_tr) + len(X_val) == len(X)
+      - name: Baseline
+        check: |
+          expected = float(np.sqrt(np.mean((y_val - y_tr.mean()) ** 2)))
+          assert baseline_rmse is not None and abs(baseline_rmse - expected) < 1e-6, baseline_rmse
+    explanation: |
+      Prédire la moyenne donne une RMSE égale à l'**écart-type** des prix (environ 180 k€) : c'est le score à battre.
+
+      Le $R^2$ compare justement un modèle à cette baseline : $R^2 = 1 - \frac{\text{MSE}_{\text{modèle}}}{\text{MSE}_{\text{moyenne}}}$.
+  - id: model
+    title: Entraîner un modèle sur le log du prix
+    goal: Apprendre le log du prix pour mieux gérer les écarts de prix.
+    instructions: |
+      Les prix sont **asymétriques** (quelques biens très chers) et les effets sont plutôt **multiplicatifs** (+5 % pour un balcon, quelle que soit la taille). On apprend donc `log(prix)`, puis on repasse en k€ avec `np.exp`.
+
+      1. `model` : un `ColumnTransformer` qui encode `arrondissement` en one-hot (le reste passe tel quel), suivi d'un `HistGradientBoostingRegressor(max_iter=400, learning_rate=0.05, random_state=0)` ;
+      2. entraîne-le sur `X_tr` et `np.log(y_tr)` ;
+      3. `val_pred` : les prédictions **en k€** sur `X_val`, et `val_rmse` leur RMSE. Objectif : au plus **45** k€.
+    starter: |
+      from sklearn.compose import ColumnTransformer
+      from sklearn.preprocessing import OneHotEncoder
+      from sklearn.pipeline import make_pipeline
+      from sklearn.ensemble import HistGradientBoostingRegressor
+
+      model = None
+      val_pred = None
+      val_rmse = None
+    solution: |
+      from sklearn.compose import ColumnTransformer
+      from sklearn.preprocessing import OneHotEncoder
+      from sklearn.pipeline import make_pipeline
+      from sklearn.ensemble import HistGradientBoostingRegressor
+
+      preprocess = ColumnTransformer(
+          [('arr', OneHotEncoder(handle_unknown='ignore'), ['arrondissement'])],
+          remainder='passthrough',
+      )
+      model = make_pipeline(preprocess, HistGradientBoostingRegressor(max_iter=400, learning_rate=0.05, random_state=0))
+      model.fit(X_tr, np.log(y_tr))
+      val_pred = np.exp(model.predict(X_val))
+      val_rmse = rmse(y_val, val_pred)
+      val_rmse
+    wrong:
+      - |
+        from sklearn.ensemble import HistGradientBoostingRegressor
+
+        model = HistGradientBoostingRegressor(max_iter=400, learning_rate=0.05, random_state=0)
+        model.fit(X_tr, np.log(y_tr))
+        val_pred = model.predict(X_val)
+        val_rmse = rmse(y_val, val_pred)
+    hints:
+      - "`model.fit(X_tr, np.log(y_tr))` puis `np.exp(model.predict(X_val))` pour revenir en k€."
+      - "Sans le log, ça marche aussi, mais un peu moins bien : compare les deux !"
+    tests:
+      - name: Le modèle est entraîné
+        check: |
+          from sklearn.utils.validation import check_is_fitted
+          assert model is not None, "model est vide"
+          check_is_fitted(model)
+      - name: val_pred vient du modèle (en k€)
+        check: |
+          raw = model.predict(X_val)
+          assert val_pred is not None and len(val_pred) == len(X_val)
+          assert np.allclose(val_pred, np.exp(raw)) or np.allclose(val_pred, raw), "val_pred doit être model.predict(X_val), repassé en k€ si besoin"
+          assert abs(val_rmse - rmse(y_val, val_pred)) < 1e-6, val_rmse
+      - name: Au plus 45 k€ d'erreur sur la validation
+        check: |
+          assert val_rmse <= 45, f"val_rmse = {val_rmse:.1f} k€"
+    explanation: |
+      Apprendre le log revient à minimiser une erreur **relative** : se tromper de 20 k€ sur un studio à 100 k€ est grave, sur un loft à 900 k€ beaucoup moins.
+
+      Pour viser l'or : essaie d'autres modèles de boosting et leurs hyperparamètres (`GradientBoostingRegressor`, `max_depth`, `learning_rate`, `n_estimators`), en comparant toujours sur la validation.
+  - id: submit
+    title: Soumettre
+    goal: Réentraîner sur tout le train nettoyé et estimer le test.
+    instructions: |
+      1. Réentraîne `model` sur tout `X` (et `np.log(y)` si tu as appris le log) ;
+      2. prépare `X_test` avec `add_features(clean(test))` et les colonnes `FEATURES` ;
+      3. crée `submission` : colonnes `id` et `prix` (en k€), dans l'ordre de `test`.
+    starter: |
+      submission = None
+    solution: |
+      model.fit(X, np.log(y))
+      X_test = add_features(clean(test))[FEATURES]
+      submission = pd.DataFrame({'id': test['id'], 'prix': np.exp(model.predict(X_test))})
+      submission.head()
+    hints:
+      - "N'oublie pas `np.exp` si le modèle prédit le log du prix."
+    tests:
+      - name: Format de la soumission
+        check: |
+          assert isinstance(submission, pd.DataFrame), "submission doit être un DataFrame"
+          assert list(submission.columns) == ['id', 'prix'], list(submission.columns)
+          assert len(submission) == len(_test0) and (submission['id'].to_numpy() == _test0['id'].to_numpy()).all(), "il faut une ligne par appartement de test, dans l'ordre"
+      - name: Des prix complets et plausibles (en k€)
+        check: |
+          p = submission['prix'].astype(float)
+          assert p.isna().sum() == 0, "il manque des prix"
+          assert p.between(10, 3000).all(), f"prix entre {p.min():.1f} et {p.max():.1f} : as-tu oublié de repasser en k€ ?"
+    explanation: |
+      Le modèle final est entraîné sur toutes les ventes **propres**. Les appartements du test n'ont pas été filtrés : ton modèle doit savoir répondre pour tous.
+gold: |
+  from sklearn.compose import ColumnTransformer
+  from sklearn.preprocessing import OneHotEncoder
+  from sklearn.pipeline import make_pipeline
+  from sklearn.ensemble import GradientBoostingRegressor
+
+  preprocess = ColumnTransformer([('arr', OneHotEncoder(handle_unknown='ignore'), ['arrondissement'])], remainder='passthrough')
+  model = make_pipeline(preprocess, GradientBoostingRegressor(n_estimators=400, max_depth=3, learning_rate=0.05, random_state=0))
+  model.fit(X_tr, np.log(y_tr))
+  val_pred = np.exp(model.predict(X_val))
+  val_rmse = rmse(y_val, val_pred)

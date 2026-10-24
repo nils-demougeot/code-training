@@ -1,0 +1,454 @@
+id: aurora
+title: Les disparus du Starliner Aurora
+emoji: 🚀
+difficulty: medium
+task: Classification binaire
+metric: accuracy
+metric_label: Accuracy
+higher_is_better: true
+shared: comp_aurora
+summary: Le paquebot spatial a traversé une anomalie et la moitié des passagers ont disparu. Retrouve qui a été transporté à partir du registre de bord.
+story: |
+  **An 2912.** Le *Starliner Aurora*, paquebot interstellaire, frôle une anomalie spatio-temporelle en route vers ses trois exoplanètes. Près de la moitié des passagers sont **transportés dans une autre dimension**.
+
+  Les équipes de sauvetage ont récupéré deux registres de bord :
+
+  - `train` : 3 369 passagers dont on sait s'ils ont été transportés (`Transported`) ;
+  - `test` : 1 150 autres passagers, **sans** la réponse.
+
+  Ta mission : prédire `Transported` pour chaque passager de `test`. Ta soumission est notée sur la vraie réponse, cachée, avec l'**accuracy** (proportion de bonnes prédictions).
+data: |
+  | Colonne | Description |
+  |---|---|
+  | `PassengerId` | `gggg_pp` : numéro du **groupe** (souvent une famille) et rang dans le groupe |
+  | `HomePlanet` | planète de départ (`Terre`, `Mars`, `Europe`) |
+  | `CryoSleep` | le passager a voyagé en cryosommeil (enfermé dans sa cabine) |
+  | `Cabin` | `pont/numéro/côté`, par exemple `B/45/P` ; côté `P` (bâbord) ou `S` (tribord) |
+  | `Destination` | exoplanète d'arrivée |
+  | `Age` | âge en années |
+  | `VIP` | a payé le service VIP |
+  | `RoomService`, `FoodCourt`, `ShoppingMall`, `Spa`, `VRDeck` | dépenses à bord, par service |
+  | `Transported` | **la cible** : le passager a-t-il été transporté ? (absente de `test`) |
+
+  La constante `SPEND` contient la liste des 5 colonnes de dépenses.
+medals:
+  bronze: 0.78
+  silver: 0.805
+  gold: 0.816
+leaderboard:
+  - { name: zorg_le_data, score: 0.8226 }
+  - { name: kaggle_mamie, score: 0.8191 }
+  - { name: Ada L., score: 0.8122 }
+  - { name: le_stagiaire, score: 0.8017 }
+  - { name: RandomForrest Gump, score: 0.7930 }
+  - { name: modele_du_lundi, score: 0.7843 }
+  - { name: tout_en_cryo, score: 0.7487 }
+  - { name: pile_ou_face, score: 0.5009 }
+submission:
+  id: PassengerId
+  target: Transported
+steps:
+  - id: explore
+    title: Explorer les données
+    goal: Comprendre ce qu'il y a dans le registre avant de modéliser.
+    instructions: |
+      Toute compétition commence par une **exploration**. Le DataFrame `train` est chargé : affiche-le, puis calcule :
+
+      - `n_passengers` : le nombre de passagers de `train` ;
+      - `transported_rate` : la proportion de passagers transportés (entre 0 et 1) ;
+      - `most_missing` : le **nom** de la colonne qui a le plus de valeurs manquantes ;
+      - `rate_by_cryo` : le taux de transport selon `CryoSleep`, une Series indexée par `False` / `True`.
+
+      Exécute la cellule (Ctrl+Entrée) pour voir les résultats, puis valide (Ctrl+Maj+Entrée).
+    starter: |
+      train.head()
+
+      n_passengers = None
+      transported_rate = None
+      most_missing = None
+      rate_by_cryo = None
+    solution: |
+      train.head()
+
+      n_passengers = len(train)
+      transported_rate = train['Transported'].mean()
+      most_missing = train.isna().sum().idxmax()
+      rate_by_cryo = train.groupby('CryoSleep')['Transported'].mean()
+      rate_by_cryo
+    hints:
+      - "`len(df)` donne le nombre de lignes ; la moyenne d'une colonne booléenne est la proportion de `True`."
+      - "`df.isna().sum()` compte les manquants par colonne ; `.idxmax()` renvoie l'**index** du maximum (ici le nom de la colonne)."
+      - "`train.groupby('CryoSleep')['Transported'].mean()`"
+    tests:
+      - name: Nombre de passagers
+        check: |
+          assert n_passengers == len(_train0), f"{n_passengers} au lieu de {len(_train0)}"
+      - name: Taux de transport
+        check: |
+          assert transported_rate is not None and abs(transported_rate - _train0['Transported'].mean()) < 1e-9, transported_rate
+      - name: Colonne la plus incomplète
+        check: |
+          assert most_missing == _train0.isna().sum().idxmax(), most_missing
+      - name: Taux selon le cryosommeil
+        check: |
+          expected = _train0.groupby('CryoSleep')['Transported'].mean()
+          assert rate_by_cryo is not None, "rate_by_cryo est vide"
+          assert abs(rate_by_cryo.loc[True] - expected.loc[True]) < 1e-9 and abs(rate_by_cryo.loc[False] - expected.loc[False]) < 1e-9
+    explanation: |
+      Les passagers en **cryosommeil** ont été transportés bien plus souvent. Ce genre d'écart repéré à l'exploration annonce une variable très prédictive.
+
+      Les classes sont **équilibrées** (environ moitié-moitié) : l'accuracy est donc une métrique raisonnable ici. Avec 5 % de positifs, elle serait trompeuse.
+  - id: clean
+    title: Nettoyer les valeurs manquantes
+    goal: Écrire une fonction de nettoyage appliquée à l'identique au train et au test.
+    instructions: |
+      Les modèles de scikit-learn n'acceptent pas les `NaN`. Écris `clean(df)`, qui renvoie une **copie** nettoyée :
+
+      - dépenses manquantes (`SPEND`) → `0` (beaucoup de passagers ne dépensent rien) ;
+      - `CryoSleep` et `VIP` manquants → `False` (puis convertis en `bool`) ;
+      - `Age` manquant → `AGE_MEDIAN`, la **médiane de l'âge calculée sur le train** ;
+      - `HomePlanet` et `Destination` manquants → `'Inconnu'`.
+
+      La fonction ne doit pas modifier le DataFrame reçu.
+    starter: |
+      AGE_MEDIAN = None
+
+
+      def clean(df):
+          df = df.copy()
+          # à compléter
+          return df
+
+
+      clean(train).isna().sum()
+    solution: |
+      AGE_MEDIAN = train['Age'].median()
+
+
+      def clean(df):
+          df = df.copy()
+          df[SPEND] = df[SPEND].fillna(0)
+          df['CryoSleep'] = df['CryoSleep'].fillna(False).astype(bool)
+          df['VIP'] = df['VIP'].fillna(False).astype(bool)
+          df['Age'] = df['Age'].fillna(AGE_MEDIAN)
+          df[['HomePlanet', 'Destination']] = df[['HomePlanet', 'Destination']].fillna('Inconnu')
+          return df
+
+
+      clean(train).isna().sum()
+    wrong:
+      - |
+        AGE_MEDIAN = train['Age'].median()
+
+
+        def clean(df):
+            df[SPEND] = df[SPEND].fillna(0)
+            df['CryoSleep'] = df['CryoSleep'].fillna(False).astype(bool)
+            df['VIP'] = df['VIP'].fillna(False).astype(bool)
+            df['Age'] = df['Age'].fillna(AGE_MEDIAN)
+            df[['HomePlanet', 'Destination']] = df[['HomePlanet', 'Destination']].fillna('Inconnu')
+            return df
+      - |
+        AGE_MEDIAN = train['Age'].median()
+
+
+        def clean(df):
+            df = df.copy()
+            df[SPEND] = df[SPEND].fillna(0)
+            df['CryoSleep'] = df['CryoSleep'].fillna(False).astype(bool)
+            df['VIP'] = df['VIP'].fillna(False).astype(bool)
+            df['Age'] = df['Age'].fillna(df['Age'].median())
+            df[['HomePlanet', 'Destination']] = df[['HomePlanet', 'Destination']].fillna('Inconnu')
+            return df
+    hints:
+      - "`df[cols] = df[cols].fillna(valeur)` remplit plusieurs colonnes d'un coup."
+      - "La médiane se calcule **une fois**, sur le train, en dehors de la fonction : on applique ensuite la même valeur au test. La recalculer sur le test serait une fuite d'information."
+    tests:
+      - name: Plus aucun manquant dans les colonnes nettoyées
+        check: |
+          cols = SPEND + ['CryoSleep', 'VIP', 'Age', 'HomePlanet', 'Destination']
+          for name, data in [('train', _train0), ('test', _test0)]:
+              left = clean(data.copy())[cols].isna().sum()
+              assert left.sum() == 0, f"{name} : il reste des NaN dans {left[left > 0].to_dict()}"
+      - name: Les dépenses manquantes valent 0
+        check: |
+          c = clean(_train0.copy())
+          assert abs(c[SPEND].to_numpy().sum() - _train0[SPEND].fillna(0).to_numpy().sum()) < 1e-6
+      - name: L'âge est complété par la médiane du train (même pour le test)
+        check: |
+          assert AGE_MEDIAN == _train0['Age'].median(), f"AGE_MEDIAN = {AGE_MEDIAN}"
+          missing = _test0['Age'].isna()
+          assert (clean(_test0.copy()).loc[missing, 'Age'] == _train0['Age'].median()).all()
+      - name: La valeur de remplacement vient du train, pas des données reçues
+        check: |
+          mini = _test0.head(5).copy()
+          mini['Age'] = [70.0, 70.0, 70.0, 70.0, np.nan]
+          assert clean(mini)['Age'].iloc[4] == _train0['Age'].median(), "l'âge manquant doit valoir AGE_MEDIAN (médiane du train), pas la médiane du DataFrame reçu"
+      - name: CryoSleep et VIP manquants → False, en booléens
+        check: |
+          c = clean(_test0.copy())
+          assert not c.loc[_test0['CryoSleep'].isna(), 'CryoSleep'].any()
+          assert not c.loc[_test0['VIP'].isna(), 'VIP'].any()
+          assert c['CryoSleep'].dtype == bool and c['VIP'].dtype == bool, (c['CryoSleep'].dtype, c['VIP'].dtype)
+      - name: Ne modifie pas le DataFrame reçu
+        check: |
+          data = _train0.copy()
+          clean(data)
+          assert data.isna().sum().sum() == _train0.isna().sum().sum()
+    explanation: |
+      Une **seule** fonction `clean` appliquée au train et au test garantit que le modèle voit les mêmes transformations aux deux étapes.
+
+      Les valeurs de remplacement (médiane…) s'apprennent sur le **train** uniquement. Dans un vrai projet, on les met dans un `Pipeline` (`SimpleImputer`) pour que la validation croisée les réapprenne à chaque pli.
+  - id: features
+    title: Créer des variables
+    goal: Extraire l'information cachée dans les identifiants et les cabines.
+    instructions: |
+      Certaines colonnes cachent plusieurs informations. Écris `add_features(df)`, qui renvoie une copie avec 4 nouvelles colonnes :
+
+      - `group_size` : nombre de passagers du **même groupe** dans `df` (le groupe = les 4 premiers caractères de `PassengerId`) ;
+      - `total_spend` : somme des 5 dépenses (`SPEND`) ;
+      - `deck` : le pont, 1ʳᵉ partie de `Cabin` (`'B/45/P'` → `'B'`) ;
+      - `side` : le côté, 3ᵉ partie de `Cabin` (`'B/45/P'` → `'P'`).
+
+      Si `Cabin` est manquante, `deck` et `side` valent `'Inconnu'`.
+    starter: |
+      def add_features(df):
+          df = df.copy()
+          # à compléter
+          return df
+
+
+      add_features(clean(train)).head()
+    solution: |
+      def add_features(df):
+          df = df.copy()
+          group = df['PassengerId'].str[:4]
+          df['group_size'] = group.map(group.value_counts())
+          df['total_spend'] = df[SPEND].sum(axis=1)
+          parts = df['Cabin'].str.split('/')
+          df['deck'] = parts.str[0].fillna('Inconnu')
+          df['side'] = parts.str[2].fillna('Inconnu')
+          return df
+
+
+      add_features(clean(train)).head()
+    wrong:
+      - |
+        def add_features(df):
+            df = df.copy()
+            df['group_size'] = df.groupby('PassengerId')['PassengerId'].transform('count')
+            df['total_spend'] = df[SPEND].sum(axis=1)
+            parts = df['Cabin'].str.split('/')
+            df['deck'] = parts.str[0].fillna('Inconnu')
+            df['side'] = parts.str[2].fillna('Inconnu')
+            return df
+      - |
+        def add_features(df):
+            df = df.copy()
+            group = df['PassengerId'].str[:4]
+            df['group_size'] = group.map(group.value_counts())
+            df['total_spend'] = df[SPEND].sum(axis=1)
+            parts = df['Cabin'].str.split('/')
+            df['deck'] = parts.str[0].fillna('Inconnu')
+            df['side'] = parts.str[1].fillna('Inconnu')
+            return df
+    hints:
+      - "`df['PassengerId'].str[:4]` extrait le groupe ; `s.map(s.value_counts())` remplace chaque valeur par son nombre d'occurrences."
+      - "`df['Cabin'].str.split('/')` donne des listes ; `.str[0]` prend le 1er élément de chacune (NaN si la cabine manque)."
+    tests:
+      - name: Sur un petit exemple
+        check: |
+          mini = pd.DataFrame({
+              'PassengerId': ['0001_01', '0002_01', '0002_02', '0003_01'],
+              'Cabin': ['B/1/P', 'F/7/S', None, 'G/3/S'],
+              'RoomService': [0.0, 10, 0, 5], 'FoodCourt': [1.0, 0, 0, 0], 'ShoppingMall': [0.0, 0, 0, 0],
+              'Spa': [2.0, 0, 0, 0], 'VRDeck': [0.0, 0, 3, 0],
+          })
+          f = add_features(mini)
+          assert f['group_size'].tolist() == [1, 2, 2, 1], f['group_size'].tolist()
+          assert f['total_spend'].tolist() == [3, 10, 3, 5], f['total_spend'].tolist()
+          assert f['deck'].tolist() == ['B', 'F', 'Inconnu', 'G'], f['deck'].tolist()
+          assert f['side'].tolist() == ['P', 'S', 'Inconnu', 'S'], f['side'].tolist()
+          assert 'deck' not in mini.columns, "add_features ne doit pas modifier le DataFrame reçu"
+      - name: Sur le registre complet
+        check: |
+          f = add_features(clean(_train0.copy()))
+          assert f['group_size'].max() == 5 and f['group_size'].min() == 1
+          assert set(f['side']) == {'P', 'S', 'Inconnu'} and f['deck'].nunique() == 8
+    explanation: |
+      Le *feature engineering* a souvent plus d'impact que le choix du modèle : ici, le côté du vaisseau, le pont et le fait de voyager seul comptent beaucoup, mais ils étaient **cachés** dans des chaînes de caractères.
+  - id: split
+    title: Jeu de validation et baseline
+    goal: Mettre de côté des données pour évaluer honnêtement, et savoir quel score battre.
+    instructions: |
+      On ne peut pas évaluer un modèle sur les données qui ont servi à l'entraîner. Construis :
+
+      - `X` : les colonnes `FEATURES_NUM + FEATURES_CAT` de `add_features(clean(train))`, et `y` : la cible `Transported` ;
+      - `X_tr, X_val, y_tr, y_val` : 80 % / 20 % avec `train_test_split(..., test_size=0.2, random_state=42, stratify=y)` ;
+      - `baseline_acc` : l'accuracy sur `y_val` d'un modèle qui prédit **toujours la classe majoritaire de `y_tr`**.
+
+      Tout modèle devra battre cette baseline.
+    starter: |
+      from sklearn.model_selection import train_test_split
+      from sklearn.metrics import accuracy_score
+
+      FEATURES_NUM = ['Age', 'group_size', 'total_spend', 'RoomService', 'FoodCourt', 'ShoppingMall', 'Spa', 'VRDeck', 'CryoSleep', 'VIP']
+      FEATURES_CAT = ['HomePlanet', 'Destination', 'deck', 'side']
+
+      full = add_features(clean(train))
+      X = None
+      y = None
+      baseline_acc = None
+    solution: |
+      from sklearn.model_selection import train_test_split
+      from sklearn.metrics import accuracy_score
+
+      FEATURES_NUM = ['Age', 'group_size', 'total_spend', 'RoomService', 'FoodCourt', 'ShoppingMall', 'Spa', 'VRDeck', 'CryoSleep', 'VIP']
+      FEATURES_CAT = ['HomePlanet', 'Destination', 'deck', 'side']
+
+      full = add_features(clean(train))
+      X = full[FEATURES_NUM + FEATURES_CAT]
+      y = full['Transported']
+      X_tr, X_val, y_tr, y_val = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
+
+      majority = y_tr.mode()[0]
+      baseline_acc = accuracy_score(y_val, [majority] * len(y_val))
+      baseline_acc
+    wrong:
+      - |
+        from sklearn.model_selection import train_test_split
+        from sklearn.metrics import accuracy_score
+
+        FEATURES_NUM = ['Age', 'group_size', 'total_spend', 'RoomService', 'FoodCourt', 'ShoppingMall', 'Spa', 'VRDeck', 'CryoSleep', 'VIP']
+        FEATURES_CAT = ['HomePlanet', 'Destination', 'deck', 'side']
+
+        full = add_features(clean(train))
+        X = full[FEATURES_NUM + FEATURES_CAT]
+        y = full['Transported']
+        X_tr, X_val, y_tr, y_val = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
+        baseline_acc = accuracy_score(y_val, [True] * len(y_val))
+    hints:
+      - "`stratify=y` garde la même proportion de transportés dans les deux parties."
+      - "`y_tr.mode()[0]` est la classe la plus fréquente ; `[majorite] * len(y_val)` répète cette prédiction."
+    tests:
+      - name: X et y
+        check: |
+          assert X is not None and list(X.columns) == FEATURES_NUM + FEATURES_CAT, "X doit contenir exactement FEATURES_NUM + FEATURES_CAT"
+          assert len(X) == len(_train0) and len(y) == len(_train0)
+          assert X.isna().sum().sum() == 0, "X contient encore des NaN"
+          assert (y.astype(bool).to_numpy() == _train0['Transported'].to_numpy()).all(), "y doit être la colonne Transported"
+      - name: Découpage 80 / 20 stratifié
+        check: |
+          import math
+          assert len(X_val) == math.ceil(0.2 * len(X)) and len(X_tr) + len(X_val) == len(X)
+          assert abs(y_tr.mean() - y_val.mean()) < 0.005, "les proportions diffèrent : as-tu oublié stratify=y ?"
+      - name: Baseline de la classe majoritaire
+        check: |
+          majority = y_tr.mode()[0]
+          assert baseline_acc is not None and abs(baseline_acc - (y_val == majority).mean()) < 1e-9, baseline_acc
+    explanation: |
+      La **baseline** donne l'échelle : un modèle à 0,55 d'accuracy n'est pas « à 55 % », il est à peine meilleur que de répondre toujours la même chose.
+
+      Le jeu de **validation** imite le test caché : on y mesure les progrès sans jamais toucher au test.
+  - id: model
+    title: Entraîner un modèle
+    goal: Construire un pipeline et battre largement la baseline.
+    instructions: |
+      Construis un `model` scikit-learn qui accepte `X` tel quel :
+
+      1. un `ColumnTransformer` qui encode `FEATURES_CAT` avec `OneHotEncoder(handle_unknown='ignore')` et laisse passer les colonnes numériques (`remainder='passthrough'`) ;
+      2. suivi d'un classifieur, par exemple `RandomForestClassifier(n_estimators=300, min_samples_leaf=3, random_state=0)`.
+
+      Entraîne-le sur `X_tr, y_tr`, puis calcule `val_acc`, son accuracy sur `X_val`. Objectif : au moins **0,78**.
+    starter: |
+      from sklearn.compose import ColumnTransformer
+      from sklearn.preprocessing import OneHotEncoder
+      from sklearn.pipeline import make_pipeline
+      from sklearn.ensemble import RandomForestClassifier
+
+      model = None
+      val_acc = None
+    solution: |
+      from sklearn.compose import ColumnTransformer
+      from sklearn.preprocessing import OneHotEncoder
+      from sklearn.pipeline import make_pipeline
+      from sklearn.ensemble import RandomForestClassifier
+
+      preprocess = ColumnTransformer(
+          [('cat', OneHotEncoder(handle_unknown='ignore'), FEATURES_CAT)],
+          remainder='passthrough',
+      )
+      model = make_pipeline(preprocess, RandomForestClassifier(n_estimators=300, min_samples_leaf=3, random_state=0))
+      model.fit(X_tr, y_tr)
+      val_acc = accuracy_score(y_val, model.predict(X_val))
+      val_acc
+    hints:
+      - "`make_pipeline(preprocess, classifieur)` enchaîne les étapes ; `model.fit(X_tr, y_tr)` les entraîne toutes."
+      - "`ColumnTransformer([('cat', OneHotEncoder(handle_unknown='ignore'), FEATURES_CAT)], remainder='passthrough')`"
+    tests:
+      - name: Le modèle est entraîné
+        check: |
+          from sklearn.utils.validation import check_is_fitted
+          assert model is not None, "model est vide"
+          check_is_fitted(model)
+      - name: val_acc est bien l'accuracy sur la validation
+        check: |
+          assert val_acc is not None and abs(val_acc - accuracy_score(y_val, model.predict(X_val))) < 1e-9, val_acc
+      - name: Au moins 0,78 sur la validation
+        check: |
+          assert val_acc >= 0.78, f"val_acc = {val_acc:.4f}"
+    explanation: |
+      Le `Pipeline` regroupe prétraitement et modèle en **un seul objet** : `fit` apprend l'encodage sur le train, `predict` l'applique tel quel aux nouvelles données. C'est ce qui évite les fuites et rend la soumission simple.
+
+      Pour aller plus loin (et viser l'or) : les dépenses sont très asymétriques, essaie `np.log1p` dessus avec un modèle linéaire (`LogisticRegression`), ou compare plusieurs modèles avec `cross_val_score`.
+  - id: submit
+    title: Soumettre
+    goal: Réentraîner sur tout le train et prédire le test.
+    instructions: |
+      Dernière ligne droite :
+
+      1. réentraîne `model` sur **tout** le train (`X`, `y`) : plus de données, meilleur modèle ;
+      2. prépare `X_test` à partir de `test` avec **exactement** les mêmes transformations ;
+      3. crée `submission`, un DataFrame avec les colonnes `PassengerId` et `Transported` (dans l'ordre de `test`).
+
+      Valide pour envoyer ta soumission : elle sera notée sur le test caché.
+    starter: |
+      submission = None
+    solution: |
+      model.fit(X, y)
+      X_test = add_features(clean(test))[FEATURES_NUM + FEATURES_CAT]
+      submission = pd.DataFrame({'PassengerId': test['PassengerId'], 'Transported': model.predict(X_test)})
+      submission.head()
+    hints:
+      - "Le test passe par `add_features(clean(test))`, puis on garde les mêmes colonnes que pour `X`."
+      - "`pd.DataFrame({'PassengerId': test['PassengerId'], 'Transported': predictions})`"
+    tests:
+      - name: Format de la soumission
+        check: |
+          assert isinstance(submission, pd.DataFrame), "submission doit être un DataFrame"
+          assert list(submission.columns) == ['PassengerId', 'Transported'], list(submission.columns)
+          assert len(submission) == len(_test0), f"{len(submission)} lignes au lieu de {len(_test0)}"
+          assert (submission['PassengerId'].to_numpy() == _test0['PassengerId'].to_numpy()).all(), "les PassengerId ne sont pas ceux de test, dans l'ordre"
+      - name: Des prédictions complètes et booléennes
+        check: |
+          assert submission['Transported'].isna().sum() == 0, "il manque des prédictions"
+          assert set(pd.unique(submission['Transported'])) <= {True, False}, "Transported doit valoir True ou False"
+    explanation: |
+      En compétition, on réentraîne le modèle final sur **toutes** les données étiquetées une fois les choix faits sur la validation.
+
+      Le score du test caché est parfois un peu différent de celui de la validation : c'est normal, c'est un autre échantillon. Méfie-toi d'un modèle trop ajusté à la validation (*overfitting du leaderboard*).
+gold: |
+  import numpy as np
+  from sklearn.compose import ColumnTransformer
+  from sklearn.preprocessing import FunctionTransformer, OneHotEncoder
+  from sklearn.pipeline import make_pipeline
+  from sklearn.linear_model import LogisticRegression
+
+  LOG_COLS = ['total_spend'] + SPEND
+  preprocess = ColumnTransformer(
+      [('cat', OneHotEncoder(handle_unknown='ignore'), FEATURES_CAT), ('log', FunctionTransformer(np.log1p), LOG_COLS)],
+      remainder='passthrough',
+  )
+  model = make_pipeline(preprocess, LogisticRegression(max_iter=5000))
+  model.fit(X_tr, y_tr)
+  val_acc = accuracy_score(y_val, model.predict(X_val))
