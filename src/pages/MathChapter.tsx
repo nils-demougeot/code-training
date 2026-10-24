@@ -1,6 +1,6 @@
 import clsx from 'clsx'
 import { ArrowLeft, ArrowRight, BookOpen, Crown, Heart, PenLine, Skull, Swords, Trophy } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { Markdown } from '@/components/Markdown'
 import { Empty } from '@/components/ui'
@@ -125,6 +125,11 @@ function Practice({ chapter }: { chapter: Chapter }) {
     }
   }
   const nextEx = chapter.exercises[i + 1]
+
+  // On narrow screens the list scrolls horizontally: keep the current exercise visible.
+  useEffect(() => {
+    document.querySelector(`[data-ex="${exercise.id}"]`)?.scrollIntoView({ block: 'nearest', inline: 'center' })
+  }, [exercise.id])
 
   return (
     <div className="grid gap-5 lg:grid-cols-[260px_minmax(0,1fr)]">
