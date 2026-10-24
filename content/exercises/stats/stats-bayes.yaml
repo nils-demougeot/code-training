@@ -1,0 +1,63 @@
+id: stats-bayes
+title: Théorème de Bayes et dépistage
+domain: stats
+difficulty: easy
+minutes: 6
+interview: true
+tags: [Bayes, probabilité conditionnelle, taux de base]
+cards: [st-bayes-formula]
+statement: |
+  Un test de dépistage a une **sensibilité** (proportion de malades détectés) et une **spécificité** (proportion de personnes saines correctement négatives). La maladie a une **prévalence** donnée.
+
+  1. `p_sick_given_positive(prevalence, sensitivity, specificity)` : P(malade | test positif).
+  2. `p_healthy_given_negative(prevalence, sensitivity, specificity)` : P(sain | test négatif).
+  3. `after_two_positives(prevalence, sensitivity, specificity)` : P(malade) après **deux** tests positifs indépendants (la sortie du premier devient le prior du second).
+starter: |
+  def p_sick_given_positive(prevalence, sensitivity, specificity):
+      pass
+
+
+  def p_healthy_given_negative(prevalence, sensitivity, specificity):
+      pass
+
+
+  def after_two_positives(prevalence, sensitivity, specificity):
+      pass
+
+
+  p_sick_given_positive(0.01, 0.99, 0.95)
+solution: |
+  def p_sick_given_positive(prevalence, sensitivity, specificity):
+      true_pos = prevalence * sensitivity
+      false_pos = (1 - prevalence) * (1 - specificity)
+      return true_pos / (true_pos + false_pos)
+
+
+  def p_healthy_given_negative(prevalence, sensitivity, specificity):
+      true_neg = (1 - prevalence) * specificity
+      false_neg = prevalence * (1 - sensitivity)
+      return true_neg / (true_neg + false_neg)
+
+
+  def after_two_positives(prevalence, sensitivity, specificity):
+      first = p_sick_given_positive(prevalence, sensitivity, specificity)
+      return p_sick_given_positive(first, sensitivity, specificity)
+
+
+  p_sick_given_positive(0.01, 0.99, 0.95)
+tests:
+  - call: p_sick_given_positive(0.01, 0.99, 0.95)
+    expected: "0.16666666666666669"
+  - call: p_sick_given_positive(0.5, 0.9, 0.9)
+    expected: "0.9"
+  - call: p_healthy_given_negative(0.01, 0.99, 0.95)
+  - call: after_two_positives(0.01, 0.99, 0.95)
+hints:
+  - "Bayes : P(M | +) = P(+ | M) · P(M) / P(+)."
+  - "P(+) = vrais positifs + faux positifs = prévalence × sensibilité + (1 − prévalence) × (1 − spécificité)."
+explanation: |
+  $$P(M \mid +) = \frac{P(+ \mid M)\,P(M)}{P(+ \mid M)\,P(M) + P(+ \mid S)\,P(S)}$$
+
+  - Avec 1 % de prévalence, un test sensible à 99 % et spécifique à 95 % donne seulement **17 %** de vrais malades parmi les positifs : les faux positifs, appliqués aux 99 % de sains, sont bien plus nombreux.
+  - Vocabulaire ML : sensibilité = **recall**, P(M | +) = **precision** (*positive predictive value*), 1 − spécificité = **taux de faux positifs**.
+  - Un second test indépendant met à jour la croyance : le *posterior* devient le nouveau *prior*.

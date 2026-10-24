@@ -1,5 +1,5 @@
 import { parse } from 'yaml'
-import type { Deck, Domain, Exercise, Fiche, FlashCard, Project, QuizQuestion } from './types'
+import type { DesignCase, Deck, DocLibrary, Domain, Exercise, Fiche, FlashCard, Project, QuizQuestion } from './types'
 
 // All learning content lives in /content as YAML (code blocks need no escaping there)
 // and is bundled at build time.
@@ -16,6 +16,13 @@ const projectFiles = import.meta.glob('/content/projects/*.yaml', {
   query: '?raw', import: 'default', eager: true,
 }) as Record<string, string>
 const ficheFiles = import.meta.glob('/content/fiches/*.yaml', {
+  query: '?raw', import: 'default', eager: true,
+}) as Record<string, string>
+
+const docFiles = import.meta.glob('/content/docs/*.yaml', {
+  query: '?raw', import: 'default', eager: true,
+}) as Record<string, string>
+const designFiles = import.meta.glob('/content/design/*.yaml', {
   query: '?raw', import: 'default', eager: true,
 }) as Record<string, string>
 
@@ -40,7 +47,7 @@ export function toPython(item: { language?: string }, code: string): string {
 
 const DIFF_ORDER = { easy: 0, medium: 1, hard: 2 } as const
 
-export const DOMAIN_ORDER: Domain[] = ['python', 'numpy', 'pandas', 'sql', 'ml', 'dl', 'algo']
+export const DOMAIN_ORDER: Domain[] = ['python', 'numpy', 'pandas', 'sql', 'stats', 'ml', 'dl', 'algo']
 
 export const exercises: Exercise[] = Object.values(exerciseFiles)
   .map((raw) => {
@@ -80,3 +87,14 @@ export const fiches: Fiche[] = Object.values(ficheFiles)
   .map((raw) => parse(raw) as Fiche)
   .sort((a, b) => DOMAIN_ORDER.indexOf(a.domain) - DOMAIN_ORDER.indexOf(b.domain))
 export const ficheById = new Map(fiches.map((f) => [f.id, f]))
+
+/** Documentation libraries, in file-name order (01-python.yaml, 02-numpy.yaml…). */
+export const docLibraries: DocLibrary[] = Object.entries(docFiles)
+  .sort(([a], [b]) => a.localeCompare(b))
+  .map(([, raw]) => parse(raw) as DocLibrary)
+export const docLibraryById = new Map(docLibraries.map((l) => [l.id, l]))
+
+export const designCases: DesignCase[] = Object.entries(designFiles)
+  .sort(([a], [b]) => a.localeCompare(b))
+  .map(([, raw]) => parse(raw) as DesignCase)
+export const designCaseById = new Map(designCases.map((c) => [c.id, c]))

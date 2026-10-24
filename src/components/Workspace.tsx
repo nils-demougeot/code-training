@@ -1,8 +1,9 @@
 import clsx from 'clsx'
-import { Play, RotateCcw, Send } from 'lucide-react'
+import { BookMarked, Play, RotateCcw, Send } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import type { RunResult } from '@/lib/types'
 import { CodeEditor } from './CodeEditor'
+import { DocBrowser } from './DocBrowser'
 import { EnginePill } from './Layout'
 import { OutputPanel } from './OutputPanel'
 
@@ -111,15 +112,34 @@ export interface WorkspaceProps {
   toolbar?: ReactNode
   submitLabel?: string
   banner?: ReactNode
+  /** Library opened first in the documentation drawer; null disables the drawer (mock interview). */
+  docLib?: string | null
 }
 
 /** Editor + toolbar + resizable output console. */
 export function Workspace({
   code, onChange, onRun, onSubmit, onReset, running, mode, result, progress, language, autocomplete, toolbar,
-  submitLabel = 'Soumettre', banner,
+  submitLabel = 'Soumettre', banner, docLib = 'python',
 }: WorkspaceProps) {
   const [outputHeight, setOutputHeight] = useState(260)
+  const [doc, setDoc] = useState<{ query: string } | null>(null)
   const box = useRef<HTMLDivElement>(null)
+  const runRef = useRef(onRun)
+  runRef.current = onRun
+
+  // Ctrl/Cmd+S runs the code even when the focus is outside the editor (the editor handles it itself).
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+        e.preventDefault()
+        if (!(e.target instanceof HTMLElement && e.target.closest('.cm-editor'))) runRef.current?.()
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
+
+  const openDoc = docLib === null ? undefined : (query: string) => setDoc({ query })
 
   const onPointerDown = useCallback((e: React.PointerEvent) => {
     e.preventDefault()
@@ -134,7 +154,7 @@ export function Workspace({
   }, [])
 
   return (
-    <div ref={box} className="flex h-full flex-col bg-panel/40">
+    <div ref={box} className="relative flex h-full flex-col bg-panel/40">
       <div className="flex items-center gap-2 border-b border-line px-3 py-2">
         <span className="rounded-md bg-white/[0.05] px-2 py-0.5 font-mono text-[11px] text-muted">
           {language === 'sql' ? 'query.sql' : 'main.py'}
@@ -146,10 +166,16 @@ export function Workspace({
           </button>
         )}
         {toolbar}
+        {openDoc && (
+          <button className="btn btn-quiet px-2 py-1 text-xs" onClick={() => openDoc('')} title="Documentation (F2 sur un mot)">
+            <BookMarked className="size-3.5" />
+            <span className="hidden sm:inline">Doc</span>
+          </button>
+        )}
         <div className="ml-auto flex items-center gap-2">
           <EnginePill compact />
           {onRun && (
-            <button className="btn btn-ghost px-3 py-1.5" onClick={onRun} disabled={running} title="Ctrl+Entrée">
+            <button className="btn btn-ghost px-3 py-1.5" onClick={onRun} disabled={running} title="Ctrl+Entrée ou Ctrl+S">
               <Play className="size-3.5" />
               Exécuter
             </button>
@@ -169,6 +195,7 @@ export function Workspace({
           onChange={onChange}
           onRun={onRun}
           onSubmit={onSubmit}
+          onDoc={openDoc}
           errorLine={result?.errorLine}
           language={language}
           autocomplete={autocomplete}
@@ -180,6 +207,11 @@ export function Workspace({
       <div className="overflow-y-auto" style={{ height: outputHeight }}>
         <OutputPanel result={result} running={running} progress={progress} mode={mode} />
       </div>
+      {doc && docLib !== null && (
+        <div className="absolute inset-y-0 right-0 z-30 w-full max-w-xl border-l border-line-strong bg-panel shadow-2xl animate-fade-up">
+          <DocBrowser initialQuery={doc.query} initialLib={docLib} autoFocus onClose={() => setDoc(null)} />
+        </div>
+      )}
     </div>
   )
 }

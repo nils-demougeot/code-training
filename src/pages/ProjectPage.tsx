@@ -2,6 +2,7 @@ import clsx from 'clsx'
 import { ArrowLeft, CheckCircle2, ChevronRight, Eye, Lightbulb, PartyPopper } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
+import { docLibForDomain } from '@/components/DocBrowser'
 import { CodeBlock, Markdown } from '@/components/Markdown'
 import { TestCard } from '@/components/OutputPanel'
 import { DifficultyBadge, DomainChip, Empty } from '@/components/ui'
@@ -48,9 +49,14 @@ function ProjectView({ project }: { project: Project }) {
     if (running) return
     setRunning(true)
     setMode('run')
-    setResult(await runCode(code, { setup, requireLocal, onProgress: setProgressMsg, timeoutMs: requireLocal ? 300_000 : 60_000 }))
+    // Example calls of the open step are evaluated too, so results show without print().
+    const step = project.steps[open] ?? project.steps[0]
+    const examples = step.tests.flatMap((t) => (t.call && !t.hidden ? [t.call] : []))
+    setResult(
+      await runCode(code, { setup, requireLocal, examples, onProgress: setProgressMsg, timeoutMs: requireLocal ? 300_000 : 60_000 }),
+    )
     setRunning(false)
-  }, [code, running, setup, requireLocal])
+  }, [code, running, setup, requireLocal, project, open])
 
   const onSubmit = useCallback(async () => {
     if (running) return
@@ -184,6 +190,7 @@ function ProjectView({ project }: { project: Project }) {
           mode={mode}
           result={result}
           progress={progressMsg}
+          docLib={docLibForDomain(project.domain, requireLocal)}
         />
       }
     />

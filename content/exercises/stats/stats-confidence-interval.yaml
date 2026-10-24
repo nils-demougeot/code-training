@@ -1,0 +1,70 @@
+id: stats-confidence-interval
+title: Intervalle de confiance d'une moyenne
+domain: stats
+difficulty: medium
+minutes: 8
+interview: true
+tags: [intervalle de confiance, erreur standard, TCL]
+cards: [st-standard-error, st-ci-meaning]
+statement: |
+  Tu mesures le temps passé sur une page par 40 visiteurs (`TIMES`, en secondes).
+
+  1. `standard_error(x)` : l'erreur standard de la moyenne, $s / \sqrt n$ avec l'écart-type d'échantillon ($s$, ddof = 1).
+  2. `mean_ci(x, z=1.96)` : l'intervalle de confiance `(bas, haut)` = moyenne ± z × erreur standard.
+  3. `coverage(n_experiments=2000, n=40, seed=0)` : simule `n_experiments` échantillons de taille `n` d'une loi **exponentielle de moyenne 1** (`rng.exponential(1.0, n)`) et renvoie la proportion d'intervalles qui contiennent la vraie moyenne 1.
+starter: |
+  import numpy as np
+
+
+  def standard_error(x):
+      pass
+
+
+  def mean_ci(x, z=1.96):
+      pass
+
+
+  def coverage(n_experiments=2000, n=40, seed=0):
+      pass
+solution: |
+  import numpy as np
+
+
+  def standard_error(x):
+      x = np.asarray(x, dtype=float)
+      return x.std(ddof=1) / np.sqrt(len(x))
+
+
+  def mean_ci(x, z=1.96):
+      m = float(np.mean(x))
+      se = standard_error(x)
+      return (m - z * se, m + z * se)
+
+
+  def coverage(n_experiments=2000, n=40, seed=0):
+      rng = np.random.default_rng(seed)
+      hits = 0
+      for _ in range(n_experiments):
+          lo, hi = mean_ci(rng.exponential(1.0, n))
+          hits += lo <= 1.0 <= hi
+      return hits / n_experiments
+setup: |
+  import numpy as np
+  TIMES = np.random.default_rng(42).exponential(45, 40).round(1)
+tests:
+  - call: standard_error([2.0, 4.0, 4.0, 4.0, 5.0, 5.0, 7.0, 9.0])
+    expected: "0.7559289460184544"
+  - call: mean_ci(TIMES)
+  - name: Environ 95 % de couverture
+    check: |
+      c = coverage()
+      assert 0.92 <= c <= 0.96, f"couverture {c:.3f}"
+hints:
+  - "`np.std(x, ddof=1)` pour l'écart-type d'échantillon."
+  - "Couverture : pour chaque échantillon simulé, teste `bas <= 1 <= haut`, puis fais la moyenne."
+explanation: |
+  $$\bar x \pm 1{,}96 \cdot \frac{s}{\sqrt n}$$
+
+  - **Interprétation correcte** : si l'on répétait l'expérience, 95 % des intervalles construits ainsi contiendraient la vraie moyenne. Ce n'est **pas** « 95 % de chances que la vraie moyenne soit dans *cet* intervalle-là » (en statistique fréquentiste, elle y est ou n'y est pas).
+  - Ça marche même pour des données exponentielles grâce au **théorème central limite** (n assez grand). La couverture est un peu sous 95 % pour des petits n et des données très asymétriques : on utilise alors la loi de Student (`scipy.stats.t`) ou le bootstrap.
+  - Largeur ∝ $1/\sqrt n$ : 4 fois plus de données pour un intervalle 2 fois plus étroit.

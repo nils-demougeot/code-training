@@ -40,9 +40,17 @@ tests:
           arr = sorted(rnd.randint(0, 20) for _ in range(rnd.randint(0, 15)))
           t = rnd.randint(-2, 22)
           assert lower_bound(arr, t) == bisect.bisect_left(arr, t), f"lower_bound({arr}, {t})"
-  - name: Rapide sur 10 millions d'éléments
-    call: lower_bound(range(0, 20_000_000, 2), 13_000_001)
-    expected: "6500001"
+  - name: Grand tableau
+    call: lower_bound(range(0, 200_000, 2), 130_001)
+    expected: "65001"
+  - name: "Bonus : complexité O(log n)"
+    bonus: true
+    check: |
+      def many(arr, queries):
+          for q in queries:
+              lower_bound(arr, q)
+      k = growth_exponent(many, lambda n: (range(n), list(range(0, n, max(1, n // 200)))), max_n=1 << 22)
+      assert k < 0.5, f"Doubler la taille multiplie le temps par ~{2 ** k:.1f} : c'est une recherche linéaire. La dichotomie est en O(log n)."
 hints:
   - "Garde un intervalle **semi-ouvert** `[lo, hi)` avec `hi = len(arr)`."
   - "Si `arr[mid] < target`, la réponse est strictement à droite : `lo = mid + 1`. Sinon `mid` est un candidat : `hi = mid`."
@@ -59,3 +67,13 @@ explanation: |
   - L'invariant avec `[lo, hi)` évite les erreurs « off-by-one » et les boucles infinies.
   - Variante très fréquente en entretien : dichotomie **sur la réponse** (la plus petite capacité qui marche, la racine carrée entière…).
   - Bibliothèque standard : `bisect.bisect_left` / `bisect_right` / `insort`.
+complexity:
+  target: O(log n)
+  note: |
+    Parcourir le tableau jusqu'au premier élément `>= target` est en O(n). Le tableau est **trié** : compare la cible à l'élément du milieu et jette la moitié inutile à chaque étape. 20 comparaisons suffisent pour un million d'éléments.
+naive: |
+  def lower_bound(arr, target):
+      for i, x in enumerate(arr):
+          if x >= target:
+              return i
+      return len(arr)

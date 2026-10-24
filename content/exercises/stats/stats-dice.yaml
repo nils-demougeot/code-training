@@ -1,0 +1,71 @@
+id: stats-dice
+title: Probabilités exactes avec deux dés
+domain: stats
+difficulty: easy
+minutes: 6
+tags: [dénombrement, Fraction, itertools.product]
+cards: [st-product]
+statement: |
+  On lance deux dés équilibrés à 6 faces. Plutôt que de simuler, **dénombre** les 36 issues équiprobables.
+
+  1. `p_sum(k)` : la probabilité que la somme vaille `k`, sous forme de **fraction exacte** (`fractions.Fraction`).
+  2. `most_likely_sum()` : la somme la plus probable.
+  3. `p_double()` : la probabilité de faire un double.
+starter: |
+  from fractions import Fraction
+  from itertools import product
+
+
+  def p_sum(k):
+      pass
+
+
+  def most_likely_sum():
+      pass
+
+
+  def p_double():
+      pass
+solution: |
+  from fractions import Fraction
+  from itertools import product
+
+  OUTCOMES = list(product(range(1, 7), repeat=2))
+
+
+  def p_sum(k):
+      return Fraction(sum(1 for a, b in OUTCOMES if a + b == k), len(OUTCOMES))
+
+
+  def most_likely_sum():
+      return max(range(2, 13), key=p_sum)
+
+
+  def p_double():
+      return Fraction(sum(1 for a, b in OUTCOMES if a == b), len(OUTCOMES))
+tests:
+  - call: p_sum(7)
+    expected: Fraction(1, 6)
+    strict: true
+  - call: p_sum(2)
+    expected: Fraction(1, 36)
+  - call: p_sum(13)
+    expected: Fraction(0)
+  - call: most_likely_sum()
+    expected: "7"
+  - call: p_double()
+    expected: Fraction(1, 6)
+  - name: Les probabilités somment à 1
+    check: |
+      assert sum(p_sum(k) for k in range(2, 13)) == 1
+hints:
+  - "`product(range(1, 7), repeat=2)` énumère les 36 couples `(a, b)`."
+  - "Probabilité = cas favorables / cas possibles : `Fraction(favorables, 36)`."
+explanation: |
+  Quand les issues sont **équiprobables**, une probabilité se calcule en comptant :
+  ```python
+  outcomes = list(product(range(1, 7), repeat=2))
+  Fraction(sum(a + b == 7 for a, b in outcomes), len(outcomes))   # 1/6
+  ```
+  - `Fraction` évite les erreurs d'arrondi des flottants : idéal pour vérifier un calcul à la main.
+  - La somme 7 est la plus probable car elle a le plus de combinaisons (6 sur 36). La distribution de la somme est **triangulaire** ; avec beaucoup de dés, elle tend vers une gaussienne (théorème central limite).

@@ -1,0 +1,175 @@
+id: pandas
+title: Pandas
+domain: pandas
+setup: |
+  import numpy as np
+  import pandas as pd
+  df = pd.DataFrame({
+      'client': ['Ana', 'Bob', 'Ana', 'Cy', 'Bob', 'Ana'],
+      'ville': ['Paris', 'Lyon', 'Paris', 'Nice', 'Lyon', 'Paris'],
+      'produit': ['clavier', 'souris', 'écran', 'souris', 'clavier', 'souris'],
+      'qte': [1, 2, 1, 3, 1, 2],
+      'prix': [89.0, 29.0, 249.0, 29.0, 89.0, 29.0],
+      'date': pd.to_datetime(['2024-01-05', '2024-01-12', '2024-02-02', '2024-02-14', '2024-03-01', '2024-03-09']),
+  })
+sections:
+  - title: Créer et inspecter
+    entries:
+      - name: pd.DataFrame
+        signature: pd.DataFrame(dict_de_colonnes) · pd.DataFrame(liste_de_dicts)
+        description: "Tableau de colonnes typées. Les exemples de cette page utilisent un petit DataFrame `df` de commandes, déjà créé."
+        example: |
+          pd.DataFrame([{'a': 1, 'b': 'x'}, {'a': 2, 'b': 'y'}])
+      - name: head / shape / dtypes / info / describe
+        signature: df.head(n) · df.shape · df.dtypes · df.describe()
+        description: "Premiers réflexes sur un dataset inconnu : taille, types, statistiques."
+        example: |
+          print(df.shape)
+          print(df.dtypes)
+          df.describe()
+      - name: value_counts / nunique
+        signature: s.value_counts(normalize=False) · df.nunique()
+        description: "Fréquence de chaque valeur (triée décroissante), nombre de valeurs distinctes."
+        example: |
+          df['ville'].value_counts(), df['ville'].value_counts(normalize=True), df.nunique()
+      - name: pd.read_csv
+        signature: pd.read_csv(path, sep=',', parse_dates=[...], usecols=[...], dtype={...})
+        description: "Lire un CSV. Options utiles : `sep`, `parse_dates`, `usecols`, `dtype`, `nrows`, `encoding`, `decimal=','`."
+        example: |
+          from io import StringIO
+          csv = 'date;montant\n2024-01-01;12,5\n2024-01-02;7'
+          pd.read_csv(StringIO(csv), sep=';', decimal=',', parse_dates=['date'])
+  - title: Sélectionner et filtrer
+    entries:
+      - name: colonnes
+        signature: "df['col'] (Series) · df[['a', 'b']] (DataFrame)"
+        description: "Crochets simples : une Series. Liste de noms : un DataFrame."
+        example: |
+          type(df['prix']).__name__, df[['client', 'prix']].head(2)
+      - name: loc / iloc
+        signature: "df.loc[lignes, colonnes] · df.iloc[positions, positions]"
+        description: "`loc` : par **étiquettes** et masques, fin **incluse**. `iloc` : par **positions**, fin exclue."
+        example: |
+          df.loc[df['prix'] > 50, ['client', 'prix']], df.iloc[:2, :3]
+      - name: filtres combinés / isin / query
+        signature: "df[(c1) & (c2)] · df[df.col.isin([...])] · df.query('...')"
+        description: "Conditions combinées avec `&`, `|`, `~` et des parenthèses. `query` pour une syntaxe plus lisible."
+        example: |
+          df[(df['ville'] == 'Paris') & (df['qte'] > 1)], df[df['client'].isin(['Bob', 'Cy'])].shape, df.query("prix < 50 and ville != 'Nice'").shape
+      - name: sort_values / nlargest
+        signature: df.sort_values(by, ascending=True) · df.nlargest(n, col)
+        description: "Trier sur une ou plusieurs colonnes (avec un ordre par colonne). `nlargest` pour un top n rapide."
+        example: |
+          df.sort_values(['client', 'prix'], ascending=[True, False]).head(3), df.nlargest(2, 'prix')['produit'].tolist()
+  - title: Transformer
+    entries:
+      - name: assign / nouvelle colonne
+        signature: df.assign(col=expr) · df['col'] = expr
+        description: "Créer des colonnes de façon vectorisée. `assign` renvoie une copie (pratique pour enchaîner)."
+        example: |
+          df.assign(total=df['qte'] * df['prix'], cher=df['prix'] > 50).head(3)
+      - name: map / replace
+        signature: s.map(dict_ou_fonction) · s.replace(dict)
+        description: "`map` remplace via un dict (valeurs absentes → NaN) ou une fonction. `replace` ne touche qu'aux valeurs listées."
+        example: |
+          df['ville'].map({'Paris': 'Nord', 'Lyon': 'Centre'}).tolist(), df['ville'].replace({'Paris': 'PAR'}).tolist()
+      - name: np.where / np.select / pd.cut
+        signature: np.where(cond, a, b) · pd.cut(x, bins, labels)
+        description: "If/else vectorisés et découpage en tranches."
+        example: |
+          np.where(df['prix'] > 50, 'premium', 'standard'), pd.cut(df['prix'], bins=[0, 50, 100, np.inf], labels=['bas', 'moyen', 'haut']).tolist()
+      - name: .str
+        signature: s.str.lower() · strip · contains · replace · split · len
+        description: "Méthodes de chaînes vectorisées sur une colonne de texte."
+        example: |
+          df['produit'].str.upper().tolist(), df['produit'].str.contains('ou').sum(), df['client'].str.len().tolist()
+      - name: apply
+        signature: s.apply(f) · df.apply(f, axis=1)
+        description: "Applique une fonction Python (lent : une boucle déguisée). À réserver aux cas sans équivalent vectorisé."
+        example: |
+          df['produit'].apply(lambda p: p[:3]).tolist()
+      - name: rename / drop / astype
+        signature: df.rename(columns={...}) · df.drop(columns=[...]) · df.astype({...})
+        description: "Renommer, supprimer des colonnes, changer de type."
+        example: |
+          df.rename(columns={'qte': 'quantite'}).drop(columns=['date']).astype({'quantite': float}).dtypes
+  - title: Valeurs manquantes et doublons
+    entries:
+      - name: isna / fillna / dropna
+        signature: df.isna().sum() · s.fillna(v) · df.dropna(subset=[...])
+        description: "Compter, remplacer, supprimer les valeurs manquantes."
+        example: |
+          s = pd.Series([1.0, np.nan, 3.0, np.nan])
+          s.isna().sum(), s.fillna(s.median()).tolist(), s.dropna().tolist()
+      - name: drop_duplicates / duplicated
+        signature: df.drop_duplicates(subset=None, keep='first')
+        description: "Supprimer les lignes dupliquées (sur toutes les colonnes ou un sous-ensemble)."
+        example: |
+          df.drop_duplicates(subset='client')['client'].tolist(), df.duplicated(subset=['client', 'ville']).sum()
+  - title: Grouper et agréger
+    entries:
+      - name: groupby + agrégat
+        signature: df.groupby(col)[col2].sum() · as_index=False
+        description: "Split, apply, combine. Le résultat est indexé par les clés de groupe (sauf `as_index=False`)."
+        example: |
+          df.groupby('client')['prix'].sum(), df.groupby('ville', as_index=False)['qte'].mean()
+      - name: agrégations nommées
+        signature: df.groupby(col).agg(nom=('colonne', 'fonction'), ...)
+        description: "Plusieurs agrégats avec des noms de colonnes propres."
+        example: |
+          df.assign(total=df.qte * df.prix).groupby('client', as_index=False).agg(
+              commandes=('produit', 'count'), ca=('total', 'sum'), derniere=('date', 'max'))
+      - name: transform
+        signature: df.groupby(col)[col2].transform('sum')
+        description: "Résultat **aligné sur les lignes d'origine** (≠ `agg` qui réduit). Parfait pour une part du total ou une normalisation par groupe."
+        example: |
+          df.assign(part=df['prix'] / df.groupby('client')['prix'].transform('sum')).round(2)[['client', 'prix', 'part']]
+      - name: cumsum / cumcount / rank / shift par groupe
+        signature: g.cumsum() · g.cumcount() · g.rank() · g.shift(1)
+        description: "L'équivalent des window functions SQL (`ROW_NUMBER`, `SUM OVER`, `LAG`)."
+        example: |
+          d = df.sort_values('date')
+          g = d.groupby('client')
+          d.assign(n=g.cumcount() + 1, cumul=g['prix'].cumsum(), prec=g['date'].shift(1))[['client', 'date', 'n', 'cumul', 'prec']]
+  - title: Combiner et remodeler
+    entries:
+      - name: merge
+        signature: a.merge(b, on='key', how='inner'|'left'|'right'|'outer')
+        description: "Jointure SQL-like. `how='inner'` par défaut ! Une clé dupliquée multiplie les lignes."
+        example: |
+          villes = pd.DataFrame({'ville': ['Paris', 'Lyon'], 'region': ['IDF', 'ARA']})
+          df.merge(villes, on='ville', how='left')[['client', 'ville', 'region']]
+      - name: concat
+        signature: pd.concat([df1, df2], ignore_index=True) · axis=1
+        description: "Empiler des DataFrames (lignes) ou les coller côte à côte (`axis=1`)."
+        example: |
+          pd.concat([df.head(2), df.tail(1)], ignore_index=True)[['client', 'prix']]
+      - name: pivot_table / unstack
+        signature: df.pivot_table(index, columns, values, aggfunc='sum', fill_value=0)
+        description: "Tableau croisé. Équivalent : `groupby([a, b]).sum().unstack()`."
+        example: |
+          df.pivot_table(index='client', columns='produit', values='qte', aggfunc='sum', fill_value=0)
+      - name: melt
+        signature: df.melt(id_vars, var_name, value_name)
+        description: "Passer d'un format large à un format long (inverse du pivot)."
+        example: |
+          wide = pd.DataFrame({'mois': ['jan', 'fev'], 'Paris': [10, 12], 'Lyon': [7, 9]})
+          wide.melt(id_vars='mois', var_name='ville', value_name='ventes')
+  - title: Dates
+    entries:
+      - name: to_datetime / .dt
+        signature: pd.to_datetime(s) · s.dt.year/month/day/dayofweek/day_name()
+        description: "Convertir puis extraire des composantes de date."
+        example: |
+          df['date'].dt.month.tolist(), df['date'].dt.day_name().tolist()[:2], (df['date'].max() - df['date'].min()).days
+      - name: resample
+        signature: s.resample('MS'|'W'|'D').sum()
+        description: "Regrouper par période sur un `DatetimeIndex`. Les périodes vides apparaissent (avec 0)."
+        example: |
+          df.set_index('date')['prix'].resample('MS').sum()
+      - name: rolling / pct_change / shift
+        signature: s.rolling(w).mean() · s.pct_change() · s.shift(k)
+        description: "Moyenne mobile, variation relative, décalage."
+        example: |
+          s = pd.Series([10, 12, 9, 15, 18])
+          s.rolling(2).mean().tolist(), s.pct_change().round(2).tolist(), s.shift(1).tolist()

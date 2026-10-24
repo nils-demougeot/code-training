@@ -1,4 +1,4 @@
-import { Binary, Brain, Database, FileCode2, Grid3x3, Network, Table2, type LucideIcon } from 'lucide-react'
+import { Binary, Brain, Database, Dices, FileCode2, Grid3x3, Network, Table2, type LucideIcon } from 'lucide-react'
 import type { Difficulty, Domain } from './types'
 
 export interface DomainMeta {
@@ -38,6 +38,13 @@ export const DOMAINS: Record<Domain, DomainMeta> = {
     description: 'Requêtes, jointures, agrégats et window functions (SQLite).',
     icon: Database,
     color: '#2dd4bf',
+  },
+  stats: {
+    label: 'Probas & stats',
+    short: 'STA',
+    description: 'Probabilités, simulations, tests statistiques, intervalles de confiance, A/B tests.',
+    icon: Dices,
+    color: '#a3e635',
   },
   ml: {
     label: 'Machine Learning',

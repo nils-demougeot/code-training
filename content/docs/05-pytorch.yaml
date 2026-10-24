@@ -1,0 +1,154 @@
+id: pytorch
+title: PyTorch
+domain: dl
+setup: |
+  import torch
+  from torch import nn
+sections:
+  - title: Tenseurs
+    entries:
+      - name: créer des tenseurs
+        signature: torch.tensor(data, dtype) · zeros · ones · arange · randn · from_numpy
+        description: "Comme NumPy, avec un `device` (CPU/GPU) et l'autograd. `torch.from_numpy` partage la mémoire."
+        run: false
+        example: |
+          t = torch.tensor([[1., 2.], [3., 4.]])
+          torch.zeros(2, 3), torch.arange(6).reshape(2, 3), torch.randn(3, generator=torch.Generator().manual_seed(0))
+      - name: shape / dtype / device
+        signature: t.shape · t.size() · t.dtype · t.device · t.to(device)
+        description: "Les labels de classification doivent être `torch.long` ; les entrées `torch.float32`."
+        run: false
+        example: |
+          t = torch.ones(2, 3)
+          device = 'cuda' if torch.cuda.is_available() else 'cpu'
+          t.shape, t.dtype, t.to(device).device, torch.tensor([0, 2]).dtype
+      - name: reshape / view / unsqueeze / squeeze / permute
+        signature: t.view(*shape) · t.unsqueeze(dim) · t.squeeze(dim) · t.permute(dims) · t.flatten(start_dim)
+        description: "`dim=` remplace `axis=`. `view` exige un tenseur contigu (sinon `reshape`). `permute` = transpose généralisé."
+        run: false
+        example: |
+          x = torch.zeros(8, 28, 28)
+          x.unsqueeze(1).shape, x.flatten(start_dim=1).shape, torch.zeros(8, 32, 32, 3).permute(0, 3, 1, 2).shape
+      - name: opérations et réductions
+        signature: "t.sum(dim) · t.mean(dim, keepdim) · t.argmax(dim) · a @ b · torch.cat · torch.stack"
+        description: "Même logique que NumPy (`keepdim` au lieu de `keepdims`)."
+        run: false
+        example: |
+          a = torch.arange(6.).reshape(2, 3)
+          a.sum(dim=0), a.mean(dim=1, keepdim=True), a.argmax(dim=1), torch.cat([a, a]).shape
+      - name: vers NumPy / Python
+        signature: t.item() · t.tolist() · t.detach().cpu().numpy()
+        description: "`item()` pour un scalaire (ex. la loss). `.detach()` si le tenseur suit les gradients."
+        run: false
+        example: |
+          loss = torch.tensor(0.25, requires_grad=True) * 2
+          loss.item(), loss.detach().cpu().numpy()
+  - title: Autograd
+    entries:
+      - name: requires_grad / backward / grad
+        signature: torch.tensor(x, requires_grad=True) · y.backward() · x.grad
+        description: "PyTorch enregistre les opérations et calcule les gradients avec `backward()`."
+        run: false
+        example: |
+          x = torch.tensor(3.0, requires_grad=True)
+          y = x ** 2 + 2 * x
+          y.backward()
+          x.grad   # dy/dx = 2x + 2 = 8
+      - name: torch.no_grad
+        signature: "with torch.no_grad(): ..."
+        description: "Désactive le suivi des gradients (évaluation, inférence) : plus rapide, moins de mémoire."
+        run: false
+        example: |
+          model = nn.Linear(4, 2)
+          with torch.no_grad():
+              out = model(torch.randn(3, 4))
+          out.requires_grad
+  - title: Modèles
+    entries:
+      - name: nn.Module
+        signature: "class Net(nn.Module): __init__ (couches) + forward(x)"
+        description: "Appeler `super().__init__()`. Les couches doivent être des attributs (ou dans `nn.Sequential`/`nn.ModuleList`). On appelle `model(x)`, jamais `model.forward(x)`."
+        run: false
+        example: |
+          class Net(nn.Module):
+              def __init__(self, d_in, n_classes):
+                  super().__init__()
+                  self.net = nn.Sequential(nn.Linear(d_in, 64), nn.ReLU(), nn.Linear(64, n_classes))
+              def forward(self, x):
+                  return self.net(x)
+          model = Net(10, 3)
+          model(torch.randn(5, 10)).shape, sum(p.numel() for p in model.parameters())
+      - name: couches courantes
+        signature: nn.Linear · nn.Conv2d · nn.MaxPool2d · nn.Dropout · nn.BatchNorm1d/2d · nn.Embedding · nn.LSTM
+        description: "`Linear(d_in, d_out)`, `Conv2d(C_in, C_out, k, padding)`, `Embedding(vocab, dim)`…"
+        run: false
+        example: |
+          conv = nn.Conv2d(3, 16, kernel_size=3, padding=1)
+          emb = nn.Embedding(1000, 32)
+          conv(torch.zeros(2, 3, 28, 28)).shape, emb(torch.tensor([[1, 2, 3]])).shape
+      - name: activations
+        signature: nn.ReLU · nn.GELU · nn.Sigmoid · nn.Tanh · nn.Softmax(dim) · torch.relu
+        description: "Pas de softmax en sortie si la loss est `CrossEntropyLoss` (elle l'applique déjà)."
+        run: false
+        example: |
+          z = torch.tensor([-1.0, 0.0, 2.0])
+          torch.relu(z), torch.sigmoid(z), torch.softmax(z, dim=0)
+      - name: train() / eval()
+        signature: model.train() · model.eval()
+        description: "Change le comportement du Dropout et de la BatchNorm. Toujours `eval()` avant d'évaluer."
+        run: false
+        example: |
+          model = nn.Sequential(nn.Linear(4, 4), nn.Dropout(0.5))
+          model.eval()
+          model.training
+  - title: Entraînement
+    entries:
+      - name: losses
+        signature: nn.CrossEntropyLoss · nn.BCEWithLogitsLoss · nn.MSELoss · nn.L1Loss
+        description: "`CrossEntropyLoss(logits (N, C), y (N,) long)` ; `BCEWithLogitsLoss` pour le binaire / multi-label (logits + cibles float)."
+        run: false
+        example: |
+          logits = torch.tensor([[2.0, 0.5, -1.0]])
+          nn.CrossEntropyLoss()(logits, torch.tensor([0])).item()
+      - name: optimiseurs
+        signature: torch.optim.SGD(params, lr, momentum) · Adam(params, lr=1e-3) · AdamW(params, lr, weight_decay)
+        description: "L'optimiseur reçoit `model.parameters()`. Scheduler : `torch.optim.lr_scheduler.StepLR`, `CosineAnnealingLR`."
+        run: false
+        example: |
+          model = nn.Linear(4, 2)
+          opt = torch.optim.AdamW(model.parameters(), lr=1e-3, weight_decay=0.01)
+          sched = torch.optim.lr_scheduler.StepLR(opt, step_size=10, gamma=0.5)
+          opt.param_groups[0]['lr']
+      - name: boucle d'entraînement
+        signature: zero_grad → forward → loss → backward → step
+        description: "Les 4 temps de chaque batch. Oublier `zero_grad` fait s'accumuler les gradients."
+        run: false
+        example: |
+          model = nn.Linear(2, 1)
+          opt = torch.optim.SGD(model.parameters(), lr=0.1)
+          X, y = torch.randn(64, 2), torch.randn(64, 1)
+          for epoch in range(20):
+              opt.zero_grad()
+              loss = nn.MSELoss()(model(X), y)
+              loss.backward()
+              opt.step()
+          loss.item()
+      - name: Dataset / DataLoader
+        signature: TensorDataset(X, y) · DataLoader(ds, batch_size=64, shuffle=True)
+        description: "Découpe les données en mini-batches mélangés."
+        run: false
+        example: |
+          from torch.utils.data import DataLoader, TensorDataset
+          loader = DataLoader(TensorDataset(torch.randn(100, 3), torch.randint(0, 2, (100,))), batch_size=32, shuffle=True)
+          xb, yb = next(iter(loader))
+          xb.shape, yb.shape, len(loader)
+      - name: sauvegarder / charger
+        signature: torch.save(model.state_dict(), path) · model.load_state_dict(torch.load(path))
+        description: "On sauvegarde le `state_dict` (les poids), pas l'objet entier."
+        run: false
+        example: |
+          model = nn.Linear(3, 1)
+          torch.save(model.state_dict(), 'model.pt')
+          clone = nn.Linear(3, 1)
+          clone.load_state_dict(torch.load('model.pt'))
+          torch.equal(clone.weight, model.weight)

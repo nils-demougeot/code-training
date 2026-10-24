@@ -1,0 +1,128 @@
+id: sql
+title: SQL
+domain: sql
+language: sql
+shared: sql_shop
+sections:
+  - title: Lire des données
+    entries:
+      - name: SELECT / WHERE / ORDER BY / LIMIT
+        signature: SELECT cols FROM t WHERE cond ORDER BY col DESC LIMIT n
+        description: "Base de toute requête. Les exemples tournent sur la base de démo des exercices : `customers`, `products`, `orders`, `order_items`."
+        example: |
+          SELECT name, price
+          FROM products
+          WHERE category = 'Informatique' AND price > 20
+          ORDER BY price DESC
+          LIMIT 3
+      - name: LIKE / IN / BETWEEN / IS NULL
+        signature: col LIKE 'A%' · col IN (...) · col BETWEEN a AND b · col IS NULL
+        description: "Filtres usuels. `%` = n'importe quelle suite de caractères. On teste un NULL avec `IS NULL`, jamais `= NULL`."
+        example: |
+          SELECT name, city FROM customers
+          WHERE city IN ('Paris', 'Lyon') AND name LIKE '%a%'
+      - name: DISTINCT / CASE WHEN / COALESCE
+        signature: SELECT DISTINCT · CASE WHEN c THEN a ELSE b END · COALESCE(x, défaut)
+        description: "Dédoublonner, conditions dans le SELECT, valeur par défaut pour les NULL."
+        example: |
+          SELECT name,
+                 CASE WHEN price < 50 THEN 'abordable' ELSE 'premium' END AS gamme
+          FROM products
+          ORDER BY price
+  - title: Agréger
+    entries:
+      - name: GROUP BY / COUNT / SUM / AVG
+        signature: SELECT col, COUNT(*), SUM(x) FROM t GROUP BY col
+        description: "Une ligne par groupe. Toute colonne non agrégée du SELECT doit être dans le GROUP BY."
+        example: |
+          SELECT category, COUNT(*) AS n, ROUND(AVG(price), 1) AS prix_moyen
+          FROM products
+          GROUP BY category
+          ORDER BY n DESC
+      - name: HAVING
+        signature: GROUP BY col HAVING COUNT(*) > n
+        description: "Filtre **les groupes** (après agrégation), alors que WHERE filtre les lignes (avant)."
+        example: |
+          SELECT customer_id, COUNT(*) AS n
+          FROM orders
+          GROUP BY customer_id
+          HAVING COUNT(*) >= 3
+      - name: COUNT(DISTINCT)
+        signature: COUNT(DISTINCT col)
+        description: "Nombre de valeurs distinctes. Indispensable après une jointure 1-N."
+        example: |
+          SELECT COUNT(*) AS lignes, COUNT(DISTINCT order_id) AS commandes
+          FROM order_items
+  - title: Jointures
+    entries:
+      - name: INNER JOIN
+        signature: FROM a JOIN b ON b.id = a.b_id
+        description: "Garde les lignes qui ont une correspondance des deux côtés."
+        example: |
+          SELECT o.id, c.name, o.order_date
+          FROM orders o
+          JOIN customers c ON c.id = o.customer_id
+          LIMIT 5
+      - name: LEFT JOIN
+        signature: FROM a LEFT JOIN b ON ...
+        description: "Garde toutes les lignes de gauche ; colonnes de droite à NULL sans correspondance. Anti-jointure : `WHERE b.id IS NULL`."
+        example: |
+          SELECT c.name, COUNT(o.id) AS n_orders
+          FROM customers c
+          LEFT JOIN orders o ON o.customer_id = c.id
+          GROUP BY c.id, c.name
+          ORDER BY n_orders
+      - name: jointures multiples
+        signature: FROM a JOIN b ON ... JOIN c ON ...
+        description: "On enchaîne les tables par leurs clés."
+        example: |
+          SELECT p.category, SUM(oi.quantity * p.price) AS revenue
+          FROM order_items oi
+          JOIN products p ON p.id = oi.product_id
+          JOIN orders o ON o.id = oi.order_id
+          WHERE o.status = 'livrée'
+          GROUP BY p.category
+  - title: Requêtes avancées
+    entries:
+      - name: sous-requêtes
+        signature: WHERE col IN (SELECT ...) · FROM (SELECT ...) AS t
+        description: "Une requête dans une requête."
+        example: |
+          SELECT name, price FROM products
+          WHERE price > (SELECT AVG(price) FROM products)
+      - name: WITH (CTE)
+        signature: WITH nom AS (SELECT ...) SELECT ... FROM nom
+        description: "Nomme une sous-requête pour découper une requête complexe en étapes lisibles."
+        example: |
+          WITH totals AS (
+              SELECT o.customer_id, SUM(oi.quantity * p.price) AS spent
+              FROM orders o
+              JOIN order_items oi ON oi.order_id = o.id
+              JOIN products p ON p.id = oi.product_id
+              GROUP BY o.customer_id
+          )
+          SELECT c.name, t.spent FROM totals t JOIN customers c ON c.id = t.customer_id
+          ORDER BY t.spent DESC LIMIT 3
+      - name: ROW_NUMBER / RANK / DENSE_RANK
+        signature: ROW_NUMBER() OVER (PARTITION BY a ORDER BY b DESC)
+        description: "Numérote les lignes dans chaque partition sans les regrouper. Top-n par groupe : filtrer `rn = 1` dans une requête englobante."
+        example: |
+          SELECT name, category, price,
+                 ROW_NUMBER() OVER (PARTITION BY category ORDER BY price DESC) AS rn
+          FROM products
+      - name: SUM OVER / LAG / LEAD
+        signature: SUM(x) OVER (PARTITION BY a ORDER BY d) · LAG(x) OVER (...)
+        description: "Cumuls et valeur précédente/suivante, ligne par ligne."
+        example: |
+          SELECT customer_id, order_date,
+                 COUNT(*) OVER (PARTITION BY customer_id ORDER BY order_date) AS n_cumule,
+                 LAG(order_date) OVER (PARTITION BY customer_id ORDER BY order_date) AS precedente
+          FROM orders
+          WHERE customer_id IN (1, 2)
+      - name: dates (SQLite)
+        signature: strftime('%Y-%m', d) · date(d, '+7 days') · julianday(a) - julianday(b)
+        description: "PostgreSQL : `DATE_TRUNC('month', d)`, `d + INTERVAL '7 days'`, `a - b`."
+        example: |
+          SELECT strftime('%Y-%m', order_date) AS mois, COUNT(*) AS n
+          FROM orders
+          GROUP BY mois

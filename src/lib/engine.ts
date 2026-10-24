@@ -34,7 +34,7 @@ export const useEngine = create<EngineState>((set) => ({
 // ---------------------------------------------------------------- payloads
 
 export type Payload =
-  | { mode: 'run'; code: string; setup?: string }
+  | { mode: 'run'; code: string; setup?: string; examples?: string[] }
   | { mode: 'test'; code: string; solution?: string; setup?: string; tests: TestCase[] }
   | {
       mode: 'eval'
@@ -48,7 +48,7 @@ export type Payload =
 
 function sourcesOf(p: Payload): string[] {
   if (p.mode === 'eval') return [p.setup ?? '', p.reference, p.answer]
-  if (p.mode === 'run') return [p.setup ?? '', p.code]
+  if (p.mode === 'run') return [p.setup ?? '', p.code, ...(p.examples ?? [])]
   const tests = p.tests.map((t) => [t.call, t.expected, t.check].filter(Boolean).join('\n'))
   return [p.setup ?? '', p.code, p.solution ?? '', ...tests]
 }
@@ -237,10 +237,10 @@ function execute<T>(payload: Payload, opts: ExecOptions): Promise<T> {
 
 export async function runCode(
   code: string,
-  opts: ExecOptions & { setup?: string } = {},
+  opts: ExecOptions & { setup?: string; examples?: string[] } = {},
 ): Promise<RunResult> {
   try {
-    return await execute<RunResult>({ mode: 'run', code, setup: opts.setup }, opts)
+    return await execute<RunResult>({ mode: 'run', code, setup: opts.setup, examples: opts.examples }, opts)
   } catch (err) {
     const engine = activeEngine(opts.requireLocal)
     return { ok: false, engineError: engineErrorMessage(err as Error, engine, opts.timeoutMs ?? 15_000) }

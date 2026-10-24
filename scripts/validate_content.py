@@ -11,9 +11,11 @@ Run it with the package versions shipped by Pyodide (see scripts/requirements-co
 
 import argparse
 import json
+import os
 import re
 import signal
 import sys
+import tempfile
 from pathlib import Path
 
 import yaml
@@ -24,7 +26,7 @@ sys.path.insert(0, str(ROOT / "public"))
 
 import harness  # noqa: E402
 
-DOMAINS = {"python", "numpy", "pandas", "sql", "ml", "dl", "algo"}
+DOMAINS = {"python", "numpy", "pandas", "sql", "stats", "ml", "dl", "algo"}
 DIFFICULTIES = {"easy", "medium", "hard"}
 CONTENT = ROOT / "content"
 SHARED = {p.stem: p.read_text() for p in (CONTENT / "shared").glob("*.py")}
@@ -113,8 +115,18 @@ def check_exercise(path, ex, card_ids, skip_local):
     tests = ex["tests"]
     solution = to_python(ex, ex["solution"])
     res = run({"mode": "test", "code": solution, "solution": solution, "setup": setup, "tests": tests})
-    if not res.get("ok") or res.get("passed") != res.get("total"):
+    if not res.get("ok") or res.get("passed") != res.get("total") or res.get("bonusPassed") != res.get("bonusTotal"):
         errors.append(f"{eid}: solution fails\n{describe_failures(res)}")
+    has_bonus = any(t.get("bonus") for t in tests)
+    if has_bonus and not ex.get("complexity"):
+        errors.append(f"{eid}: bonus tests need a `complexity` block (target + note)")
+    if ex.get("naive"):
+        # The brute-force version must be accepted… but miss the bonus.
+        res = run({"mode": "test", "code": to_python(ex, ex["naive"]), "solution": solution, "setup": setup, "tests": tests})
+        if not res.get("ok") or res.get("passed") != res.get("total"):
+            errors.append(f"{eid}: naive solution should pass the required tests\n{describe_failures(res)}")
+        elif has_bonus and res.get("bonusPassed") == res.get("bonusTotal"):
+            errors.append(f"{eid}: naive solution unexpectedly passes the bonus tests")
     res = run({"mode": "test", "code": to_python(ex, ex["starter"]), "solution": solution, "setup": setup, "tests": tests})
     if res.get("ok") and res.get("total") and res.get("passed") == res.get("total"):
         errors.append(f"{eid}: starter already passes every test")
@@ -204,11 +216,37 @@ def check_quiz(path, data, seen):
                     errors.append(f"{qid}: another choice also matches the output")
 
 
+def check_docs(path, lib):
+    for key in ["id", "title", "domain", "sections"]:
+        if key not in lib:
+            errors.append(f"{path.name}: missing {key}")
+            return 0
+    n = 0
+    setup = setup_of(lib)
+    for section in lib["sections"]:
+        for entry in section.get("entries", []):
+            n += 1
+            name = f"doc {lib['id']} › {entry.get('name')}"
+            if not entry.get("name") or not entry.get("description"):
+                errors.append(f"{name}: needs name and description")
+            example = entry.get("example")
+            # PyTorch examples cannot run in the browser, but are still checked when torch is installed.
+            if not example or (entry.get("run") is False and not (lib["id"] == "pytorch" and torch_available())):
+                continue
+            code = f"show({json.dumps(example)})" if lib.get("language") == "sql" else example
+            res = run({"mode": "run", "code": code, "setup": setup}, 60)
+            if not res.get("ok"):
+                errors.append(f"{name}: example fails\n{res.get('error')}")
+    return n
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--only", help="only check items whose id contains this string")
     parser.add_argument("--skip-local", action="store_true", help="skip exercises that need PyTorch")
     args = parser.parse_args()
+    # Snippets may write files (doc examples: json, torch.save): keep them out of the repo.
+    os.chdir(tempfile.mkdtemp(prefix="ct-validate-"))
 
     card_ids: set[str] = set()
     n_cards = 0
@@ -253,13 +291,33 @@ def main():
         print(f"  · project {pr.get('id')}", flush=True)
         check_project(path, pr, args.skip_local)
 
+    n_docs = 0
+    for path in sorted((CONTENT / "docs").glob("*.yaml")):
+        lib = yaml.safe_load(path.read_text())
+        lib.setdefault("id", path.stem)
+        if args.only and not args.only.startswith("doc"):
+            continue
+        if args.only and args.only not in f"doc-{lib['id']}":
+            continue
+        n_docs += check_docs(path, lib)
+
+    for path in sorted((CONTENT / "design").glob("*.yaml")):
+        case = yaml.safe_load(path.read_text())
+        for key in ["id", "title", "company", "difficulty", "minutes", "summary", "context", "steps"]:
+            if key not in case:
+                errors.append(f"design {path.name}: missing {key}")
+        for step in case.get("steps", []):
+            for key in ["id", "title", "question", "points", "answer"]:
+                if not step.get(key):
+                    errors.append(f"design {case.get('id')} › {step.get('id')}: missing {key}")
+
     for path in sorted((CONTENT / "fiches").glob("*.yaml")):
         f = yaml.safe_load(path.read_text())
         for key in ["id", "title", "domain", "summary", "body"]:
             if key not in f:
                 errors.append(f"{path.name}: missing {key}")
 
-    print(f"\n{n_ex} exercices, {n_proj} projets, {n_cards} cartes, {n_quiz} questions de quiz vérifiés.")
+    print(f"\n{n_ex} exercices, {n_proj} projets, {n_cards} cartes, {n_quiz} questions de quiz, {n_docs} entrées de doc vérifiés.")
     for w in warnings:
         print(f"⚠️  {w}")
     for e in errors:

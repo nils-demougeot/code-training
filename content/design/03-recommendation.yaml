@@ -1,0 +1,89 @@
+id: recommendation
+title: Recommander des produits sur un site e-commerce
+company: Un site de mode (500 000 produits, 10 millions de visiteurs par mois)
+difficulty: hard
+minutes: 35
+summary: Le grand classique des entretiens ML. Architecture en deux étapes, feedback implicite, cold start et biais de popularité.
+context: |
+  Le site veut un carrousel « **Vous aimerez aussi** » sur la page d'accueil, personnalisé pour chaque visiteur, afin d'augmenter les ventes.
+
+  Le catalogue change vite (nouvelles collections chaque semaine). La page doit s'afficher en moins de 200 ms.
+steps:
+  - id: framing
+    title: Cadrage et métriques
+    question: Que doit optimiser le système, et comment le mesures-tu ?
+    points:
+      - "Objectif business : revenu / ventes générées par le carrousel, pas seulement les clics"
+      - "Métriques online : CTR, taux d'ajout au panier, conversion, revenu par session (A/B test)"
+      - "Métriques offline de classement : **recall@k**, NDCG@k, MAP sur des interactions futures"
+      - "Garde-fous : diversité, nouveauté, couverture du catalogue"
+      - "Le CTR seul favorise les produits « appâts » : choisir l'objectif avec soin"
+    answer: |
+      Le but final est le **revenu incrémental** du carrousel, mesuré par A/B test (CTR, ajout au panier, conversion, revenu par visiteur).
+
+      Offline, c'est un problème de **classement** : on veut les bons produits dans les k premières positions. Métriques : recall@k (les produits achetés ensuite sont-ils dans le top k ?) et NDCG@k (pondère par la position).
+
+      Garde-fous : diversité (pas 10 fois le même jean), nouveauté, couverture du catalogue. Optimiser uniquement le CTR pousse vers des produits très cliqués mais peu achetés.
+  - id: data
+    title: Données et signaux
+    question: Quelles données utilises-tu comme signal d'entraînement ?
+    points:
+      - "**Feedback implicite** : vues, clics, ajouts au panier, achats (pondérés différemment)"
+      - "Pas de vrais négatifs : un produit non cliqué n'a peut-être jamais été vu → échantillonnage de négatifs"
+      - "Biais de position et d'exposition : on ne voit les clics que sur ce qui a été affiché"
+      - "Métadonnées produits (catégorie, marque, prix, images, texte) et contexte utilisateur (device, saison)"
+      - "Split temporel pour l'évaluation (prédire les interactions de la semaine suivante)"
+    answer: |
+      Il n'y a presque jamais de notes explicites : on utilise le **feedback implicite**, avec des poids croissants (vue < clic < panier < achat).
+
+      Difficultés :
+      - **Pas de vrais négatifs** : « non cliqué » veut souvent dire « jamais vu ». On échantillonne des négatifs (aléatoires et « difficiles »).
+      - **Biais d'exposition / de position** : les produits déjà recommandés reçoivent plus de clics, ce qui les fait recommander encore (boucle). On corrige avec la position comme feature, de l'exploration, ou de l'inverse propensity weighting.
+      - Évaluation sur une **période future** : entraîner jusqu'à la semaine *t*, mesurer recall@k sur les achats de *t + 1*.
+  - id: features
+    title: Architecture et modèles
+    question: Comment concevoir un système capable de choisir 10 produits parmi 500 000 en moins de 200 ms ?
+    points:
+      - "Architecture en **deux étapes** : génération de candidats (rapide, ~centaines) puis ranking (précis)"
+      - "Candidats : filtrage collaboratif / embeddings **two-tower** + recherche du plus proche voisin approximative (ANN)"
+      - "Autres sources de candidats : produits similaires aux derniers vus, tendances, nouveautés"
+      - "Ranking : gradient boosting ou réseau sur des features riches (utilisateur × produit × contexte)"
+      - "Re-ranking final : règles métier, diversité, stock disponible"
+    answer: |
+      On ne peut pas scorer 500 000 produits par visiteur avec un modèle lourd. Architecture standard :
+
+      1. **Génération de candidats** (~500) : un modèle **two-tower** apprend un embedding utilisateur et un embedding produit ; une recherche de voisins approximative (FAISS, ScaNN, HNSW) récupère les produits proches. On y ajoute d'autres sources : similaires aux derniers produits vus, best-sellers de la catégorie, nouveautés.
+      2. **Ranking** : un modèle plus riche (gradient boosting ou réseau) score chaque candidat avec des features croisées (affinité marque/utilisateur, prix vs budget habituel, popularité récente, contexte).
+      3. **Re-ranking** : diversité, produits en stock, règles business.
+
+      Baseline à battre : « best-sellers de la semaine » et « produits souvent achetés ensemble ».
+  - id: evaluation
+    title: Cold start et évaluation
+    question: Comment gères-tu les nouveaux utilisateurs et les nouveaux produits, et comment valides-tu ?
+    points:
+      - "Nouveaux utilisateurs : popularité contextuelle (pays, device, source), puis bascule rapide sur les premières interactions de la session"
+      - "Nouveaux produits : features de **contenu** (image, texte, catégorie, prix) pour obtenir un embedding sans historique"
+      - "Exploration (bandits) pour donner de la visibilité aux nouveautés"
+      - "Validation offline (recall@k, NDCG) puis **A/B test** sur le revenu par visiteur"
+      - "Vérifier la diversité et le biais de popularité dans les résultats"
+    answer: |
+      **Cold start utilisateur** : recommandations populaires adaptées au contexte (pays, saison, page d'arrivée), puis personnalisation dès les premiers clics de la session (modèle de session / séquence).
+
+      **Cold start produit** : un nouvel article n'a aucune interaction. La tour produit utilise des features de **contenu** (embedding d'image, description, marque, prix), donc il obtient un embedding dès sa mise en ligne. On réserve une part d'**exploration** pour qu'il collecte des interactions.
+
+      Validation : métriques offline sur une période future, puis **A/B test** (revenu par visiteur, conversion), en surveillant la diversité et la part des produits de longue traîne.
+  - id: production
+    title: Production et itération
+    question: Comment fais-tu tourner et évoluer le système en production ?
+    points:
+      - "Embeddings produits recalculés en batch, index ANN mis à jour quotidiennement"
+      - "Features utilisateur temps réel (derniers clics de la session)"
+      - "Cache des recommandations pour les utilisateurs fréquents, budget de latence par étape"
+      - "Monitoring : CTR et revenu par position, couverture du catalogue, latence"
+      - "Boucle de rétroaction et biais de popularité : exploration et corrections de biais"
+    answer: |
+      - **Batch** quotidien : ré-entraînement des embeddings, reconstruction de l'index ANN avec les nouveaux produits.
+      - **Temps réel** : les derniers clics de la session alimentent la tour utilisateur ou un modèle de séquence.
+      - **Budget de latence** : ~30 ms candidats, ~80 ms ranking, cache pour les visiteurs fréquents, repli sur les best-sellers en cas de timeout.
+      - **Monitoring** : CTR par position, revenu, couverture du catalogue, latence p99, drift saisonnier.
+      - **Boucles de rétroaction** : le système entraîne sur ce qu'il a lui-même montré. Sans exploration, il converge vers un petit ensemble de produits populaires.

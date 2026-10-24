@@ -1,0 +1,88 @@
+id: stats
+title: Stats (scipy)
+domain: stats
+setup: |
+  import numpy as np
+  from scipy import stats
+  rng = np.random.default_rng(0)
+sections:
+  - title: Statistiques descriptives
+    entries:
+      - name: moyenne / médiane / écart-type / quantiles
+        signature: np.mean · np.median · np.std(ddof=0|1) · np.percentile(x, q) · np.quantile
+        description: "`ddof=1` donne l'écart-type de l'**échantillon** (pandas l'utilise par défaut, NumPy non)."
+        example: |
+          x = np.array([1, 2, 2, 3, 100])
+          x.mean(), np.median(x), x.std(ddof=1).round(2), np.percentile(x, [25, 75])
+      - name: corrélation / covariance
+        signature: np.corrcoef(x, y) · np.cov(x, y) · stats.pearsonr · stats.spearmanr
+        description: "Pearson mesure une relation **linéaire** ; Spearman une relation monotone (rangs). Corrélation ≠ causalité."
+        example: |
+          x = np.arange(10)
+          y = x ** 3
+          np.corrcoef(x, y)[0, 1].round(3), stats.spearmanr(x, y).statistic
+  - title: Lois de probabilité
+    entries:
+      - name: loi normale
+        signature: stats.norm(loc, scale).pdf · cdf · ppf · rvs
+        description: "`cdf` = P(X ≤ x), `ppf` = quantile (inverse de cdf), `rvs` = tirages."
+        example: |
+          N = stats.norm(loc=0, scale=1)
+          N.cdf(1.96).round(4), N.ppf(0.975).round(3), (N.cdf(1) - N.cdf(-1)).round(3)
+      - name: loi binomiale
+        signature: stats.binom(n, p).pmf(k) · cdf · sf
+        description: "Nombre de succès sur n essais indépendants. `sf(k)` = P(X > k)."
+        example: |
+          B = stats.binom(n=20, p=0.25)
+          B.pmf(5).round(4), B.sf(9).round(5), B.mean(), B.std().round(3)
+      - name: loi de Poisson
+        signature: stats.poisson(mu).pmf(k)
+        description: "Nombre d'événements rares sur une période (appels par heure, pannes par mois)."
+        example: |
+          stats.poisson(mu=3).pmf([0, 1, 2, 3]).round(3), stats.poisson(mu=3).sf(5).round(4)
+      - name: tirages aléatoires (rng)
+        signature: rng.normal · binomial · poisson · uniform · choice · integers
+        description: "Simuler pour vérifier un calcul : la méthode de Monte-Carlo."
+        example: |
+          rolls = rng.integers(1, 7, size=(100_000, 2))
+          (rolls.sum(axis=1) == 7).mean().round(3)
+  - title: Tests statistiques
+    entries:
+      - name: t-test
+        signature: stats.ttest_ind(a, b, equal_var=False) · stats.ttest_1samp(a, mu)
+        description: "Compare des moyennes. `equal_var=False` = test de Welch (plus sûr). p-value petite = différence peu compatible avec le hasard seul."
+        example: |
+          a = rng.normal(10, 2, 50)
+          b = rng.normal(11, 2, 50)
+          res = stats.ttest_ind(a, b, equal_var=False)
+          round(res.statistic, 2), round(res.pvalue, 4)
+      - name: test du χ²
+        signature: stats.chi2_contingency(tableau)
+        description: "Indépendance entre deux variables catégorielles (tableau de contingence)."
+        example: |
+          table = np.array([[120, 80], [90, 110]])
+          chi2, p, dof, expected = stats.chi2_contingency(table)
+          round(chi2, 2), round(p, 4)
+      - name: test de deux proportions (A/B test)
+        signature: "z = (p_b - p_a) / sqrt(p(1-p)(1/n_a + 1/n_b))"
+        description: "Comparer deux taux de conversion. `p` = taux commun (poolé)."
+        example: |
+          conv_a, n_a, conv_b, n_b = 200, 2000, 245, 2000
+          p_a, p_b = conv_a / n_a, conv_b / n_b
+          p = (conv_a + conv_b) / (n_a + n_b)
+          z = (p_b - p_a) / np.sqrt(p * (1 - p) * (1 / n_a + 1 / n_b))
+          round(z, 3), round(2 * stats.norm.sf(abs(z)), 4)
+      - name: intervalle de confiance
+        signature: "moyenne ± 1.96 · σ/√n · stats.t.interval"
+        description: "Intervalle qui contient le vrai paramètre dans 95 % des répétitions de l'expérience."
+        example: |
+          x = rng.normal(50, 10, 40)
+          se = x.std(ddof=1) / np.sqrt(len(x))
+          (x.mean() - 1.96 * se).round(2), (x.mean() + 1.96 * se).round(2), np.round(stats.t.interval(0.95, len(x) - 1, loc=x.mean(), scale=se), 2)
+      - name: bootstrap
+        signature: rééchantillonner avec remise, recalculer la statistique
+        description: "Intervalle de confiance pour n'importe quelle statistique (médiane, ratio…) sans formule."
+        example: |
+          x = rng.exponential(scale=3, size=200)
+          boots = [np.median(rng.choice(x, size=len(x), replace=True)) for _ in range(2000)]
+          np.percentile(boots, [2.5, 97.5]).round(2)

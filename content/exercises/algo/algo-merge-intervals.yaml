@@ -39,6 +39,11 @@ tests:
     expected: "[[1, 10]]"
   - call: merge([[5, 6], [1, 2], [2, 3], [7, 9], [8, 8]])
     hidden: true
+  - name: "Bonus : complexité O(n log n)"
+    bonus: true
+    check: |
+      k = growth_exponent(merge, lambda n: ([[2 * i, 2 * i + 1] for i in reversed(range(n))],))
+      assert k < 1.5, f"Ta solution semble en O(n^{k:.1f}). Trier d'abord permet de tout fusionner en un seul balayage : O(n log n)."
 hints:
   - "Trie d'abord par début : `sorted(intervals)` (les listes se comparent élément par élément)."
   - "Parcours : si l'intervalle courant commence avant la fin du dernier fusionné, étends ce dernier ; sinon ajoute-le."
@@ -47,3 +52,24 @@ explanation: |
   - **Trier** d'abord transforme beaucoup de problèmes O(n²) en un simple balayage O(n log n).
   - Variantes : nombre minimal de salles de réunion (trier les débuts et les fins, ou un heap), insérer un intervalle, intersection de deux listes.
   - `sorted` sur des listes/tuples compare lexicographiquement : premier élément, puis le second en cas d'égalité.
+complexity:
+  target: O(n log n)
+  note: |
+    Comparer chaque intervalle à tous les autres (ou recommencer tant qu'une fusion est possible) est au moins O(n²). Après un **tri par début**, deux intervalles qui se chevauchent sont forcément voisins : un seul parcours suffit, et le tri domine en O(n log n).
+naive: |
+  def merge(intervals):
+      result = [list(iv) for iv in intervals]
+      changed = True
+      while changed:
+          changed = False
+          for i in range(len(result)):
+              for j in range(i + 1, len(result)):
+                  a, b = result[i], result[j]
+                  if a[0] <= b[1] and b[0] <= a[1]:
+                      result[i] = [min(a[0], b[0]), max(a[1], b[1])]
+                      del result[j]
+                      changed = True
+                      break
+              if changed:
+                  break
+      return sorted(result)

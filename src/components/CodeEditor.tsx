@@ -33,6 +33,8 @@ export interface CodeEditorProps {
   onChange: (value: string) => void
   onRun?: () => void
   onSubmit?: () => void
+  /** F2: open the documentation on the word under the cursor. */
+  onDoc?: (query: string) => void
   errorLine?: number | null
   language?: 'python' | 'sql'
   autocomplete?: boolean
@@ -49,6 +51,7 @@ export function CodeEditor({
   onChange,
   onRun,
   onSubmit,
+  onDoc,
   errorLine,
   language = 'python',
   autocomplete = true,
@@ -61,8 +64,8 @@ export function CodeEditor({
 }: CodeEditorProps) {
   const ref = useRef<ReactCodeMirrorRef>(null)
   const settingsFont = useSettings((s) => s.editorFontSize)
-  const handlers = useRef({ onRun, onSubmit })
-  handlers.current = { onRun, onSubmit }
+  const handlers = useRef({ onRun, onSubmit, onDoc })
+  handlers.current = { onRun, onSubmit, onDoc }
 
   const extensions = useMemo<Extension[]>(
     () => [
@@ -77,6 +80,25 @@ export function CodeEditor({
             run: () => {
               handlers.current.onRun?.()
               return !!handlers.current.onRun
+            },
+          },
+          {
+            // Ctrl/Cmd+S runs the code (and keeps the browser's "save page" dialog away).
+            key: 'Mod-s',
+            preventDefault: true,
+            run: () => {
+              handlers.current.onRun?.()
+              return true
+            },
+          },
+          {
+            key: 'F2',
+            run: (view) => {
+              if (!handlers.current.onDoc) return false
+              const { head } = view.state.selection.main
+              const word = view.state.wordAt(head)
+              handlers.current.onDoc(word ? view.state.sliceDoc(word.from, word.to) : '')
+              return true
             },
           },
           {

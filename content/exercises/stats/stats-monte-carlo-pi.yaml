@@ -1,0 +1,58 @@
+id: stats-monte-carlo-pi
+title: Estimer π avec des fléchettes
+domain: stats
+difficulty: easy
+minutes: 6
+tags: [Monte-Carlo, simulation, loi des grands nombres]
+cards: [st-rng]
+statement: |
+  Lance des fléchettes au hasard dans le carré $[0, 1]^2$ : la proportion qui tombe dans le quart de disque de rayon 1 vaut $\pi / 4$.
+
+  1. `estimate_pi(n, seed=0)` : estime π avec `n` fléchettes, **sans boucle Python** (NumPy, `np.random.default_rng(seed)`).
+  2. `errors(ns, seed=0)` : la liste des erreurs absolues `|estimation − π|` pour chaque `n` de `ns`.
+
+  Avec Exécuter, regarde `errors([100, 10_000, 1_000_000])` : à quelle vitesse l'erreur diminue-t-elle ?
+starter: |
+  import numpy as np
+
+
+  def estimate_pi(n, seed=0):
+      pass
+
+
+  def errors(ns, seed=0):
+      pass
+solution: |
+  import numpy as np
+
+
+  def estimate_pi(n, seed=0):
+      rng = np.random.default_rng(seed)
+      x, y = rng.random(n), rng.random(n)
+      return 4 * np.mean(x ** 2 + y ** 2 <= 1)
+
+
+  def errors(ns, seed=0):
+      return [abs(estimate_pi(n, seed) - np.pi) for n in ns]
+tests:
+  - name: Proche de π avec un million de fléchettes
+    check: |
+      est = estimate_pi(1_000_000)
+      assert abs(est - np.pi) < 0.01, f"estimation {est}"
+  - name: Reproductible avec la même seed
+    check: |
+      assert estimate_pi(1000, seed=3) == estimate_pi(1000, seed=3)
+  - name: L'erreur diminue avec n (en moyenne)
+    check: |
+      small = np.mean([errors([100], seed=s)[0] for s in range(30)])
+      large = np.mean([errors([100_000], seed=s)[0] for s in range(30)])
+      assert large < small / 10, f"erreur moyenne {small:.3f} → {large:.4f}"
+hints:
+  - "`rng.random(n)` tire n nombres uniformes dans [0, 1)."
+  - "Un point est dans le disque si $x^2 + y^2 \\le 1$ ; la moyenne d'un masque booléen est une proportion."
+explanation: |
+  **Monte-Carlo** : approcher une quantité par la moyenne de nombreuses expériences aléatoires.
+
+  - L'erreur décroît en $1/\sqrt{n}$ : **100 fois** plus de fléchettes pour une décimale de plus. C'est le même $\sqrt n$ que dans l'erreur standard d'une moyenne (théorème central limite).
+  - Toujours fixer une **seed** (`np.random.default_rng(seed)`) pour des résultats reproductibles.
+  - En data : estimer des probabilités complexes, l'incertitude d'un modèle (bootstrap), simuler un A/B test avant de le lancer.

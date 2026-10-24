@@ -1,0 +1,67 @@
+id: stats-correlation
+title: Corrélation, et ce qu'elle ne dit pas
+domain: stats
+difficulty: medium
+minutes: 8
+tags: [corrélation, Pearson, Spearman, causalité]
+cards: [st-correlation]
+statement: |
+  1. `pearson(x, y)` : le coefficient de corrélation de Pearson, **from scratch** (NumPy autorisé, pas `np.corrcoef`) :
+     $$r = \frac{\sum (x_i - \bar x)(y_i - \bar y)}{\sqrt{\sum (x_i - \bar x)^2}\sqrt{\sum (y_i - \bar y)^2}}$$
+  2. `spearman(x, y)` : la corrélation de **Spearman** = Pearson appliqué aux **rangs** (pas d'égalités dans les tests).
+
+  Avec Exécuter, compare les deux sur `x` et `y = x ** 5` : pourquoi diffèrent-ils ?
+starter: |
+  import numpy as np
+
+
+  def pearson(x, y):
+      pass
+
+
+  def spearman(x, y):
+      pass
+solution: |
+  import numpy as np
+
+
+  def pearson(x, y):
+      x = np.asarray(x, dtype=float)
+      y = np.asarray(y, dtype=float)
+      dx, dy = x - x.mean(), y - y.mean()
+      return float((dx * dy).sum() / np.sqrt((dx ** 2).sum() * (dy ** 2).sum()))
+
+
+  def spearman(x, y):
+      rank = lambda v: np.argsort(np.argsort(v))
+      return pearson(rank(x), rank(y))
+tests:
+  - call: pearson([1, 2, 3, 4], [2, 4, 6, 8])
+    expected: "1.0"
+  - call: pearson([1, 2, 3, 4], [8, 6, 4, 2])
+    expected: "-1.0"
+  - name: Relation monotone non linéaire
+    check: |
+      x = np.linspace(0, 3, 50)
+      assert pearson(x, x ** 5) < 0.95
+      assert abs(spearman(x, x ** 5) - 1) < 1e-12
+  - name: Identique à NumPy / SciPy
+    check: |
+      from scipy import stats
+      rng = np.random.default_rng(0)
+      for _ in range(20):
+          a = rng.normal(size=40)
+          b = a * rng.uniform(-1, 1) + rng.normal(size=40)
+          assert abs(pearson(a, b) - np.corrcoef(a, b)[0, 1]) < 1e-9
+          assert abs(spearman(a, b) - stats.spearmanr(a, b).statistic) < 1e-9
+  - name: "Corrélation nulle mais dépendance parfaite"
+    call: round(pearson(np.linspace(-1, 1, 101), np.linspace(-1, 1, 101) ** 2), 10)
+    expected: "0.0"
+hints:
+  - "Centre les deux vecteurs, puis covariance / (écart-type × écart-type), sans les facteurs n qui se simplifient."
+  - "Les rangs : `np.argsort(np.argsort(v))` donne la position de chaque élément dans l'ordre trié."
+explanation: |
+  - **Pearson** mesure une relation **linéaire** ; **Spearman** une relation **monotone** (sur les rangs, donc robuste aux valeurs extrêmes).
+  - **r = 0 n'implique pas l'indépendance** : $y = x^2$ sur [−1, 1] est parfaitement déterminé par x, avec une corrélation nulle.
+  - **Corrélation ≠ causalité** : les ventes de glaces et les noyades sont corrélées (la chaleur cause les deux). En entretien, cite les variables confondantes, la causalité inverse, et l'expérience randomisée (A/B test) comme moyen d'établir un effet causal.
+  - Toujours **tracer** les données : le quartet d'Anscombe a quatre jeux avec la même corrélation et des formes totalement différentes.

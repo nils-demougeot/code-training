@@ -1,0 +1,85 @@
+id: stats
+title: Probas & stats pour l'entretien data
+domain: stats
+summary: Les réflexes de probabilité, les tests et les intervalles de confiance, avec le code Python qui va avec.
+body: |
+  ## Décrire des données
+
+  | Statistique | Python | À savoir |
+  |---|---|---|
+  | moyenne | `np.mean(x)` | sensible aux valeurs extrêmes |
+  | médiane, quantiles | `np.median(x)`, `np.percentile(x, [25, 75])` | robustes ; préférées pour salaires, prix, durées |
+  | variance, écart-type | `np.var(x, ddof=1)`, `np.std(x, ddof=1)` | `ddof=1` pour un échantillon ; NumPy est à `ddof=0` par défaut, pandas à 1 |
+  | corrélation | `np.corrcoef(x, y)[0, 1]`, `stats.spearmanr(x, y)` | Pearson = linéaire, Spearman = monotone |
+  | tout d'un coup | `df.describe()` | |
+
+  ## Les 5 réflexes de probabilité
+
+  1. **Issues équiprobables** → compter : favorables / possibles (`itertools.product`, `math.comb`).
+  2. **« Au moins un »** → complémentaire : $1 - P(\text{aucun})$.
+  3. **« Et » avec indépendance** → multiplier. **« Ou » exclusif** → additionner.
+  4. **Information nouvelle** → Bayes : $P(A \mid B) = \frac{P(B \mid A)\,P(A)}{P(B)}$. Penser au **taux de base**.
+  5. **Trop compliqué ?** → simuler (Monte-Carlo) : `rng = np.random.default_rng(0)`, puis la moyenne d'une condition booléenne.
+
+  ```python
+  rng = np.random.default_rng(0)
+  rolls = rng.integers(1, 7, size=(100_000, 4))
+  (rolls == 6).any(axis=1).mean()          # P(au moins un 6 en 4 lancers) ≈ 0.518
+  ```
+
+  ## Lois à connaître
+
+  | Loi | Modélise | Espérance | Variance | scipy.stats |
+  |---|---|---|---|---|
+  | Bernoulli(p) | un succès / échec | p | p(1 − p) | `bernoulli(p)` |
+  | Binomiale(n, p) | nb de succès sur n essais | np | np(1 − p) | `binom(n, p)` |
+  | Poisson(λ) | nb d'événements par période | λ | λ | `poisson(λ)` |
+  | Géométrique(p) | nb d'essais jusqu'au 1er succès | 1/p | (1 − p)/p² | `geom(p)` |
+  | Normale(μ, σ) | sommes, moyennes, erreurs | μ | σ² | `norm(μ, σ)` |
+  | Exponentielle(λ) | temps d'attente | 1/λ | 1/λ² | `expon(scale=1/λ)` |
+
+  Méthodes communes : `.pmf` / `.pdf` (densité), `.cdf` (P(X ≤ x)), `.sf` (P(X > x)), `.ppf` (quantile), `.rvs(size=n)` (tirages).
+
+  ## Moyennes et théorème central limite
+
+  - $E[X + Y] = E[X] + E[Y]$ toujours ; $Var(X + Y) = Var(X) + Var(Y)$ si indépendantes.
+  - La moyenne de n tirages a un écart-type $\sigma / \sqrt n$ (l'**erreur standard**).
+  - **TCL** : cette moyenne suit approximativement $\mathcal N(\mu, \sigma^2 / n)$, quelle que soit la loi de départ (si la variance est finie).
+
+  ## Intervalle de confiance
+
+  ```python
+  se = x.std(ddof=1) / np.sqrt(len(x))
+  (x.mean() - 1.96 * se, x.mean() + 1.96 * se)          # 95 %, n assez grand
+  stats.t.interval(0.95, df=len(x) - 1, loc=x.mean(), scale=se)   # petits n
+  ```
+
+  Pas de formule (médiane, ratio, AUC) ? **Bootstrap** :
+
+  ```python
+  idx = rng.integers(0, len(x), size=(2000, len(x)))
+  np.percentile(np.median(x[idx], axis=1), [2.5, 97.5])
+  ```
+
+  ## Tests d'hypothèse
+
+  - **H0** : pas d'effet. **p-value** : P(données au moins aussi extrêmes | H0).
+  - **Type I** (α) = faux positif ; **type II** (β) = faux négatif ; **puissance** = 1 − β.
+  - Choisir le test : deux proportions → test z (`statsmodels.stats.proportion.proportions_ztest`) ; deux moyennes → t de Welch (`stats.ttest_ind(a, b, equal_var=False)`) ; tableau de contingence → χ² (`stats.chi2_contingency`) ; données non normales → Mann-Whitney (`stats.mannwhitneyu`).
+
+  ## A/B test : la checklist
+
+  1. Une **métrique principale** définie à l'avance (+ métriques garde-fous).
+  2. **Taille d'échantillon** calculée avant : ∝ $1/\text{effet}^2$.
+  3. **Randomisation** au bon niveau (utilisateur, pas session) ; vérifier le ratio 50/50 (*sample ratio mismatch*).
+  4. **Durée fixée** (semaines entières), pas de *peeking*.
+  5. Rapporter l'**effet + intervalle de confiance**, pas seulement « significatif ».
+  6. Attention aux **tests multiples** (Bonferroni, FDR) et aux effets de nouveauté.
+
+  ## Pièges classiques en entretien
+
+  - **Corrélation ≠ causalité** : variable confondante, causalité inverse, biais de sélection.
+  - **Paradoxe de Simpson** : une tendance s'inverse quand on agrège des groupes.
+  - **Biais du survivant** : on n'observe que ceux qui ont « survécu » au filtre.
+  - **Régression vers la moyenne** : les extrêmes d'une mesure sont moins extrêmes à la mesure suivante.
+  - **Sophisme du joueur** : des tirages indépendants n'ont pas de mémoire.

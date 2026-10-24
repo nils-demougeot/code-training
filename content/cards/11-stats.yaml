@@ -1,0 +1,157 @@
+id: stats
+title: Probas & stats appliquées
+domain: stats
+description: Les formules et les réflexes de stats qu'on attend en entretien data, avec leur version Python.
+cards:
+  - id: st-median-robust
+    prompt: "Moyenne et médiane de salaires (avec NumPy)."
+    setup: |-
+      import numpy as np
+      salaires = np.array([2800, 3000, 3100, 3300, 40000])
+    answer: |-
+      (np.mean(salaires), np.median(salaires))
+    note: "Une seule valeur extrême déplace la moyenne, pas la médiane. Données asymétriques → médiane / quantiles."
+  - id: st-variance-ddof
+    prompt: "Écart-type d'échantillon (division par n − 1) de x avec NumPy."
+    setup: |-
+      import numpy as np
+      x = np.array([2.0, 4, 4, 4, 5, 5, 7, 9])
+    answer: |-
+      np.std(x, ddof=1)
+    note: "`np.std` utilise ddof=0 par défaut, `pd.Series.std` utilise ddof=1."
+  - id: st-quantiles
+    prompt: "Les quartiles Q1, Q2, Q3 de x en un appel NumPy."
+    setup: |-
+      import numpy as np
+      x = np.arange(1, 101)
+    answer: |-
+      np.percentile(x, [25, 50, 75])
+    note: "Écart interquartile IQR = Q3 − Q1 ; valeurs aberrantes classiques : hors de [Q1 − 1,5·IQR, Q3 + 1,5·IQR]."
+  - id: st-product
+    prompt: "Liste des 36 issues (a, b) du lancer de deux dés."
+    setup: |-
+      from itertools import product
+    answer: |-
+      list(product(range(1, 7), repeat=2))
+  - id: st-comb
+    prompt: "Nombre de façons de choisir 3 personnes parmi 10 (ordre sans importance)."
+    setup: |-
+      import math
+    answer: |-
+      math.comb(10, 3)
+    note: "`math.perm(10, 3)` si l'ordre compte (720). $\\binom{n}{k} = \\frac{n!}{k!(n-k)!}$."
+  - id: st-complement
+    kind: reveal
+    prompt: "P(au moins un 6 en 4 lancers de dé) : quel réflexe, quelle formule ?"
+    answer: |-
+      Passer par le complémentaire : P(au moins un) = 1 − P(aucun)
+      = 1 − (5/6)**4 ≈ 0,518
+    note: "« Au moins un » → toujours penser complémentaire. Les événements doivent être indépendants pour multiplier."
+  - id: st-bayes-formula
+    kind: reveal
+    prompt: "Théorème de Bayes appliqué à un test positif (prévalence, sensibilité, spécificité)."
+    answer: |-
+      P(M | +) = P(+ | M)·P(M) / P(+)
+      P(+)     = sensibilité·prévalence + (1 − spécificité)·(1 − prévalence)
+    note: "Quand la prévalence est faible, les faux positifs dominent : précision faible malgré un excellent test."
+  - id: st-expectation
+    kind: reveal
+    prompt: "Espérance et variance d'une somme X + Y. Quelle hypothèse pour la variance ?"
+    answer: |-
+      E[X + Y] = E[X] + E[Y]                 (toujours, linéarité)
+      Var(X + Y) = Var(X) + Var(Y) + 2 Cov(X, Y)
+                 = Var(X) + Var(Y)           si X et Y sont indépendantes
+    note: "Var(aX) = a²·Var(X). D'où l'écart-type de la moyenne de n tirages : σ/√n."
+  - id: st-binomial-pmf
+    prompt: "P(exactement 5 succès sur 20 essais avec p = 0,25) avec scipy.stats."
+    setup: |-
+      from scipy import stats
+    answer: |-
+      stats.binom.pmf(5, 20, 0.25)
+    note: "`binom.cdf(k, n, p)` = P(X ≤ k), `binom.sf(k, n, p)` = P(X > k). Espérance np, variance np(1 − p)."
+  - id: st-normal-cdf
+    prompt: "P(Z < 1,96) pour une loi normale centrée réduite, avec scipy.stats."
+    setup: |-
+      from scipy import stats
+    answer: |-
+      stats.norm.cdf(1.96)
+    note: "`norm.ppf(0.975)` fait l'inverse (≈ 1,96). Règle 68 – 95 – 99,7 % à 1, 2, 3 écarts-types."
+  - id: st-rng
+    prompt: "Générateur aléatoire NumPy reproductible (seed 0), puis 5 tirages uniformes dans [0, 1)."
+    setup: |-
+      import numpy as np
+    answer: |-
+      np.random.default_rng(0).random(5)
+    note: "`rng.normal(mu, sigma, n)`, `rng.integers(lo, hi, n)`, `rng.choice(x, n, replace=True)`."
+  - id: st-standard-error
+    prompt: "Erreur standard de la moyenne de x."
+    setup: |-
+      import numpy as np
+      x = np.array([2.0, 4, 4, 4, 5, 5, 7, 9])
+    answer: |-
+      x.std(ddof=1) / np.sqrt(len(x))
+    note: "Intervalle de confiance à 95 % ≈ moyenne ± 1,96 × SE. Quatre fois plus de données → deux fois plus précis."
+  - id: st-ci-meaning
+    kind: reveal
+    prompt: "Que veut dire « intervalle de confiance à 95 % » ? (la réponse que l'intervieweur attend)"
+    answer: |-
+      Si l'on répétait l'expérience de nombreuses fois, 95 % des intervalles
+      construits avec cette méthode contiendraient la vraie valeur.
+    note: "Ce n'est PAS « 95 % de chances que la vraie valeur soit dans cet intervalle » (ça, c'est un intervalle de crédibilité bayésien)."
+  - id: st-bootstrap
+    prompt: "1 000 médianes bootstrap de x en une ligne vectorisée (rng et x donnés)."
+    setup: |-
+      import numpy as np
+      rng = np.random.default_rng(0)
+      x = rng.exponential(10, 200)
+    answer: |-
+      np.median(x[rng.integers(0, len(x), size=(1000, len(x)))], axis=1)
+    loose: true
+    note: "Puis `np.percentile(boots, [2.5, 97.5])` pour l'intervalle de confiance percentile."
+  - id: st-pvalue-def
+    kind: reveal
+    prompt: "Définition d'une p-value, et deux contresens fréquents."
+    answer: |-
+      p-value = P(observer un résultat au moins aussi extrême | H0 vraie).
+      ✗ Ce n'est pas P(H0 vraie).
+      ✗ p < 0,05 ne dit rien de la taille de l'effet (énorme n → tout est significatif).
+    note: "Avec α = 5 %, sans effet réel, 1 test sur 20 sort « significatif » par hasard."
+  - id: st-ab-z
+    kind: reveal
+    prompt: "Statistique z d'un A/B test sur des taux de conversion."
+    answer: |-
+      p̂ = (conv_A + conv_B) / (n_A + n_B)                   # taux poolé sous H0
+      z = (p_B − p_A) / sqrt(p̂(1 − p̂)(1/n_A + 1/n_B))
+      p_value = 2 · (1 − Φ(|z|))                            # bilatérale
+    note: "Taille d'échantillon ∝ 1 / effet² : détecter un effet 2× plus petit demande 4× plus de trafic."
+  - id: st-errors
+    kind: reveal
+    prompt: "Erreur de type I, type II, puissance : définitions."
+    answer: |-
+      Type I  (α) : rejeter H0 alors qu'elle est vraie   → faux positif
+      Type II (β) : ne pas rejeter H0 alors qu'elle est fausse → faux négatif
+      Puissance = 1 − β = P(détecter un effet qui existe)   (souvent visée : 80 %)
+  - id: st-multiple-testing
+    kind: reveal
+    prompt: "On teste 20 métriques à α = 5 %. Problème et corrections ?"
+    answer: |-
+      P(au moins un faux positif) = 1 − 0,95**20 ≈ 64 %.
+      Bonferroni : seuil α / m (= 0,0025).  Contrôle du FDR : Benjamini–Hochberg.
+    note: "Définir UNE métrique principale avant le test."
+  - id: st-correlation
+    prompt: "Matrice de corrélation (Pearson) entre x et y, puis la valeur r."
+    setup: |-
+      import numpy as np
+      x = np.array([1.0, 2, 3, 4, 5])
+      y = np.array([2.0, 4, 5, 4, 5])
+    answer: |-
+      np.corrcoef(x, y)[0, 1]
+    note: "Spearman (rangs) : `scipy.stats.spearmanr(x, y)`. Corrélation ≠ causalité ; r = 0 n'implique pas l'indépendance."
+  - id: st-lln-clt
+    kind: reveal
+    prompt: "Loi des grands nombres vs théorème central limite."
+    answer: |-
+      LGN : la moyenne empirique converge vers l'espérance quand n → ∞.
+      TCL : la moyenne de n tirages i.i.d. (variance finie) suit ≈ N(μ, σ²/n),
+            quelle que soit la distribution de départ.
+    note: "Le TCL justifie les intervalles de confiance et les tests z. Il échoue pour des queues trop lourdes (variance infinie)."

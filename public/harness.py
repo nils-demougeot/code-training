@@ -252,44 +252,157 @@ def compare(got, expected, *, strict=False, rtol=1e-5, atol=1e-6, unordered=Fals
 
 # --------------------------------------------------------------------------- modes
 
+class _ShowExpressions(ast.NodeTransformer):
+    """Wraps each top-level expression statement so its value is displayed, like a notebook
+    cell but for every line (``f(3)`` alone on a line shows its result, no print needed)."""
+
+    def visit_Module(self, node):
+        body = []
+        for stmt in node.body:
+            if isinstance(stmt, ast.Expr) and not (
+                isinstance(stmt.value, ast.Constant) and isinstance(stmt.value.value, str)
+            ):
+                call = ast.Call(
+                    func=ast.Name(id="__ct_show__", ctx=ast.Load()),
+                    args=[stmt.value, ast.Constant(stmt.lineno)],
+                    keywords=[],
+                )
+                stmt = ast.copy_location(ast.Expr(value=call), stmt)
+            body.append(stmt)
+        node.body = body
+        return ast.fix_missing_locations(node)
+
+
+def _displayable(value):
+    if value is None:
+        return False
+    module = _module_of(value)
+    if module.startswith("matplotlib"):
+        return False
+    if isinstance(value, (list, tuple)) and value and _module_of(value[0]).startswith("matplotlib"):
+        return False
+    return True
+
+
 def _mode_run(payload):
+    """Runs the code, displays the value of every top-level expression, then evaluates the
+    optional ``examples`` (calls of the user's functions) and shows their results."""
     code = payload.get("code", "")
     setup = payload.get("setup") or ""
+    examples = payload.get("examples") or []
     ns = _new_namespace()
     out = io.StringIO()
-    result = {"ok": True, "stdout": "", "value": None, "error": None, "errorLine": None, "figures": []}
+    shown = []  # (stdout offset, line, repr)
+
+    def show(value, line):
+        if _displayable(value):
+            shown.append((out.tell(), line, _repr(value, 4_000)))
+        return value
+
+    ns["__ct_show__"] = show
+    result = {
+        "ok": True, "stdout": "", "value": None, "error": None, "errorLine": None, "figures": [],
+        "segments": [], "examples": [],
+    }
     start = time.perf_counter()
     with contextlib.redirect_stdout(out), contextlib.redirect_stderr(out):
         try:
             if setup:
                 _exec(setup, ns, "<setup>")
             _register_source(code, USER_FILE)
-            tree = ast.parse(code, USER_FILE)
-            last_expr = None
-            if tree.body and isinstance(tree.body[-1], ast.Expr):
-                last_expr = ast.Expression(tree.body.pop().value)
+            tree = _ShowExpressions().visit(ast.parse(code, USER_FILE))
             exec(compile(tree, USER_FILE, "exec"), ns)
-            if last_expr is not None:
-                value = eval(compile(last_expr, USER_FILE, "eval"), ns)
-                if value is not None:
-                    result["value"] = _repr(value, 4_000)
         except BaseException as exc:  # noqa: BLE001 - we report everything to the user
             if isinstance(exc, KeyboardInterrupt):
                 raise
             result["ok"] = False
             result["error"] = _clean_traceback(exc)
             result["errorLine"] = _error_line(exc)
-    result["stdout"] = _truncate(out.getvalue())
+
+    text = out.getvalue()
+    segments, cursor = [], 0
+    for offset, line, value in shown:
+        if offset > cursor:
+            segments.append({"kind": "stdout", "text": _truncate(text[cursor:offset], 10_000)})
+        segments.append({"kind": "value", "line": line, "text": value})
+        cursor = offset
+    if cursor < len(text):
+        segments.append({"kind": "stdout", "text": _truncate(text[cursor:], 10_000)})
+    result["segments"] = segments
+    result["stdout"] = _truncate(text)
+
+    if result["ok"]:
+        for call in examples:
+            entry = {"call": call}
+            try:
+                value, printed = _eval_expr(call, ns)
+                entry["value"] = _repr(value, 2_000)
+                if printed:
+                    entry["stdout"] = _truncate(printed, 2_000)
+            except BaseException as exc:  # noqa: BLE001
+                if isinstance(exc, KeyboardInterrupt):
+                    raise
+                entry["error"] = _clean_traceback(exc)
+            result["examples"].append(entry)
+
     result["figures"] = _collect_figures()
     result["durationMs"] = round((time.perf_counter() - start) * 1000, 1)
     return result
+
+
+def growth_exponent(func, make_input, n0=500, max_n=1 << 21, target=0.15, budget=3.0):
+    """Empirical complexity: times ``func(*make_input(n))`` for n = n0, 2·n0, 4·n0… and returns
+    the exponent k of the best fit t ∝ n^k between the last two sizes (≈1 for O(n), ≈2 for O(n²)).
+    Machine-independent (it is a ratio) and time-boxed by ``budget`` seconds."""
+    import gc
+
+    def timed(args):
+        t0 = time.perf_counter()
+        func(*args)
+        return time.perf_counter() - t0
+
+    points, inputs, total, n = [], [], 0.0, n0
+    gc_was_enabled = gc.isenabled()
+    gc.disable()
+    try:
+        while n <= max_n:
+            args = make_input(n)
+            best = None
+            for _ in range(3):
+                elapsed = timed(args)
+                best = elapsed if best is None else min(best, elapsed)
+                total += elapsed
+                if elapsed > 0.2 or total > budget:
+                    break
+            points.append([n, best])
+            inputs = (inputs + [args])[-2:]
+            if (best >= target and len(points) >= 2) or total > budget:
+                break
+            n *= 2
+        # A single noisy sample on the last size skews the ratio: re-time the last two sizes
+        # alternately and keep each minimum, so background noise hits both sides alike.
+        if len(points) >= 2:
+            for _ in range(2):
+                if total > 1.5 * budget:
+                    break
+                for point, args in zip(points[-2:], inputs):
+                    elapsed = timed(args)
+                    point[1] = min(point[1], elapsed)
+                    total += elapsed
+    finally:
+        if gc_was_enabled:
+            gc.enable()
+    if len(points) < 2:
+        return float("inf")
+    (n1, t1), (n2, t2) = points[-2], points[-1]
+    return math.log(max(t2, 1e-9) / max(t1, 1e-9)) / math.log(n2 / n1)
 
 
 def _eval_expr(source, ns):
     out = io.StringIO()
     _register_source(source, "<test>")
     with contextlib.redirect_stdout(out):
-        value = eval(compile(source, USER_FILE, "eval"), ns)
+        value = eval(compile(source, "<test>", "eval"), ns)
     return value, out.getvalue()
 
 
@@ -300,7 +413,9 @@ def _mode_test(payload):
     tests = payload.get("tests") or []
     result = {
         "ok": True, "stdout": "", "error": None, "errorLine": None, "tests": [], "figures": [],
-        "passed": 0, "total": len(tests),
+        # Bonus tests (e.g. optimal complexity) never block validation: counted separately.
+        "passed": 0, "total": sum(1 for t in tests if not t.get("bonus")),
+        "bonusPassed": 0, "bonusTotal": 0,
     }
     start = time.perf_counter()
 
@@ -322,7 +437,8 @@ def _mode_test(payload):
         for t in tests:
             result["tests"].append({
                 "name": t.get("name") or t.get("call") or "test", "passed": False,
-                "hidden": bool(t.get("hidden")), "error": "Le code n'a pas pu s'exécuter.",
+                "hidden": bool(t.get("hidden")), "bonus": bool(t.get("bonus")),
+                "error": "Le code n'a pas pu s'exécuter.",
             })
         result["figures"] = _collect_figures()
         return result
@@ -337,7 +453,7 @@ def _mode_test(payload):
 
     for index, t in enumerate(tests):
         name = t.get("name") or (t.get("call") or f"Test {index + 1}")
-        entry = {"name": name, "hidden": bool(t.get("hidden")), "passed": False}
+        entry = {"name": name, "hidden": bool(t.get("hidden")), "passed": False, "bonus": bool(t.get("bonus"))}
         t0 = time.perf_counter()
         try:
             if t.get("call"):
@@ -366,6 +482,7 @@ def _mode_test(payload):
                     entry["error"] = reason
             elif t.get("check"):
                 check_ns = dict(user_ns)
+                check_ns["growth_exponent"] = growth_exponent
                 if ref_ns is not None:
                     check_ns["ref"] = types.SimpleNamespace(
                         **{k: v for k, v in ref_ns.items() if not k.startswith("__")}
@@ -385,7 +502,10 @@ def _mode_test(payload):
                 raise
             entry["error"] = _clean_traceback(exc)
         entry["durationMs"] = round((time.perf_counter() - t0) * 1000, 1)
-        if entry["passed"]:
+        if entry["bonus"]:
+            result["bonusTotal"] += 1
+            result["bonusPassed"] += int(entry["passed"])
+        elif entry["passed"]:
             result["passed"] += 1
         result["tests"].append(entry)
 

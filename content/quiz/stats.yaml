@@ -1,0 +1,105 @@
+domain: stats
+questions:
+  - id: q-st-median
+    topic: Statistiques descriptives
+    question: "Pour décrire le salaire « typique » dans une entreprise, quelle statistique choisir ?"
+    choices: ["La moyenne", "La médiane", "Le maximum", "L'écart-type"]
+    answer: 1
+    explain: "Les salaires sont asymétriques (quelques très hauts salaires). La médiane est robuste aux valeurs extrêmes."
+  - id: q-st-std-ddof
+    topic: Statistiques descriptives
+    verify: true
+    question: Qu'affiche ce code ?
+    code: |
+      import numpy as np
+      import pandas as pd
+      x = [1, 2, 3, 4]
+      print(round(np.std(x), 3), round(pd.Series(x).std(), 3))
+    choices: ["1.118 1.118", "1.291 1.291", "1.118 1.291", "1.291 1.118"]
+    answer: 2
+    explain: "NumPy divise par n (ddof=0), pandas par n − 1 (ddof=1). Précise toujours `ddof`."
+  - id: q-st-complement
+    topic: Probabilités
+    question: "Probabilité d'obtenir au moins un 6 en lançant 4 dés ?"
+    choices: ["4/6 ≈ 67 %", "1 − (5/6)⁴ ≈ 52 %", "(1/6)⁴ ≈ 0,08 %", "1/6 ≈ 17 %"]
+    answer: 1
+    explain: "« Au moins un » : complémentaire de « aucun 6 », soit $(5/6)^4$. Additionner 4 × 1/6 compte plusieurs fois les cas avec deux 6."
+  - id: q-st-independence
+    topic: Probabilités
+    question: "Une pièce équilibrée vient de tomber 5 fois sur pile. Probabilité de pile au prochain lancer ?"
+    choices: ["Moins de 50 %, face est « due »", "50 %", "Plus de 50 %, la série continue", "1/64"]
+    answer: 1
+    explain: "Les lancers sont indépendants : la pièce n'a pas de mémoire. Croire le contraire, c'est le **sophisme du joueur**."
+  - id: q-st-bayes
+    topic: Bayes
+    question: "Maladie à 1 % de prévalence ; test sensible à 99 % et spécifique à 95 %. Tu es positif : P(malade) ?"
+    choices: ["99 %", "95 %", "≈ 50 %", "≈ 17 %"]
+    answer: 3
+    explain: "Sur 10 000 personnes : 99 vrais positifs, 495 faux positifs. 99 / 594 ≈ 17 %. Le taux de base compte énormément."
+  - id: q-st-clt
+    topic: Théorème central limite
+    question: "On fait la moyenne de 50 tirages d'une loi exponentielle. La distribution de cette moyenne est…"
+    choices: ["exponentielle", "uniforme", "approximativement normale", "impossible à prévoir"]
+    answer: 2
+    explain: "Théorème central limite : la moyenne de nombreux tirages i.i.d. (variance finie) tend vers une loi normale, quelle que soit la loi de départ."
+  - id: q-st-se
+    topic: Intervalles de confiance
+    question: "Pour diviser par 2 la largeur d'un intervalle de confiance, il faut…"
+    choices: ["2 fois plus de données", "4 fois plus de données", "√2 fois plus de données", "baisser le niveau de confiance à 47,5 %"]
+    answer: 1
+    explain: "La largeur est proportionnelle à $1/\\sqrt n$."
+  - id: q-st-ci
+    topic: Intervalles de confiance
+    question: "Interprétation correcte d'un intervalle de confiance à 95 % [12, 18] ?"
+    choices:
+      - "La vraie moyenne a 95 % de chances d'être entre 12 et 18"
+      - "95 % des données sont entre 12 et 18"
+      - "La méthode produit des intervalles qui contiennent la vraie valeur dans 95 % des expériences"
+      - "Il y a 5 % d'erreur sur la moyenne"
+    answer: 2
+    explain: "La garantie porte sur la **méthode** (couverture à long terme), pas sur cet intervalle-là. Et l'intervalle concerne la moyenne, pas les données individuelles."
+  - id: q-st-pvalue
+    topic: Tests d'hypothèse
+    question: "p = 0,03 dans un A/B test. Que peut-on dire ?"
+    choices:
+      - "B a 97 % de chances d'être meilleur"
+      - "Si B ne changeait rien, un écart au moins aussi grand arriverait 3 % du temps"
+      - "L'effet de B est grand"
+      - "Il y a 3 % de chances que H0 soit vraie"
+    answer: 1
+    explain: "La p-value est calculée **en supposant H0 vraie**. Elle ne donne ni la probabilité de H0, ni la taille de l'effet."
+  - id: q-st-multiple
+    topic: Tests d'hypothèse
+    question: "Tu testes 20 variantes sans effet réel à α = 5 %. Probabilité d'au moins un « gagnant » ?"
+    choices: ["5 %", "≈ 36 %", "≈ 64 %", "100 %"]
+    answer: 2
+    explain: "$1 - 0{,}95^{20} ≈ 0{,}64$. Corriger avec Bonferroni (α / 20) ou contrôler le FDR."
+  - id: q-st-peeking
+    topic: A/B tests
+    question: "Regarder les résultats d'un A/B test chaque jour et l'arrêter dès que p < 0,05…"
+    choices: ["est la bonne pratique", "augmente fortement le taux de faux positifs", "réduit la puissance", "ne change rien si n est grand"]
+    answer: 1
+    explain: "Chaque coup d'œil est une chance supplémentaire de passer sous 0,05 par hasard. Fixe la durée à l'avance ou utilise un test séquentiel. Essaie le lab A/B tests."
+  - id: q-st-power
+    topic: A/B tests
+    question: "Il faut 15 000 visiteurs par groupe pour détecter +10 % d'uplift. Combien pour +5 % ?"
+    choices: ["≈ 7 500", "≈ 15 000", "≈ 30 000", "≈ 60 000"]
+    answer: 3
+    explain: "Taille ∝ 1 / effet² : un effet 2 fois plus petit demande 4 fois plus de données."
+  - id: q-st-corr
+    topic: Corrélation
+    verify: true
+    question: Qu'affiche ce code ?
+    code: |
+      import numpy as np
+      x = np.linspace(-1, 1, 101)
+      print(round(np.corrcoef(x, x ** 2)[0, 1], 2))
+    choices: ["0.0", "1.0", "0.5", "-1.0"]
+    answer: 0
+    explain: "y = x² dépend parfaitement de x, mais la relation n'est pas **linéaire** (et elle est symétrique) : la corrélation de Pearson est nulle."
+  - id: q-st-simpson
+    topic: Corrélation
+    question: "Un traitement est meilleur chez les hommes ET chez les femmes, mais pire sur l'ensemble des patients. C'est…"
+    choices: ["impossible", "une erreur de calcul", "le paradoxe de Simpson", "la loi des grands nombres"]
+    answer: 2
+    explain: "Une variable confondante (ex. gravité des cas, répartie différemment entre les groupes) peut inverser une tendance une fois les groupes agrégés."

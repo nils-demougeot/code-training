@@ -18,6 +18,11 @@ export interface ExerciseProgress {
   notes?: string
   /** Spaced repetition: when to re-solve this exercise from scratch. */
   review?: SrsState
+  /** « Réécris de mémoire » successes and best time. */
+  recalls?: number
+  bestRecallSec?: number
+  /** Passed the bonus (optimal complexity) tests at least once. */
+  optimal?: boolean
   updatedAt: number
 }
 
@@ -26,6 +31,24 @@ export interface ProjectProgress {
   stepsDone: number[]
   completedAt?: number
   updatedAt: number
+}
+
+export interface DesignProgress {
+  /** Free notes per step id. */
+  notes: Record<string, string>
+  /** Indices of the key points the user ticked, per step id. */
+  checked: Record<string, number[]>
+  /** Steps whose key points were revealed. */
+  revealed: string[]
+  completedAt?: number
+  updatedAt: number
+}
+
+/** Probability puzzle: closest guess, stars earned (0-3). */
+export interface PuzzleProgress {
+  guess: number
+  stars: number
+  at: number
 }
 
 export interface InterviewRecord {
@@ -53,6 +76,8 @@ export interface Progress {
     seen: Record<string, { right: number; wrong: number; last: number }>
   }
   interviews: InterviewRecord[]
+  design: Record<string, DesignProgress>
+  puzzles: Record<string, PuzzleProgress>
   badges: Record<string, number>
   updatedAt: number
 }
@@ -66,6 +91,8 @@ export const emptyProgress = (): Progress => ({
   labs: {},
   quiz: { answered: 0, correct: 0, bestCombo: 0, bestScore: 0, seen: {} },
   interviews: [],
+  design: {},
+  puzzles: {},
   badges: {},
   updatedAt: 0,
 })
@@ -183,6 +210,22 @@ export const BADGES: BadgeDef[] = [
   { id: 'project-1', emoji: '🚀', label: 'Bâtisseur', description: 'Terminer un projet', test: (p) => Object.values(p.projects).some((x) => x.completedAt) },
   { id: 'lab-explorer', emoji: '🔬', label: 'Explorateur', description: 'Faire 5 expériences dans les labs', test: (p) => Object.values(p.labs).reduce((a, l) => a + l.done.length, 0) >= 5 },
   { id: 'interview-1', emoji: '🎤', label: 'Sur le gril', description: 'Terminer un entretien blanc', test: (p) => p.interviews.length >= 1 },
+  {
+    id: 'recall-5', emoji: '📸', label: 'Mémoire photographique', description: 'Réécrire 5 exercices de mémoire',
+    test: (p) => Object.values(p.exercises).reduce((a, e) => a + (e.recalls ?? 0), 0) >= 5,
+  },
+  {
+    id: 'optimal-3', emoji: '⚙️', label: 'Optimiseur', description: 'Atteindre la complexité optimale sur 3 exercices',
+    test: (p) => Object.values(p.exercises).filter((e) => e.optimal).length >= 3,
+  },
+  {
+    id: 'design-1', emoji: '🏗️', label: 'Architecte', description: 'Terminer un cas de design ML',
+    test: (p) => Object.values(p.design ?? {}).some((d) => d.completedAt),
+  },
+  {
+    id: 'puzzles-5', emoji: '🎲', label: 'Intuition statistique', description: 'Obtenir 3 étoiles à 5 défis de probabilité',
+    test: (p) => Object.values(p.puzzles ?? {}).filter((x) => x.stars >= 3).length >= 5,
+  },
   { id: 'xp-1000', emoji: '🏆', label: 'Millier', description: 'Atteindre 1 000 XP', test: (p) => totalXp(p) >= 1000 },
 ]
 
@@ -225,6 +268,9 @@ export function mergeProgress(local: Progress, remote: Progress): Progress {
         hintsUsed: Math.max(x.hintsUsed, y.hintsUsed),
         firstSolvedAt: minDefined(x.firstSolvedAt, y.firstSolvedAt),
         bestTimeSec: minDefined(x.bestTimeSec, y.bestTimeSec),
+        recalls: Math.max(x.recalls ?? 0, y.recalls ?? 0) || undefined,
+        bestRecallSec: minDefined(x.bestRecallSec, y.bestRecallSec),
+        optimal: x.optimal || y.optimal || undefined,
       }
     }),
     cards: mergeRecords(local.cards, r.cards, (x, y) => (!x ? y : !y ? x : y.last > x.last ? y : x)),
@@ -246,6 +292,10 @@ export function mergeProgress(local: Progress, remote: Progress): Progress {
     },
     interviews: [...new Map([...r.interviews, ...local.interviews].map((i) => [i.id, i])).values()]
       .sort((a, b) => b.date - a.date),
+    design: mergeRecords(local.design ?? {}, r.design ?? {}, (x, y) => newer(x, y)),
+    puzzles: mergeRecords(local.puzzles ?? {}, r.puzzles ?? {}, (x, y) =>
+      !x ? y : !y ? x : y.stars > x.stars || (y.stars === x.stars && y.at > x.at) ? y : x,
+    ),
     badges: mergeRecords(local.badges, r.badges, minDefined),
     updatedAt: Math.max(local.updatedAt, r.updatedAt),
   }
@@ -285,6 +335,8 @@ interface ProgressStore {
   /** fresh: reschedule from scratch (right after a solve) instead of building on the previous review. */
   reviewExercise: (id: string, grade: Grade, fresh?: boolean) => void
   setNotes: (id: string, notes: string) => void
+  recordRecall: (id: string, timeSec: number) => void
+  markOptimal: (id: string) => void
   reviewCard: (id: string, grade: Grade, correct: boolean) => void
   quizAnswer: (id: string, correct: boolean, combo: number) => number
   quizFinish: (score: number, bestCombo: number) => void
@@ -293,6 +345,11 @@ interface ProgressStore {
   labExperiment: (lab: string, experiment: string) => void
   finishInterview: (record: InterviewRecord) => void
   grantXp: (xp: number, label: string) => void
+  saveDesignNote: (caseId: string, stepId: string, text: string) => void
+  revealDesignStep: (caseId: string, stepId: string) => void
+  setDesignChecked: (caseId: string, stepId: string, checked: number[]) => void
+  completeDesign: (caseId: string) => void
+  answerPuzzle: (id: string, guess: number, stars: number) => void
 }
 
 let rewardId = 1
@@ -316,6 +373,11 @@ export const useProgress = create<ProgressStore>((set, get) => {
     }
     p.updatedAt = Date.now()
     set({ p, rewards: [...get().rewards, ...rewards].slice(-6) })
+  }
+
+  const design = (p: Progress, id: string): DesignProgress => {
+    p.design ??= {}
+    return (p.design[id] ??= { notes: {}, checked: {}, revealed: [], updatedAt: Date.now() })
   }
 
   const ex = (p: Progress, id: string): ExerciseProgress =>
@@ -388,6 +450,31 @@ export const useProgress = create<ProgressStore>((set, get) => {
         e.review = fresh ? scheduleAfterSolve(grade) : schedule(e.review, grade)
         e.updatedAt = Date.now()
       }),
+
+    recordRecall: (id, timeSec) =>
+      commit(
+        (p) => {
+          const e = ex(p, id)
+          e.recalls = (e.recalls ?? 0) + 1
+          e.bestRecallSec = Math.min(e.bestRecallSec ?? Infinity, timeSec)
+          e.updatedAt = Date.now()
+        },
+        10,
+        'Réécrit de mémoire',
+      ),
+
+    markOptimal: (id) => {
+      if (get().p.exercises[id]?.optimal) return
+      commit(
+        (p) => {
+          const e = ex(p, id)
+          e.optimal = true
+          e.updatedAt = Date.now()
+        },
+        10,
+        'Complexité optimale',
+      )
+    },
 
     setNotes: (id, notes) =>
       commit((p) => {
@@ -478,6 +565,54 @@ export const useProgress = create<ProgressStore>((set, get) => {
       ),
 
     grantXp: (xp, label) => commit(() => {}, xp, label),
+
+    saveDesignNote: (caseId, stepId, text) =>
+      commit((p) => {
+        const d = design(p, caseId)
+        d.notes[stepId] = text
+        d.updatedAt = Date.now()
+      }),
+
+    revealDesignStep: (caseId, stepId) =>
+      commit((p) => {
+        const d = design(p, caseId)
+        if (!d.revealed.includes(stepId)) d.revealed.push(stepId)
+        d.updatedAt = Date.now()
+      }),
+
+    setDesignChecked: (caseId, stepId, checked) =>
+      commit((p) => {
+        const d = design(p, caseId)
+        d.checked[stepId] = checked
+        d.updatedAt = Date.now()
+      }),
+
+    completeDesign: (caseId) => {
+      if (get().p.design?.[caseId]?.completedAt) return
+      commit(
+        (p) => {
+          const d = design(p, caseId)
+          d.completedAt = Date.now()
+          d.updatedAt = Date.now()
+        },
+        40,
+        'Cas de design ML terminé',
+      )
+    },
+
+    answerPuzzle: (id, guess, stars) => {
+      const prev = get().p.puzzles?.[id]
+      // XP only for improving one's best result on a puzzle.
+      const xp = Math.max(0, stars - (prev?.stars ?? 0)) * 5
+      commit(
+        (p) => {
+          p.puzzles ??= {}
+          if (!prev || stars >= prev.stars) p.puzzles[id] = { guess, stars, at: Date.now() }
+        },
+        xp,
+        'Défi de probabilité',
+      )
+    },
   }
 })
 

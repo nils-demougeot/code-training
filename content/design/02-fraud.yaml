@@ -1,0 +1,86 @@
+id: fraud
+title: Détecter la fraude à la carte bancaire
+company: Une néobanque (2 millions de transactions par jour)
+difficulty: medium
+minutes: 30
+summary: Classes extrêmement déséquilibrées, décision en temps réel, labels tardifs et fraudeurs qui s'adaptent.
+context: |
+  La banque veut **bloquer les paiements frauduleux** au moment de l'autorisation. La décision doit être prise en **moins de 100 ms**.
+
+  Environ 0,1 % des transactions sont frauduleuses. Une transaction légitime bloquée agace le client (et peut lui faire changer de banque) ; une fraude non bloquée coûte son montant à la banque.
+steps:
+  - id: framing
+    title: Cadrage et métriques
+    question: Comment formules-tu le problème et quelles métriques choisis-tu ?
+    points:
+      - "Classification binaire par transaction avec un **score** + des seuils d'action (accepter, demander une vérification 3-D Secure, bloquer)"
+      - "Coûts asymétriques : un faux négatif coûte le **montant** de la fraude, un faux positif coûte de la friction client"
+      - "Métriques offline : **PR AUC**, recall à un taux de faux positifs fixé, montant de fraude évité"
+      - "L'accuracy est inutile avec 0,1 % de positifs"
+      - "Contrainte de latence (< 100 ms) dès le cadrage"
+    answer: |
+      Le modèle produit un **score de risque** ; la décision est une politique à plusieurs seuils : accepter, demander une authentification forte (3-D Secure), bloquer.
+
+      Les erreurs n'ont pas le même coût : rater une fraude de 2 000 € n'est pas pareil que rater une fraude de 5 €. On optimise donc le **montant de fraude évité** sous contrainte d'un taux de faux positifs acceptable (ex. < 0,5 % des clients légitimes dérangés).
+
+      Offline : **PR AUC** et recall à FPR fixé, pondérés par les montants. Avec 0,1 % de fraude, un modèle « toujours légitime » a 99,9 % d'accuracy.
+  - id: data
+    title: Données et labels
+    question: D'où viennent les labels, et quels problèmes posent-ils ?
+    points:
+      - "Labels = contestations clients (chargebacks) et enquêtes, qui arrivent avec **des semaines de retard**"
+      - "Labels incomplets : fraudes non signalées, fraudes bloquées dont on ne connaît jamais l'issue"
+      - "Biais de sélection : les transactions bloquées par l'ancien système n'ont pas de label « vrai »"
+      - "Split **temporel** obligatoire (les schémas de fraude évoluent)"
+      - "Fort déséquilibre : pondération des classes, sous-échantillonnage des négatifs **uniquement** à l'entraînement"
+    answer: |
+      Les labels viennent des **chargebacks** (le client conteste) et des enquêtes internes. Ils arrivent 30 à 90 jours après la transaction : on entraîne sur des données « mûres ».
+
+      **Biais de sélection** : les transactions bloquées par le système actuel n'ont jamais d'issue connue. Pour estimer l'effet réel, on laisse passer une petite fraction aléatoire de transactions suspectes de faible montant (exploration), ce qui donne des labels non biaisés.
+
+      Déséquilibre : on peut sous-échantillonner les transactions légitimes pour l'entraînement (puis recalibrer les probabilités), mais l'évaluation se fait toujours sur la distribution réelle, sur une période **postérieure**.
+  - id: features
+    title: Features et modèle
+    question: Quelles features sont les plus discriminantes, et comment les calcules-tu en temps réel ?
+    points:
+      - "Features de **vélocité** : nombre et montant des transactions sur les dernières minutes / heures / jours"
+      - "Écart au comportement habituel : montant vs moyenne du client, nouveau marchand, nouveau pays, nouvel appareil"
+      - "Contexte : catégorie de marchand, en ligne vs physique, heure, géolocalisation impossible (deux pays en 10 minutes)"
+      - "Feature store temps réel (agrégats glissants) cohérent avec le calcul à l'entraînement (training-serving skew)"
+      - "Gradient boosting pour sa performance et sa latence ; règles métier en complément"
+    answer: |
+      Les meilleures features comparent la transaction à l'**historique du client** :
+      - vélocité : 5 paiements en 2 minutes, somme des montants de la dernière heure ;
+      - nouveauté : premier achat chez ce marchand, nouveau pays, nouvel appareil, adresse de livraison inédite ;
+      - impossibilités : deux transactions physiques à Paris et Tokyo en 20 minutes.
+
+      Ces agrégats glissants sont servis par un **feature store** temps réel (ex. Redis + streaming). Il faut calculer **exactement la même chose** à l'entraînement et en production, sinon le modèle se dégrade silencieusement (*training-serving skew*).
+
+      Modèle : **gradient boosting** (rapide à l'inférence, excellent en tabulaire). Les réseaux de graphes (liens entre comptes, appareils, cartes) aident contre les réseaux de fraudeurs, en deuxième temps.
+  - id: evaluation
+    title: Évaluation et choix des seuils
+    question: Comment choisis-tu les seuils de décision et valides-tu le système ?
+    points:
+      - "Seuils choisis sur une courbe coût / bénéfice (montants sauvés vs clients dérangés), pas à 0,5"
+      - "Évaluation sur une période future, pondérée par les montants"
+      - "Test en **shadow mode** : le modèle score sans agir, on compare avec le système actuel"
+      - "Déploiement progressif / A/B test sur une fraction du trafic"
+      - "Analyse par segment (pays, type de carte, marchand) pour repérer les angles morts"
+    answer: |
+      On trace, sur une période récente, le **montant de fraude évité** et le **nombre de clients légitimes dérangés** en fonction du seuil. Le métier choisit le point de fonctionnement. Souvent deux seuils : vérification forte au-dessus de s₁, blocage au-dessus de s₂.
+
+      Avant d'agir : **shadow mode** pendant quelques semaines (le modèle note tout, n'agit sur rien), puis déploiement progressif (5 % → 50 % → 100 %) en surveillant plaintes et pertes. Analyse par segments pour vérifier qu'un type de carte ou un pays n'est pas pénalisé.
+  - id: production
+    title: Production et adversaires
+    question: Qu'est-ce qui rend ce système difficile à maintenir en production ?
+    points:
+      - "Latence < 100 ms : modèle léger, features pré-calculées, timeout avec repli sur des règles"
+      - "**Drift adversarial** : les fraudeurs s'adaptent au modèle, les schémas changent vite"
+      - "Ré-entraînement fréquent et monitoring des taux d'alerte et de la performance (avec labels retardés)"
+      - "Boucle humaine : les analystes examinent les cas limites et produisent des labels"
+      - "Explicabilité et conformité réglementaire (motif d'un blocage)"
+    answer: |
+      - **Latence** : modèle chargé en mémoire, features pré-agrégées ; si le service ne répond pas en 100 ms, on retombe sur des règles simples (on ne bloque jamais tous les paiements par panne).
+      - **Adversaires** : contrairement au churn, la cible **réagit** au modèle. Dès qu'un schéma est bloqué, les fraudeurs en essaient un autre. D'où un ré-entraînement fréquent, des alertes sur la hausse soudaine des chargebacks d'un segment, et des règles ajoutables en quelques minutes par les analystes.
+      - **Humain dans la boucle** : une file d'analyse pour les scores intermédiaires, qui produit aussi des labels rapides.
+      - Réglementation : pouvoir expliquer une décision de blocage (raisons principales).

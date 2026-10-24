@@ -39,9 +39,14 @@ tests:
     expected: "1"
   - call: longest_unique("abba")
     hidden: true
-  - name: Grande entrée
-    call: longest_unique("abcdefghij" * 20_000)
+  - name: Grande entrée répétitive
+    call: longest_unique("abcdefghij" * 2_000)
     expected: "10"
+  - name: "Bonus : complexité O(n)"
+    bonus: true
+    check: |
+      k = growth_exponent(longest_unique, lambda n: ("".join(chr(0x4E00 + i % 20_000) for i in range(n)),))
+      assert k < 1.5, f"Ta solution semble en O(n^{k:.1f}) quand les sous-chaînes uniques sont longues. Une fenêtre glissante fait O(n)."
 hints:
   - "Maintiens une fenêtre `[start, i]` sans doublon. Quand `s[i]` est déjà dans la fenêtre, avance `start`."
   - "Mémorise la **dernière position** de chaque caractère : `start = last[ch] + 1` (seulement si cette position est dans la fenêtre !)."
@@ -56,3 +61,18 @@ explanation: |
   ```
   Reconnaître le pattern : « plus long/court **sous-tableau contigu** tel que … » → sliding window.
   Piège : `"abba"`. Au second `a`, son ancienne position 0 est **avant** `start`, donc il ne faut pas reculer.
+complexity:
+  target: O(n)
+  note: |
+    Repartir de chaque position de départ et avancer jusqu'à une répétition coûte O(n × longueur de la fenêtre), soit O(n²) dans le pire cas. Avec une **fenêtre glissante** `[start, i]` et la dernière position de chaque caractère, `start` ne recule jamais : chaque indice avance au plus n fois.
+naive: |
+  def longest_unique(s):
+      best = 0
+      for start in range(len(s)):
+          seen = set()
+          for ch in s[start:]:
+              if ch in seen:
+                  break
+              seen.add(ch)
+          best = max(best, len(seen))
+      return best

@@ -39,6 +39,11 @@ tests:
     hidden: true
   - call: "top_k('Data data DATA science science ia', 3)"
     hidden: true
+  - name: "Bonus : comptage en O(n)"
+    bonus: true
+    check: |
+      k = growth_exponent(word_freq, lambda n: (" ".join(f"mot{i % (n // 2)}" for i in range(n)),))
+      assert k < 1.5, f"Ta solution semble en O(n^{k:.1f}) : `liste.count(mot)` reparcourt toute la liste pour chaque mot. Compte en une seule passe (Counter ou dict)."
 hints:
   - "`text.lower().split()` découpe sur tous les espaces (et ignore les espaces multiples)."
   - "`collections.Counter` compte tout seul. Sinon : `d[w] = d.get(w, 0) + 1`."
@@ -53,3 +58,16 @@ explanation: |
   - `sorted(..., key=...)` prend une fonction qui renvoie la **clé de tri**. Un **tuple** trie sur plusieurs critères, dans l'ordre.
   - Pour inverser un seul critère numérique, on met un **signe moins**. `reverse=True` inverserait tous les critères.
   - `most_common` ne garantit pas l'ordre alphabétique en cas d'égalité : en entretien, précise la règle de départage.
+complexity:
+  target: O(n)
+  note: |
+    `{w: words.count(w) for w in set(words)}` est élégant mais **quadratique** : chaque `count` reparcourt toute la liste. `Counter(words)` ou `d[w] = d.get(w, 0) + 1` comptent tout en une seule passe.
+naive: |
+  def word_freq(text):
+      words = text.lower().split()
+      return {w: words.count(w) for w in dict.fromkeys(words)}
+
+
+  def top_k(text, k):
+      freq = word_freq(text)
+      return sorted(freq.items(), key=lambda kv: (-kv[1], kv[0]))[:k]

@@ -1,0 +1,73 @@
+id: stats-bootstrap
+title: Bootstrap d'une médiane
+domain: stats
+difficulty: medium
+minutes: 10
+tags: [bootstrap, rééchantillonnage, intervalle de confiance]
+cards: [st-bootstrap]
+statement: |
+  Il n'existe pas de formule simple pour l'incertitude d'une **médiane**. Le bootstrap contourne le problème : on rééchantillonne les données **avec remise** et on regarde comment la statistique varie.
+
+  Écris `bootstrap_ci(x, stat=np.median, n_boot=2000, alpha=0.05, seed=0)` qui renvoie `(bas, haut)`, l'intervalle **percentile** :
+
+  1. `rng = np.random.default_rng(seed)` ;
+  2. répéter `n_boot` fois : tirer `len(x)` valeurs de `x` avec remise, calculer `stat` ;
+  3. renvoyer les percentiles `100·alpha/2` et `100·(1 − alpha/2)` des statistiques obtenues.
+
+  Bonus : sans boucle Python, en tirant une matrice d'indices `(n_boot, n)` d'un coup.
+starter: |
+  import numpy as np
+
+
+  def bootstrap_ci(x, stat=np.median, n_boot=2000, alpha=0.05, seed=0):
+      pass
+solution: |
+  import numpy as np
+
+
+  def bootstrap_ci(x, stat=np.median, n_boot=2000, alpha=0.05, seed=0):
+      x = np.asarray(x)
+      rng = np.random.default_rng(seed)
+      idx = rng.integers(0, len(x), size=(n_boot, len(x)))
+      stats = stat(x[idx], axis=1)
+      lo, hi = np.percentile(stats, [100 * alpha / 2, 100 * (1 - alpha / 2)])
+      return float(lo), float(hi)
+setup: |
+  import numpy as np
+  REVENUS = np.random.default_rng(7).lognormal(mean=10, sigma=0.8, size=300)
+tests:
+  - name: Contient la médiane observée, intervalle raisonnable
+    check: |
+      lo, hi = bootstrap_ci(REVENUS)
+      m = np.median(REVENUS)
+      assert lo < m < hi, f"({lo:.0f}, {hi:.0f}) ne contient pas la médiane {m:.0f}"
+      assert 0.05 * m < hi - lo < 0.5 * m, f"largeur {hi - lo:.0f} suspecte pour une médiane de {m:.0f}"
+  - name: Plus de données → intervalle plus étroit
+    check: |
+      rng = np.random.default_rng(1)
+      small = rng.normal(0, 1, 50)
+      big = rng.normal(0, 1, 2000)
+      ws = np.subtract(*bootstrap_ci(small, np.mean)[::-1])
+      wb = np.subtract(*bootstrap_ci(big, np.mean)[::-1])
+      assert wb < ws / 3, f"largeurs {ws:.3f} → {wb:.3f}"
+  - name: Proche de la formule théorique pour une moyenne
+    check: |
+      x = np.random.default_rng(2).normal(10, 2, 400)
+      lo, hi = bootstrap_ci(x, np.mean, n_boot=4000)
+      se = x.std(ddof=1) / np.sqrt(len(x))
+      assert abs((hi - lo) - 2 * 1.96 * se) < 0.25 * 2 * 1.96 * se
+  - name: Reproductible
+    check: |
+      assert bootstrap_ci(REVENUS, seed=5) == bootstrap_ci(REVENUS, seed=5)
+hints:
+  - "Rééchantillonner avec remise : `rng.choice(x, size=len(x), replace=True)` ou des indices `rng.integers(0, n, size=n)`."
+  - "Version vectorisée : `idx = rng.integers(0, n, size=(n_boot, n))`, puis `np.median(x[idx], axis=1)`."
+  - "`np.percentile(stats, [2.5, 97.5])` pour alpha = 0,05."
+explanation: |
+  **Bootstrap** : l'échantillon joue le rôle de la population. En le rééchantillonnant avec remise, on simule « d'autres échantillons possibles » et on observe la variabilité de n'importe quelle statistique (médiane, ratio, AUC d'un modèle, écart entre deux groupes…).
+  ```python
+  idx = rng.integers(0, n, size=(n_boot, n))
+  boots = np.median(x[idx], axis=1)
+  np.percentile(boots, [2.5, 97.5])
+  ```
+  En ML : intervalle de confiance sur une métrique de test (« F1 = 0,82 ± 0,03 »), indispensable pour savoir si un modèle est **vraiment** meilleur qu'un autre.

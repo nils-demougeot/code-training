@@ -1,4 +1,4 @@
-export type Domain = 'python' | 'numpy' | 'pandas' | 'sql' | 'ml' | 'dl' | 'algo'
+export type Domain = 'python' | 'numpy' | 'pandas' | 'sql' | 'stats' | 'ml' | 'dl' | 'algo'
 export type Difficulty = 'easy' | 'medium' | 'hard'
 
 export interface TestCase {
@@ -10,6 +10,8 @@ export interface TestCase {
   /** Free-form Python assertions, with access to the user's namespace and `ref`. */
   check?: string
   hidden?: boolean
+  /** Bonus test (e.g. optimal complexity): failing it does not block validation. */
+  bonus?: boolean
   strict?: boolean
   unordered?: boolean
   rtol?: number
@@ -38,6 +40,10 @@ export interface Exercise {
   hints: string[]
   explanation: string
   cards?: string[]
+  /** Optimal complexity, checked by bonus tests. */
+  complexity?: { target: string; note: string }
+  /** Brute-force reference (validator only): must pass required tests and fail bonus tests. */
+  naive?: string
 }
 
 export interface FlashCard {
@@ -116,6 +122,7 @@ export interface TestResult {
   name: string
   passed: boolean
   hidden: boolean
+  bonus?: boolean
   input?: string
   got?: string
   expected?: string
@@ -135,6 +142,12 @@ export interface RunResult {
   tests?: TestResult[]
   passed?: number
   total?: number
+  bonusPassed?: number
+  bonusTotal?: number
+  /** Run mode: stdout interleaved with the values of top-level expressions. */
+  segments?: ({ kind: 'stdout'; text: string } | { kind: 'value'; line: number; text: string })[]
+  /** Run mode: results of the exercise's example calls. */
+  examples?: { call: string; value?: string; error?: string; stdout?: string }[]
   /** Set by the engine itself (timeout, worker crash, runner unreachable). */
   engineError?: string
 }
@@ -147,4 +160,48 @@ export interface EvalResult {
   error: string | null
   reason: string | null
   engineError?: string
+}
+
+// ---------------------------------------------------------------- documentation
+
+export interface DocEntry {
+  name: string
+  signature?: string
+  description: string
+  example?: string
+  /** false for examples that cannot run in the browser (PyTorch). */
+  run?: boolean
+}
+
+export interface DocLibrary {
+  id: string
+  title: string
+  domain: Domain
+  /** Prepended to every example when it is run (imports, sample data). */
+  setup?: string
+  /** content/shared/<name>.py prepended to setup (e.g. the demo SQLite database). */
+  shared?: string
+  language?: 'python' | 'sql'
+  sections: { title: string; entries: DocEntry[] }[]
+}
+
+// ---------------------------------------------------------------- ML system design
+
+export interface DesignStep {
+  id: string
+  title: string
+  question: string
+  points: string[]
+  answer: string
+}
+
+export interface DesignCase {
+  id: string
+  title: string
+  company: string
+  difficulty: Difficulty
+  minutes: number
+  summary: string
+  context: string
+  steps: DesignStep[]
 }

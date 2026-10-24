@@ -253,6 +253,126 @@ export const LABS: LabDef[] = [
       },
     ],
   },
+  {
+    id: 'clt',
+    title: 'Le théorème central limite en direct',
+    summary: 'Tire des échantillons de n’importe quelle distribution et regarde la moyenne devenir gaussienne.',
+    emoji: '🔔',
+    color: '#a3e635',
+    component: lazy(() => import('./CLTLab')),
+    experiments: [
+      {
+        id: 'n1',
+        title: 'Un seul tirage',
+        task: 'Distribution exponentielle, n = 1.',
+        question: 'Pourquoi l’histogramme de droite ressemble-t-il exactement à celui de gauche ?',
+        insight:
+          'Avec n = 1, la « moyenne » d’un échantillon est un seul tirage : on retrouve la distribution de départ, très **asymétrique**. Le théorème central limite ne dit rien des observations individuelles, il parle de **moyennes**.',
+        preset: { dist: 'exponential', n: 1 },
+      },
+      {
+        id: 'n30',
+        title: 'La cloche apparaît',
+        task: 'Exponentielle avec n = 2, puis 5, puis 30.',
+        question: 'À partir de quel n la distribution des moyennes ressemble-t-elle à une gaussienne ?',
+        insight:
+          'Dès n ≈ 30, la moyenne d’une exponentielle est quasi normale, alors que la distribution de départ ne l’est pas du tout. C’est le **TCL** : la moyenne de n variables indépendantes de variance finie tend vers $\\mathcal N(\\mu, \\sigma^2/n)$, **quelle que soit** la distribution de départ.\n\nC’est pour ça qu’on peut calculer des intervalles de confiance et faire des A/B tests sur des moyennes de données qui ne sont pas normales (paniers, durées de session…).',
+        preset: { dist: 'exponential', n: 30 },
+      },
+      {
+        id: 'sqrt-n',
+        title: 'La règle du √n',
+        task: 'Uniforme, n = 5 puis n = 100 (20 fois plus). Compare l’écart-type observé.',
+        question: 'Multiplier la taille d’échantillon par 20 divise la dispersion par combien ?',
+        insight:
+          'L’écart-type de la moyenne vaut $\\sigma / \\sqrt n$ : 20 fois plus de données ne réduisent l’incertitude que de $\\sqrt{20} \\approx 4{,}5$. Pour **diviser l’erreur par 2**, il faut **4 fois** plus de données.\n\nC’est l’origine de l’« erreur standard » et de la taille des A/B tests.',
+        preset: { dist: 'uniform', n: 5 },
+      },
+      {
+        id: 'heavy-tail',
+        title: 'Quand le TCL échoue',
+        task: 'Pareto (queue lourde) avec n = 30, puis n = 100. Relance plusieurs fois.',
+        question: 'Pourquoi les moyennes restent-elles asymétriques et instables ?',
+        insight:
+          'Cette loi de Pareto a une **variance infinie** : de très rares valeurs énormes dominent la moyenne. Les hypothèses du TCL ne sont pas remplies, la convergence vers une gaussienne n’a pas lieu (ou est très lente).\n\nEn vrai : revenus, tailles de fichiers, viralité, montants de sinistres. Préfère la **médiane**, une transformation log, ou des méthodes robustes.',
+        preset: { dist: 'pareto', n: 30 },
+      },
+    ],
+  },
+  {
+    id: 'ab-test',
+    title: 'A/B tests : puissance et faux positifs',
+    summary: 'Simule des milliers d’A/B tests pour voir les p-values, la puissance et le piège du peeking.',
+    emoji: '🧪',
+    color: '#a3e635',
+    component: lazy(() => import('./ABTestLab')),
+    experiments: [
+      {
+        id: 'null',
+        title: 'Quand B ne fait rien',
+        task: 'Effet réel : aucun. Simule.',
+        question: 'Quelle proportion de tests déclare quand même B gagnant ? À quoi ressemblent les p-values ?',
+        insight:
+          'Environ **5 %** : c’est exactement α, le taux de **faux positifs** qu’on accepte. Sous l’hypothèse nulle, les p-values sont **uniformes** entre 0 et 1.\n\nUne p-value de 0,03 ne veut **pas** dire « 97 % de chances que B soit meilleur ». Elle dit : « si B ne faisait rien, on verrait un écart au moins aussi grand 3 % du temps ».',
+        preset: { uplift: 0, n: 2000, peeking: false },
+      },
+      {
+        id: 'power',
+        title: 'Un vrai effet, pas assez de données',
+        task: 'Effet +10 %, 2 000 utilisateurs par groupe, puis 15 000.',
+        question: 'Pourquoi la plupart des tests ratent-ils l’effet avec 2 000 utilisateurs ?',
+        insight:
+          'La **puissance** (probabilité de détecter un effet qui existe) est faible avec un petit échantillon : la plupart des tests concluent « pas significatif » alors que B est meilleur (**faux négatifs**). Avec la taille calculée (≈ 14 750 par groupe), on atteint 80 %.\n\nAutre piège visible sur l’histogramme des uplifts : parmi les tests sous-dimensionnés qui *sont* significatifs, l’effet mesuré est **surestimé** (la « malédiction du gagnant »).',
+        preset: { uplift: 0.1, n: 2000, peeking: false },
+      },
+      {
+        id: 'peeking',
+        title: 'Le piège du peeking',
+        task: 'Effet : aucun, peeking activé. Simule, puis désactive le peeking.',
+        question: 'Pourquoi regarder les résultats en cours de route multiplie-t-il les faux positifs ?',
+        insight:
+          'À chaque coup d’œil, on a 5 % de chances de voir un faux « significatif ». Avec 10 regards et un arrêt dès le premier p < 0,05, le taux de faux positifs grimpe vers **20 %**, au lieu de 5 %.\n\nRemèdes : fixer la taille d’échantillon **à l’avance** et n’analyser qu’à la fin, ou utiliser des méthodes séquentielles prévues pour (alpha spending, tests bayésiens, mSPRT).',
+        preset: { uplift: 0, n: 5000, peeking: true },
+      },
+    ],
+  },
+  {
+    id: 'bayes',
+    title: 'Bayes, dépistage et taux de base',
+    summary: '1 000 personnes, un test « fiable à 99 % » : visualise pourquoi un positif n’est souvent qu’une fausse alerte.',
+    emoji: '🩺',
+    color: '#a3e635',
+    component: lazy(() => import('./BayesLab')),
+    experiments: [
+      {
+        id: 'rare',
+        title: 'Maladie rare',
+        task: 'Prévalence 1 %, sensibilité 99 %, spécificité 95 %.',
+        question: 'Pourquoi un test « fiable » donne-t-il surtout des faux positifs ?',
+        insight:
+          'Sur 1 000 personnes : 10 malades (≈ 10 détectés) mais 990 sains, dont 5 % → ≈ 50 fausses alertes. Un positif n’a qu’**1 chance sur 6** d’être un vrai malade.\n\nC’est la **precision** d’un classifieur sur une classe rare : même avec un excellent recall, la precision s’effondre si les faux positifs, appliqués à l’immense classe négative, sont nombreux.',
+        preset: { prevalence: 0.01, sensitivity: 0.99, specificity: 0.95, retest: false },
+      },
+      {
+        id: 'specificity',
+        title: 'Ce qui compte vraiment',
+        task: 'Garde 1 % de prévalence. Monte la sensibilité à 100 %, puis remets-la et monte la spécificité à 99,9 %.',
+        question: 'Quel paramètre améliore le plus la valeur d’un test positif ?',
+        insight:
+          'Pour une classe rare, c’est la **spécificité** (moins de faux positifs) qui fait monter la precision, pas la sensibilité. Passer de 95 % à 99,9 % de spécificité fait passer P(malade | +) de 17 % à 91 %.\n\nEn ML : sur un problème déséquilibré, regarde le **taux de faux positifs** et la precision, pas seulement le recall ou l’AUC.',
+        preset: { prevalence: 0.01, sensitivity: 0.99, specificity: 0.95, retest: false },
+      },
+      {
+        id: 'retest',
+        title: 'Le second test',
+        task: 'Configuration de départ, puis active « re-tester » sur les positifs.',
+        question: 'Comment un second test positif change-t-il la probabilité ?',
+        insight:
+          'Le résultat du premier test devient le **nouveau prior** : la prévalence parmi les positifs n’est plus 1 % mais 17 %. Après un second positif, P(malade) monte à environ 80 %. C’est la mise à jour bayésienne en action : chaque preuve indépendante affine la croyance.\n\nAttention, ça suppose des tests **indépendants**. Deux tests qui se trompent pour la même raison n’apportent pas autant.',
+        preset: { prevalence: 0.01, sensitivity: 0.99, specificity: 0.95, retest: true },
+      },
+    ],
+  },
 ]
 
 export const labById = new Map(LABS.map((l) => [l.id, l]))

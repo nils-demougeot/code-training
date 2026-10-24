@@ -1,0 +1,82 @@
+id: eta
+title: Estimer le temps de livraison d'un repas
+company: Une application de livraison de repas
+difficulty: medium
+minutes: 30
+summary: Un problème de régression où l'asymétrie des erreurs, la décomposition du problème et la fraîcheur des données font toute la différence.
+context: |
+  Au moment de la commande, l'application affiche « **Livré dans 25-35 min** ». Une estimation trop optimiste énerve les clients ; trop pessimiste, elle fait perdre des commandes.
+
+  Données disponibles : historique des commandes (horodatages de chaque étape), restaurants, livreurs (position GPS), météo, trafic.
+steps:
+  - id: framing
+    title: Cadrage et métriques
+    question: Quelle est la cible exacte, et quelle métrique d'erreur choisis-tu ?
+    points:
+      - "Régression : durée entre la commande et la livraison (en minutes)"
+      - "Erreurs asymétriques : le retard est plus coûteux que l'avance → loss pondérée ou **régression quantile**"
+      - "Métriques : MAE, part des livraisons dans l'intervalle affiché, taux de retard > 10 min"
+      - "Afficher un **intervalle** (quantiles 10 % et 90 %) plutôt qu'un seul nombre"
+      - "Impact business : conversion, notes clients, contacts au support"
+    answer: |
+      Cible : durée totale commande → livraison. Les erreurs ne se valent pas : annoncer 25 min et livrer en 40 est bien pire que l'inverse.
+
+      - On optimise des **quantiles** (pinball loss) : la borne haute de l'intervalle (q = 0,9) doit être rarement dépassée.
+      - Métriques : MAE, couverture de l'intervalle (≈ 80 % des livraisons dedans), taux de retards importants.
+      - Business : conversion à l'affichage de l'ETA, notes, contacts support. La RMSE seule pénaliserait trop quelques cas extrêmes (accident, panne).
+  - id: data
+    title: Données et décomposition
+    question: Comment structures-tu le problème et les données ?
+    points:
+      - "Décomposer : temps de préparation + temps d'attribution d'un livreur + trajet vers le restaurant + trajet vers le client"
+      - "Chaque étape a ses propres horodatages, donc son propre label et son propre modèle (ou des sorties multiples)"
+      - "Nettoyer les horodatages bruités (livreur qui valide trop tôt, GPS imprécis)"
+      - "Split temporel ; attention aux périodes atypiques (jours fériés, matchs, intempéries)"
+      - "Valeurs aberrantes (commandes annulées, livraisons de 3 h) à traiter explicitement"
+    answer: |
+      Le temps total est la somme d'étapes aux causes très différentes : **préparation** (dépend du restaurant et de sa charge), **attribution** (disponibilité des livreurs), **trajets** (distance, trafic, météo). Modéliser chaque étape séparément donne de meilleurs résultats et des diagnostics plus clairs (« le retard vient des cuisines »).
+
+      Qualité des données : les horodatages déclarés par les livreurs sont bruités (validation tardive), le GPS saute. On filtre ou on reconstruit les événements à partir des traces GPS. Les commandes annulées ou les durées absurdes sont exclues de l'entraînement mais suivies à part.
+  - id: features
+    title: Features et modèle
+    question: Quelles features et quel modèle utiliserais-tu ?
+    points:
+      - "Restaurant : temps de préparation historique, nombre de commandes en cours (**charge en temps réel**)"
+      - "Offre / demande : livreurs disponibles à proximité, commandes en attente dans la zone"
+      - "Trajet : distance routière, estimation d'un service de cartographie, trafic, météo, heure, jour"
+      - "Gradient boosting avec loss quantile pour chaque composante"
+      - "Baseline : moyenne historique par restaurant et par tranche horaire"
+    answer: |
+      Features les plus prédictives :
+      - **charge temps réel** du restaurant (commandes en préparation) et son historique de préparation à cette heure ;
+      - **offre/demande locale** : livreurs libres dans un rayon de 2 km, commandes non attribuées ;
+      - trajets : distance routière, ETA du service de cartographie, trafic, pluie, heure, jour, événements.
+
+      Baseline : moyenne historique par restaurant × tranche horaire. Puis un **gradient boosting** avec loss quantile (ou plusieurs modèles par quantile) par étape. Les features temps réel viennent d'un feature store alimenté par les événements de l'application.
+  - id: evaluation
+    title: Évaluation
+    question: Comment valides-tu le modèle avant et après le déploiement ?
+    points:
+      - "Offline : MAE et couverture de l'intervalle sur une période future, par segment (ville, heure, météo)"
+      - "Vérifier la **calibration** des quantiles (90 % des livraisons sous le quantile 90 %)"
+      - "A/B test : conversion, taux de retard ressenti, notes, contacts au support"
+      - "Attention : l'ETA affichée influence le comportement (client qui annule, restaurant qui se presse)"
+      - "Analyse des pires erreurs pour identifier des features manquantes"
+    answer: |
+      Offline sur les semaines les plus récentes : MAE, et surtout **calibration** des quantiles par segment (heure de pointe, pluie, ville). Un modèle bon en moyenne peut être systématiquement optimiste le vendredi soir.
+
+      Online : A/B test sur la conversion et la satisfaction (notes, contacts support). Attention, l'ETA affichée **change le système** : un ETA court attire plus de commandes, ce qui augmente la charge et rallonge les délais réels.
+  - id: production
+    title: Production et monitoring
+    question: Quelles sont les contraintes de production ?
+    points:
+      - "Prédiction en temps réel à chaque affichage (latence faible), features fraîches de quelques secondes"
+      - "Mise à jour de l'ETA pendant la livraison (nouvelles informations : livreur attribué, plat prêt)"
+      - "Monitoring de l'erreur en continu (le label arrive en moins d'une heure : boucle rapide)"
+      - "Drift : nouvelles villes, nouveaux restaurants, saisonnalité, travaux"
+      - "Repli si une source de données tombe (ex. service de trafic) : modèle dégradé plutôt que pas d'ETA"
+    answer: |
+      - Inférence en temps réel à chaque affichage, puis **ré-estimation** à chaque étape (livreur attribué, plat prêt, livreur en route) : l'incertitude diminue au fil de la commande.
+      - Avantage rare : le label arrive **en moins d'une heure**. On suit l'erreur presque en temps réel et on ré-entraîne fréquemment.
+      - Drift : ouverture d'une nouvelle ville (cold start → modèle global + features de la ville), travaux, saisons.
+      - Robustesse : si le service de trafic tombe, on bascule sur un modèle sans cette feature plutôt que de ne plus rien afficher.

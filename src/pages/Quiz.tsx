@@ -37,7 +37,7 @@ interface Answer {
 export default function Quiz() {
   const [params] = useSearchParams()
   const quickN = Number(params.get('n')) || 0
-  const [domain, setDomain] = useState<Domain | null>(null)
+  const [domain, setDomain] = useState<Domain | null>(() => (params.get('domain') as Domain | null) ?? null)
   const [count, setCount] = useState(10)
   const [game, setGame] = useState<QuizQuestion[] | null>(() => (quickN ? pickQuestions(null, quickN) : null))
   const p = useProgress((s) => s.p)

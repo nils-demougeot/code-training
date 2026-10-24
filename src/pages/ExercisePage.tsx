@@ -1,19 +1,21 @@
 import confetti from 'canvas-confetti'
 import clsx from 'clsx'
 import {
-  ArrowLeft, ArrowRight, BookOpenCheck, CheckCircle2, Clock, Cpu, Eye, Lightbulb, Lock, Mic, NotebookPen,
-  RotateCcw, Sparkles, Timer,
+  ArrowLeft, ArrowRight, BookOpenCheck, Brain, CheckCircle2, Clock, Cpu, Eye, Gauge, Lightbulb, Lock, Medal, Mic,
+  NotebookPen, RotateCcw, Sparkles, Timer, X,
 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { docLibForDomain } from '@/components/DocBrowser'
 import { CodeBlock, Markdown } from '@/components/Markdown'
 import { DifficultyBadge, DomainChip, Empty, Tabs } from '@/components/ui'
 import { SplitPane, Workspace } from '@/components/Workspace'
 import { cardById, exerciseById, exercises, setupOf, toPython } from '@/lib/content'
 import { runCode, runTests } from '@/lib/engine'
+import { diffLines, similarity } from '@/lib/diff'
 import { exerciseXp, useProgress } from '@/lib/progress'
 import { formatInterval, scheduleAfterSolve, type Grade } from '@/lib/srs'
-import type { Exercise, RunResult } from '@/lib/types'
+import type { Exercise, RunResult, TestResult } from '@/lib/types'
 
 type Tab = 'statement' | 'hints' | 'solution' | 'learn' | 'notes'
 
@@ -22,13 +24,18 @@ function useTimer(resetKey: string) {
   const [now, setNow] = useState(() => Date.now())
   useEffect(() => {
     setStart(Date.now())
+    setNow(Date.now())
   }, [resetKey])
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 1000)
     return () => clearInterval(t)
   }, [])
   const seconds = Math.max(0, Math.floor((now - start) / 1000))
-  return { seconds, label: `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}` }
+  const restart = useCallback(() => {
+    setStart(Date.now())
+    setNow(Date.now())
+  }, [])
+  return { seconds, restart, label: `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}` }
 }
 
 export function celebrate() {
@@ -65,8 +72,14 @@ function ExerciseView({ ex }: { ex: Exercise }) {
   const store = useProgress()
   const ep = store.p.exercises[ex.id]
   const reviewDue = ep?.status === 'solved' && !!ep.review && ep.review.due <= Date.now()
+  const [params, setParams] = useSearchParams()
+  const recallRequested = params.get('recall') === '1'
 
-  const [code, setCode] = useState(() => ep?.code ?? ex.starter)
+  // « Réécris de mémoire »: blank starter, no hints/solution, then a diff against the reference.
+  const [recall, setRecall] = useState(recallRequested)
+  const [recallDone, setRecallDone] = useState<{ seconds: number; code: string } | null>(null)
+  const savedCode = useRef(ep?.code ?? ex.starter)
+  const [code, setCode] = useState(() => (recallRequested ? ex.starter : ep?.code ?? ex.starter))
   const [tab, setTab] = useState<Tab>('statement')
   const [result, setResult] = useState<RunResult | null>(null)
   const [mode, setMode] = useState<'run' | 'test' | null>(null)
@@ -75,7 +88,7 @@ function ExerciseView({ ex }: { ex: Exercise }) {
   const [justSolved, setJustSolved] = useState<{ xp: number } | null>(null)
   const [hintsShown, setHintsShown] = useState(() => ep?.hintsUsed ?? 0)
   const [solutionOpen, setSolutionOpen] = useState(false)
-  const [reviewMode, setReviewMode] = useState(false)
+  const [bonus, setBonus] = useState<{ passed: boolean; failures: TestResult[] } | null>(null)
   const timer = useTimer(ex.id)
 
   const setup = useMemo(() => setupOf(ex), [ex])
@@ -86,6 +99,8 @@ function ExerciseView({ ex }: { ex: Exercise }) {
   const saveTimer = useRef<ReturnType<typeof setTimeout>>()
   const onChange = (value: string) => {
     setCode(value)
+    // In recall mode the attempt is not saved, so abandoning it keeps the previous solution.
+    if (recall) return
     clearTimeout(saveTimer.current)
     saveTimer.current = setTimeout(() => useProgress.getState().saveExerciseCode(ex.id, value), 800)
   }
@@ -96,10 +111,12 @@ function ExerciseView({ ex }: { ex: Exercise }) {
     setRunning(true)
     setMode('run')
     setProgressMsg(null)
-    const res = await runCode(runnableCode(ex, code), { setup, requireLocal, onProgress: setProgressMsg })
+    // The statement's examples are evaluated too: results show up without any print().
+    const examples = ex.language === 'sql' ? [] : visibleTests.flatMap((t) => (t.call ? [t.call] : []))
+    const res = await runCode(runnableCode(ex, code), { setup, requireLocal, examples, onProgress: setProgressMsg })
     setResult(res)
     setRunning(false)
-  }, [code, ex, running, setup, requireLocal])
+  }, [code, ex, running, setup, requireLocal, visibleTests])
 
   const onSubmit = useCallback(async () => {
     if (running) return
@@ -114,14 +131,28 @@ function ExerciseView({ ex }: { ex: Exercise }) {
     setResult(res)
     setRunning(false)
     if (res.ok && res.total && res.passed === res.total) {
-      const xp = useProgress.getState().solveExercise(ex.id, timer.seconds)
-      useProgress.getState().saveExerciseCode(ex.id, code)
+      const state = useProgress.getState()
+      const xp = state.solveExercise(ex.id, timer.seconds)
+      state.saveExerciseCode(ex.id, code)
+      savedCode.current = code
+      if (recall) {
+        state.recordRecall(ex.id, timer.seconds)
+        setRecallDone({ seconds: timer.seconds, code })
+        setRecall(false)
+        if (recallRequested) setParams({}, { replace: true })
+      }
+      if (res.bonusTotal) {
+        const failures = (res.tests ?? []).filter((t) => t.bonus && !t.passed)
+        setBonus({ passed: failures.length === 0, failures })
+        if (!failures.length) state.markOptimal(ex.id)
+      } else {
+        setBonus(null)
+      }
       setJustSolved({ xp })
       setTab('learn')
-      setReviewMode(false)
       celebrate()
     }
-  }, [code, ex, running, setup, requireLocal, timer.seconds])
+  }, [code, ex, running, setup, requireLocal, timer.seconds, recall, recallRequested, setParams])
 
   const revealHint = () => {
     const next = hintsShown + 1
@@ -134,12 +165,30 @@ function ExerciseView({ ex }: { ex: Exercise }) {
     if (ep?.status !== 'solved') store.seeSolution(ex.id)
   }
 
-  const startReview = () => {
-    setReviewMode(true)
+  const startRecall = () => {
+    clearTimeout(saveTimer.current)
+    savedCode.current = useProgress.getState().p.exercises[ex.id]?.code ?? code
+    setRecall(true)
+    setRecallDone(null)
     setCode(ex.starter)
     setResult(null)
     setTab('statement')
     setJustSolved(null)
+    setBonus(null)
+    timer.restart()
+  }
+
+  // Arriving on ?recall=1 while the page is already open (e.g. from the Memory page).
+  useEffect(() => {
+    if (recallRequested && !recall) startRecall()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [recallRequested])
+
+  const exitRecall = () => {
+    setRecall(false)
+    setCode(savedCode.current)
+    setResult(null)
+    if (recallRequested) setParams({}, { replace: true })
   }
 
   const index = exercises.findIndex((e) => e.id === ex.id)
@@ -147,7 +196,7 @@ function ExerciseView({ ex }: { ex: Exercise }) {
   const solved = ep?.status === 'solved'
   const potentialXp = exerciseXp(ex.difficulty, hintsShown, !!ep?.solutionSeen)
 
-  const tabs: { id: Tab; label: React.ReactNode }[] = [
+  const allTabs: { id: Tab; label: React.ReactNode }[] = [
     { id: 'statement', label: 'Énoncé' },
     {
       id: 'hints',
@@ -164,6 +213,8 @@ function ExerciseView({ ex }: { ex: Exercise }) {
       : []),
     { id: 'notes', label: <NotebookPen className="size-3.5" aria-label="Notes" /> },
   ]
+  // In recall mode only the statement stays visible.
+  const tabs = recall ? allTabs.filter((t) => t.id === 'statement') : allTabs
 
   const left = (
     <div className="flex h-full flex-col">
@@ -200,28 +251,60 @@ function ExerciseView({ ex }: { ex: Exercise }) {
               Runner local
             </span>
           )}
+          {ex.complexity && (
+            <span
+              className={clsx('chip', ep?.optimal ? 'text-ok' : 'text-warn')}
+              title="Bonus : atteindre la complexité optimale"
+            >
+              <Gauge className="size-3" />
+              Bonus {ex.complexity.target}
+            </span>
+          )}
           {!solved && (
             <span className="chip ml-auto text-accent-2" title="XP si tu réussis maintenant">
               <Sparkles className="size-3" />
               {potentialXp} XP
             </span>
           )}
+          {solved && !recall && (
+            <button className="btn btn-ghost ml-auto px-2.5 py-1 text-xs" onClick={startRecall} title="Repartir d’une page blanche, sans indice ni solution">
+              <Brain className="size-3.5 text-accent" />
+              Réécrire de mémoire
+            </button>
+          )}
         </div>
+        {recall && (
+          <div className="mt-3 flex items-center gap-3 rounded-xl border border-accent/40 bg-accent/[0.08] px-3 py-2 text-sm">
+            <Brain className="size-4 shrink-0 text-accent" />
+            <div className="flex-1">
+              <div className="font-medium">Mode mémoire</div>
+              <div className="text-xs text-muted">
+                Page blanche, ni indice ni solution. Soumets quand c’est prêt : tu verras la différence avec la référence.
+                {ep?.bestRecallSec !== undefined && ` Record : ${formatSeconds(ep.bestRecallSec)}.`}
+              </div>
+            </div>
+            <button className="btn btn-quiet px-2 py-1 text-xs" onClick={exitRecall}>
+              <X className="size-3.5" />
+              Quitter
+            </button>
+          </div>
+        )}
         <Tabs className="mt-4 -mb-1" tabs={tabs} value={tab} onChange={setTab} />
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5">
         {tab === 'statement' && (
           <div className="space-y-5">
-            {reviewDue && !reviewMode && (
+            {reviewDue && !recall && (
               <div className="flex items-center gap-3 rounded-xl border border-accent-2/30 bg-accent-2/[0.06] p-3 text-sm">
                 <RotateCcw className="size-4 shrink-0 text-accent-2" />
                 <div className="flex-1">
                   <div className="font-medium">Révision espacée</div>
                   <div className="text-xs text-muted">Re-résous-le de mémoire, sans regarder ta solution.</div>
                 </div>
-                <button className="btn btn-ghost px-3 py-1 text-xs" onClick={startReview}>
-                  Repartir de zéro
+                <button className="btn btn-ghost px-3 py-1 text-xs" onClick={startRecall}>
+                  <Brain className="size-3.5" />
+                  Réécrire de mémoire
                 </button>
               </div>
             )}
@@ -310,8 +393,10 @@ function ExerciseView({ ex }: { ex: Exercise }) {
         {tab === 'learn' && (
           <div className="space-y-5">
             {justSolved && (
-              <SolvedPanel ex={ex} xp={justSolved.xp} seconds={timer.seconds} next={next} />
+              <SolvedPanel ex={ex} xp={justSolved.xp} seconds={recallDone?.seconds ?? timer.seconds} next={next} />
             )}
+            {bonus && ex.complexity && <BonusPanel ex={ex} bonus={bonus} />}
+            {recallDone && <RecallPanel ex={ex} attempt={recallDone.code} seconds={recallDone.seconds} />}
             <div>
               <div className="section-title mb-2">À retenir</div>
               <Markdown>{ex.explanation}</Markdown>
@@ -373,6 +458,15 @@ function ExerciseView({ ex }: { ex: Exercise }) {
           result={result}
           progress={progressMsg}
           language={ex.language}
+          docLib={docLibForDomain(ex.domain, requireLocal)}
+          banner={
+            recall ? (
+              <div className="flex items-center gap-2 border-b border-accent/30 bg-accent/[0.08] px-3 py-1.5 text-xs text-accent">
+                <Brain className="size-3.5" />
+                Mode mémoire : {timer.label}
+              </div>
+            ) : undefined
+          }
         />
       }
     />
@@ -426,6 +520,85 @@ function SolvedPanel({ ex, xp, seconds, next }: { ex: Exercise; xp: number; seco
           </Link>
         )}
       </div>
+    </div>
+  )
+}
+
+function formatSeconds(sec: number) {
+  return sec >= 60 ? `${Math.floor(sec / 60)} min ${sec % 60} s` : `${sec} s`
+}
+
+function BonusPanel({ ex, bonus }: { ex: Exercise; bonus: { passed: boolean; failures: TestResult[] } }) {
+  if (bonus.passed) {
+    return (
+      <div className="flex items-center gap-3 rounded-2xl border border-ok/30 bg-ok/[0.06] p-4 animate-fade-up">
+        <Medal className="size-6 shrink-0 text-ok" />
+        <div>
+          <div className="font-semibold text-ok">Complexité optimale : {ex.complexity!.target}</div>
+          <div className="text-xs text-muted">Ta solution passe aussi le test de performance. Exactement ce qu’on attend en entretien.</div>
+        </div>
+      </div>
+    )
+  }
+  return (
+    <div className="rounded-2xl border border-warn/30 bg-warn/[0.06] p-4 animate-fade-up">
+      <div className="flex items-center gap-2 font-semibold text-warn">
+        <Gauge className="size-5" />
+        Validé, mais il y a mieux
+      </div>
+      <p className="mt-1 text-sm text-muted">
+        Ta solution est correcte, mais elle n’atteint pas la complexité attendue en entretien (
+        <span className="font-mono text-fg">{ex.complexity!.target}</span>).
+      </p>
+      {bonus.failures.map((f, i) => f.error && (
+        <pre key={i} className="mt-2 rounded-lg bg-black/30 p-2 font-mono text-xs whitespace-pre-wrap text-warn/90">{f.error}</pre>
+      ))}
+      <details className="mt-3">
+        <summary className="cursor-pointer text-xs text-accent">Une piste pour optimiser</summary>
+        <Markdown className="mt-2">{ex.complexity!.note}</Markdown>
+      </details>
+    </div>
+  )
+}
+
+function RecallPanel({ ex, attempt, seconds }: { ex: Exercise; attempt: string; seconds: number }) {
+  const ep = useProgress((s) => s.p.exercises[ex.id])
+  const diff = useMemo(() => diffLines(ex.solution, attempt), [ex.solution, attempt])
+  const score = similarity(diff)
+  return (
+    <div className="rounded-2xl border border-accent/30 bg-accent/[0.05] p-4 animate-fade-up">
+      <div className="flex flex-wrap items-center gap-3">
+        <Brain className="size-5 text-accent" />
+        <div className="flex-1">
+          <div className="font-semibold">Réécrit de mémoire en {formatSeconds(seconds)}</div>
+          <div className="text-xs text-muted">
+            {ep?.recalls ?? 1} fois au total
+            {ep?.bestRecallSec !== undefined && ` · record ${formatSeconds(ep.bestRecallSec)}`} · {Math.round(score * 100)} %
+            des lignes identiques à la référence
+          </div>
+        </div>
+      </div>
+      <div className="mt-3 text-[11px] text-faint">
+        Différences avec la solution de référence (<span className="text-bad">− référence</span>,{' '}
+        <span className="text-ok">+ ta version</span>). Deux solutions différentes peuvent être toutes deux justes : regarde
+        surtout la syntaxe.
+      </div>
+      <pre className="mt-2 max-h-80 overflow-auto rounded-xl border border-line bg-black/40 py-2 font-mono text-xs leading-relaxed">
+        {diff.map((d, i) => (
+          <div
+            key={i}
+            className={clsx(
+              'px-3',
+              d.kind === 'add' && 'bg-ok/10 text-ok',
+              d.kind === 'del' && 'bg-bad/10 text-bad',
+              d.kind === 'same' && 'text-[#c0caf5]/80',
+            )}
+          >
+            <span className="mr-2 select-none opacity-60">{d.kind === 'add' ? '+' : d.kind === 'del' ? '−' : ' '}</span>
+            {d.text}
+          </div>
+        ))}
+      </pre>
     </div>
   )
 }

@@ -1,0 +1,70 @@
+id: stats-binomial
+title: Réussir un QCM au hasard
+domain: stats
+difficulty: medium
+minutes: 8
+tags: [loi binomiale, math.comb, scipy.stats]
+cards: [st-binomial-pmf, st-comb]
+statement: |
+  Un QCM a **20 questions** à **4 choix**. Tu réponds complètement au hasard.
+
+  1. `binom_pmf(k, n, p)` : P(exactement k bonnes réponses), avec `math.comb`.
+  2. `p_at_least(k, n, p)` : P(au moins k bonnes réponses).
+  3. `expected_and_std(n, p)` : le tuple `(espérance, écart-type)` du nombre de bonnes réponses.
+
+  Puis calcule (avec Exécuter) la probabilité d'avoir la moyenne (≥ 10/20) en répondant au hasard.
+starter: |
+  import math
+
+
+  def binom_pmf(k, n, p):
+      pass
+
+
+  def p_at_least(k, n, p):
+      pass
+
+
+  def expected_and_std(n, p):
+      pass
+solution: |
+  import math
+
+
+  def binom_pmf(k, n, p):
+      return math.comb(n, k) * p ** k * (1 - p) ** (n - k)
+
+
+  def p_at_least(k, n, p):
+      return sum(binom_pmf(i, n, p) for i in range(k, n + 1))
+
+
+  def expected_and_std(n, p):
+      return n * p, math.sqrt(n * p * (1 - p))
+tests:
+  - call: binom_pmf(5, 20, 0.25)
+    expected: "0.20233084122279554"
+  - call: p_at_least(10, 20, 0.25)
+  - call: p_at_least(0, 20, 0.25)
+    expected: "1.0"
+  - call: expected_and_std(20, 0.25)
+    expected: (5.0, 1.9364916731037085)
+  - name: Identique à scipy.stats.binom
+    check: |
+      from scipy import stats
+      for n, p in [(10, 0.5), (20, 0.25), (50, 0.1)]:
+          for k in range(n + 1):
+              assert abs(binom_pmf(k, n, p) - stats.binom.pmf(k, n, p)) < 1e-12
+          assert abs(p_at_least(n // 3, n, p) - stats.binom.sf(n // 3 - 1, n, p)) < 1e-12
+hints:
+  - "$P(X = k) = \\binom{n}{k} p^k (1-p)^{n-k}$ et `math.comb(n, k)` calcule $\\binom{n}{k}$."
+  - "Au moins k : somme des probabilités de k à n."
+  - "Espérance $np$, variance $np(1-p)$."
+explanation: |
+  **Loi binomiale** : nombre de succès sur n essais **indépendants** de même probabilité p.
+  ```python
+  from scipy import stats
+  X = stats.binom(n=20, p=0.25)
+  X.pmf(5), X.sf(9), X.mean(), X.std()    # sf(9) = P(X > 9) = P(X ≥ 10)
+  ```
+  Avoir la moyenne au hasard : ≈ 1,4 %. Attention à la convention de `sf` : $P(X > k)$, d'où `sf(k - 1)` pour « au moins k ».

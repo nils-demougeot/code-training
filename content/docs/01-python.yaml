@@ -1,0 +1,285 @@
+id: python
+title: Python
+domain: python
+sections:
+  - title: Listes
+    entries:
+      - name: list.append / extend / insert
+        signature: lst.append(x) · lst.extend(iterable) · lst.insert(i, x)
+        description: "`append` ajoute **un** élément à la fin (O(1)), `extend` ajoute **tous** les éléments d'un itérable, `insert` insère à une position (O(n))."
+        example: |
+          lst = [1, 2]
+          lst.append([3, 4])      # un seul élément : la liste [3, 4]
+          print(lst)
+          lst = [1, 2]
+          lst.extend([3, 4])
+          lst.insert(0, 0)
+          lst
+      - name: list.pop / remove / del
+        signature: lst.pop(i=-1) · lst.remove(x) · del lst[i]
+        description: "`pop` retire et **renvoie** l'élément à l'indice i (le dernier par défaut). `remove` retire la **première occurrence** d'une valeur. `del` supprime par indice ou tranche."
+        example: |
+          lst = ['a', 'b', 'c', 'b']
+          last = lst.pop()
+          lst.remove('a')
+          del lst[0]
+          last, lst
+      - name: slicing
+        signature: seq[start:stop:step]
+        description: "Tranche de `start` (inclus) à `stop` (exclu). Indices négatifs = depuis la fin. Ne lève jamais d'`IndexError`. Sur une liste, crée une **copie**."
+        example: |
+          a = [0, 1, 2, 3, 4, 5]
+          a[1:4], a[-2:], a[::2], a[::-1]
+      - name: sorted / list.sort
+        signature: sorted(iterable, key=None, reverse=False) · lst.sort(key=None, reverse=False)
+        description: "`sorted` renvoie une **nouvelle** liste ; `.sort()` trie **en place** et renvoie `None`. Tri stable. `key` = fonction qui donne la clé de tri ; un tuple trie sur plusieurs critères."
+        example: |
+          people = [('bob', 25), ('ana', 31), ('cy', 25)]
+          sorted(people, key=lambda p: (-p[1], p[0]))
+      - name: list comprehension
+        signature: "[expr for x in iterable if cond]"
+        description: "Construit une liste en une ligne. Le `if` final **filtre** ; un `a if c else b` placé avant le `for` **transforme**. Peut s'imbriquer : `[x for row in m for x in row]`."
+        example: |
+          nums = range(10)
+          [n * n for n in nums if n % 2 == 0], [x if x > 4 else 0 for x in nums]
+      - name: enumerate / zip
+        signature: enumerate(iterable, start=0) · zip(*iterables, strict=False)
+        description: "`enumerate` donne des paires `(indice, élément)`. `zip` parcourt plusieurs itérables en parallèle (s'arrête au plus court)."
+        example: |
+          names = ['a', 'b']
+          scores = [10, 20]
+          for i, (n, s) in enumerate(zip(names, scores), start=1):
+              print(i, n, s)
+          dict(zip(names, scores))
+      - name: any / all / sum / min / max
+        signature: any(it) · all(it) · sum(it, start=0) · max(it, key=None, default=...)
+        description: "Agrégations sur un itérable. `max`/`min` acceptent `key=` et `default=` (pour un itérable vide)."
+        example: |
+          words = ['ia', 'python', 'data']
+          any(len(w) > 5 for w in words), all(w.islower() for w in words), max(words, key=len), max([], default=None)
+  - title: Dictionnaires et ensembles
+    entries:
+      - name: dict.get / setdefault
+        signature: d.get(key, default=None) · d.setdefault(key, default)
+        description: "`get` lit sans lever de `KeyError`. `setdefault` renvoie la valeur et l'insère si la clé est absente (pratique pour regrouper)."
+        example: |
+          d = {'a': 1}
+          d.get('z', 0), d.setdefault('b', []), d
+      - name: dict.items / keys / values
+        signature: d.items() · d.keys() · d.values()
+        description: "Vues itérables sur les paires, les clés, les valeurs. Itérer sur `d` parcourt les **clés**. L'ordre d'insertion est conservé."
+        example: |
+          d = {'x': 3, 'y': 1}
+          for k, v in d.items():
+              print(k, v)
+          sorted(d, key=d.get)
+      - name: dict comprehension / fusion
+        signature: "{k: v for ...} · d1 | d2 · {**d1, **d2}"
+        description: "Construction d'un dict en une ligne et fusion (la valeur de droite l'emporte)."
+        example: |
+          words = ['data', 'ia']
+          lengths = {w: len(w) for w in words}
+          lengths | {'ia': 99, 'ml': 2}
+      - name: set
+        signature: set(iterable) · a | b · a & b · a - b · x in s
+        description: "Collection sans doublons, test d'appartenance en O(1). Union `|`, intersection `&`, différence `-`."
+        example: |
+          a, b = {1, 2, 3}, {2, 3, 4}
+          a | b, a & b, a - b, 3 in a
+  - title: collections
+    entries:
+      - name: Counter
+        signature: collections.Counter(iterable)
+        description: "Compte les occurrences. `most_common(k)` renvoie les k plus fréquents. Supporte `+`, `-`."
+        example: |
+          from collections import Counter
+          c = Counter('abracadabra')
+          c.most_common(2), c['z']
+      - name: defaultdict
+        signature: collections.defaultdict(factory)
+        description: "Dict qui crée automatiquement une valeur (`list()`, `int()`…) pour une clé absente."
+        example: |
+          from collections import defaultdict
+          groups = defaultdict(list)
+          for w in ['ane', 'bus', 'arbre']:
+              groups[w[0]].append(w)
+          dict(groups)
+      - name: deque
+        signature: collections.deque(iterable, maxlen=None)
+        description: "File double : `append`/`appendleft` et `pop`/`popleft` en O(1). Idéale pour un BFS. `maxlen` garde les n derniers éléments."
+        example: |
+          from collections import deque
+          q = deque([1, 2])
+          q.appendleft(0)
+          q.append(3)
+          q.popleft(), q
+      - name: OrderedDict / namedtuple
+        signature: OrderedDict() · namedtuple('Point', ['x', 'y'])
+        description: "`OrderedDict` ajoute `move_to_end` et `popitem(last=False)` (cache LRU). `namedtuple` crée un tuple aux champs nommés."
+        example: |
+          from collections import OrderedDict, namedtuple
+          Point = namedtuple('Point', ['x', 'y'])
+          p = Point(1, 2)
+          d = OrderedDict(a=1, b=2)
+          d.move_to_end('a')
+          p.x + p.y, list(d)
+  - title: Chaînes
+    entries:
+      - name: str.split / join / strip
+        signature: s.split(sep=None) · sep.join(iterable) · s.strip(chars=None)
+        description: "`split()` sans argument coupe sur tous les espaces. `join` concatène des chaînes avec un séparateur (O(n), contrairement à `+=` en boucle)."
+        example: |
+          s = '  Le  chat dort  '
+          words = s.split()
+          '-'.join(words), s.strip(), s.lower().replace('chat', 'chien')
+      - name: f-strings
+        signature: "f'{expr:format}'"
+        description: "Formatage : `:.2f` (2 décimales), `:.1%` (pourcentage), `:,` (milliers), `:>8` (aligné à droite), `!r` (repr), `=` (affiche aussi l'expression)."
+        example: |
+          ratio, n, name = 0.1234, 1234567, 'Ada'
+          f'{ratio:.1%} · {n:,} · {name!r} · {name:>6} · {n=}'
+      - name: méthodes de test
+        signature: s.startswith · endswith · isdigit · isalpha · in
+        description: "Tests usuels sur les chaînes ; `sub in s` cherche une sous-chaîne."
+        example: |
+          s = 'data2024'
+          s.startswith('data'), s[-4:].isdigit(), 'ta2' in s, s.find('2'), s.count('a')
+      - name: re (expressions régulières)
+        signature: re.findall(pattern, s) · re.sub(pattern, repl, s) · re.search
+        description: "`\\w+` = mots, `\\d+` = nombres, `\\s+` = espaces. Préfixer le motif par `r` (chaîne brute)."
+        example: |
+          import re
+          text = 'Commande 42 livrée le 2024-05-12 à Paris'
+          re.findall(r'\d+', text), re.sub(r'\s+', ' ', 'a   b  c'), re.search(r'(\d{4})-(\d{2})', text).group(1)
+  - title: Fonctions et itérateurs
+    entries:
+      - name: "*args / **kwargs / valeurs par défaut"
+        signature: def f(a, b=2, *args, key=None, **kwargs)
+        description: "Arguments positionnels, par défaut, variables. **Jamais** de valeur par défaut mutable (`acc=[]`) : utilise `None`."
+        example: |
+          def f(a, b=2, *args, **kwargs):
+              return a, b, args, kwargs
+          f(1), f(1, 3, 4, 5, x=6)
+      - name: lambda
+        signature: "lambda args: expression"
+        description: "Petite fonction anonyme, souvent passée en `key=` à `sorted`, `max`, `min`."
+        example: |
+          pairs = [(1, 'b'), (3, 'a'), (2, 'c')]
+          sorted(pairs, key=lambda p: p[1]), max(pairs, key=lambda p: p[0])
+      - name: générateur (yield)
+        signature: "def gen(): yield x · (expr for x in it)"
+        description: "Produit les valeurs à la demande (paresseux, peu de mémoire). Se **consomme** : un seul parcours possible."
+        example: |
+          def countdown(n):
+              while n > 0:
+                  yield n
+                  n -= 1
+          g = countdown(3)
+          list(g), list(g)
+      - name: itertools
+        signature: islice · chain · product · combinations · permutations · groupby · accumulate
+        description: "Outils sur les itérables : tranches paresseuses, enchaînement, produit cartésien, combinaisons."
+        example: |
+          from itertools import accumulate, chain, combinations, islice, product
+          list(combinations('abc', 2)), list(product([0, 1], repeat=2)), list(islice(chain([1, 2], [3, 4]), 3)), list(accumulate([1, 2, 3]))
+      - name: functools.lru_cache / partial
+        signature: "@functools.lru_cache(maxsize=None) · functools.partial(f, *args)"
+        description: "`lru_cache` mémoïse une fonction (DP top-down). `partial` fige certains arguments."
+        example: |
+          from functools import lru_cache, partial
+          @lru_cache(maxsize=None)
+          def fib(n):
+              return n if n < 2 else fib(n - 1) + fib(n - 2)
+          square = partial(pow, exp=2)
+          fib(60), square(7)
+      - name: décorateur
+        signature: "def deco(func): ... return wrapper"
+        description: "Fonction qui enveloppe une fonction. `@functools.wraps(func)` préserve le nom et la docstring."
+        example: |
+          import functools, time
+          def timed(func):
+              @functools.wraps(func)
+              def wrapper(*args, **kwargs):
+                  t0 = time.perf_counter()
+                  out = func(*args, **kwargs)
+                  print(f'{func.__name__}: {time.perf_counter() - t0:.4f}s')
+                  return out
+              return wrapper
+          @timed
+          def work(n):
+              return sum(range(n))
+          work(100_000)
+  - title: Classes
+    entries:
+      - name: class / __init__ / méthodes
+        signature: "class Name: def __init__(self, ...)"
+        description: "`self` est l'instance. Attributs créés dans `__init__`. `__repr__` contrôle l'affichage."
+        example: |
+          class Account:
+              def __init__(self, owner, balance=0):
+                  self.owner = owner
+                  self.balance = balance
+              def deposit(self, amount):
+                  self.balance += amount
+                  return self
+              def __repr__(self):
+                  return f'Account({self.owner!r}, {self.balance})'
+          Account('Ada').deposit(50).deposit(25)
+      - name: "@property / @staticmethod / @classmethod"
+        signature: "@property · @x.setter · @classmethod · @staticmethod"
+        description: "`property` : attribut calculé ou en lecture seule. `classmethod` : constructeur alternatif (reçoit `cls`)."
+        example: |
+          class Temp:
+              def __init__(self, celsius):
+                  self._c = celsius
+              @property
+              def fahrenheit(self):
+                  return self._c * 9 / 5 + 32
+              @classmethod
+              def from_f(cls, f):
+                  return cls((f - 32) * 5 / 9)
+          Temp(100).fahrenheit, Temp.from_f(212)._c
+      - name: dataclass
+        signature: "@dataclasses.dataclass"
+        description: "Génère `__init__`, `__repr__`, `__eq__` pour une classe de données. `field(default_factory=list)` pour une valeur mutable."
+        example: |
+          from dataclasses import dataclass, field
+          @dataclass
+          class Order:
+              id: int
+              items: list = field(default_factory=list)
+              paid: bool = False
+          Order(1, ['clavier'])
+  - title: Erreurs et fichiers
+    entries:
+      - name: try / except / raise
+        signature: "try: ... except Erreur as e: ... else: ... finally: ..."
+        description: "Attrape les erreurs **précises** (jamais un `except:` nu). `raise ValueError('...')` pour signaler une valeur invalide."
+        example: |
+          def parse(x):
+              try:
+                  return int(x)
+              except ValueError as e:
+                  print('invalide :', e)
+                  return None
+          parse('42'), parse('abc')
+      - name: with open / json
+        signature: "with open(path, 'w', encoding='utf-8') as f · json.dumps / json.loads"
+        description: "`with` ferme le fichier automatiquement. `json.dumps`/`loads` convertissent dict ↔ texte JSON."
+        example: |
+          import json
+          with open('demo.json', 'w', encoding='utf-8') as f:
+              json.dump({'nom': 'Ada', 'scores': [1, 2]}, f)
+          with open('demo.json', encoding='utf-8') as f:
+              data = json.load(f)
+          data, json.dumps(data)
+      - name: heapq / bisect
+        signature: heapq.heappush/heappop/nlargest · bisect.bisect_left/insort
+        description: "`heapq` : tas min (O(log n)). `bisect` : recherche dichotomique dans une liste triée."
+        example: |
+          import bisect, heapq
+          h = [5, 1, 4]
+          heapq.heapify(h)
+          heapq.heappush(h, 2)
+          a = [1, 3, 5]
+          heapq.heappop(h), heapq.nlargest(2, [7, 2, 9, 4]), bisect.bisect_left(a, 4)

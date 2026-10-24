@@ -35,6 +35,20 @@ tests:
     expected: np.arange(10.)
   - call: moving_average(np.sin(np.linspace(0, 10, 200)), 7)
     hidden: true
+  - name: "Bonus : vectorisé (pas de boucle Python)"
+    bonus: true
+    check: |
+      import time
+      x = np.random.default_rng(0).normal(size=200_000)
+      def best_time(f):
+          times = []
+          for _ in range(3):
+              t0 = time.perf_counter()
+              f(x, 50)
+              times.append(time.perf_counter() - t0)
+          return min(times)
+      ratio = best_time(moving_average) / max(best_time(ref.moving_average), 1e-6)
+      assert ratio < 10, f"Ta fonction est ~{ratio:.0f}× plus lente que la version vectorisée : une boucle Python sur 200 000 points coûte cher. Pense cumsum ou np.convolve."
 hints:
   - "Avec `c = cumsum([0, x0, x1, ...])`, la somme de `x[i:i+w]` vaut `c[i+w] - c[i]`."
   - "Vectorisé : `c[w:] - c[:-w]`."
@@ -47,3 +61,13 @@ explanation: |
   pd.Series(x).rolling(w).mean()                 # version pandas (NaN au début)
   ```
   La somme cumulée transforme n'importe quelle somme sur un intervalle en **une soustraction**. C'est un pattern d'algo classique (*prefix sums*).
+complexity:
+  target: vectorisé
+  note: |
+    Une boucle Python qui calcule `x[i:i + w].mean()` à chaque position fait n appels NumPy : chacun est rapide, mais l'interpréteur Python ajoute ~1 µs par tour. Avec la **somme cumulée**, `(c[w:] - c[:-w]) / w` calcule toutes les moyennes en une seule opération vectorisée.
+naive: |
+  import numpy as np
+
+
+  def moving_average(x, w):
+      return np.array([x[i:i + w].mean() for i in range(len(x) - w + 1)])

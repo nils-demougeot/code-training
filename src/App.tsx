@@ -18,6 +18,10 @@ const Fiches = lazy(() => import('./pages/Fiches'))
 const FichePage = lazy(() => import('./pages/FichePage'))
 const Interview = lazy(() => import('./pages/Interview'))
 const Profile = lazy(() => import('./pages/Profile'))
+const DocPage = lazy(() => import('./pages/DocPage'))
+const Design = lazy(() => import('./pages/Design'))
+const DesignCasePage = lazy(() => import('./pages/DesignCasePage'))
+const Stats = lazy(() => import('./pages/Stats'))
 
 function Loading() {
   return (
@@ -57,6 +61,10 @@ export default function App() {
           <Route path="/fiches/:id" element={<FichePage />} />
           <Route path="/entretien" element={<Interview />} />
           <Route path="/entretien/session" element={<Interview />} />
+          <Route path="/doc" element={<DocPage />} />
+          <Route path="/design" element={<Design />} />
+          <Route path="/design/:id" element={<DesignCasePage />} />
+          <Route path="/stats" element={<Stats />} />
           <Route path="/profil" element={<Profile />} />
           <Route path="*" element={<Dashboard />} />
         </Routes>

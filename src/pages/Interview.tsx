@@ -276,7 +276,8 @@ function SessionView({ session }: { session: Session }) {
     if (running) return
     setRunning(true)
     setMode('run')
-    const res = await runCode(runnableCode(ex, code), { setup, requireLocal: ex.engine === 'local' })
+    const examples = ex.language === 'sql' ? [] : ex.tests.flatMap((t) => (t.call && !t.hidden ? [t.call] : []))
+    const res = await runCode(runnableCode(ex, code), { setup, requireLocal: ex.engine === 'local', examples })
     setResults((r) => ({ ...r, [ex.id]: res }))
     setRunning(false)
   }
@@ -380,6 +381,7 @@ function SessionView({ session }: { session: Session }) {
           result={results[ex.id] ?? null}
           language={ex.language}
           autocomplete={false}
+          docLib={null}
         />
       }
     />

@@ -1,0 +1,86 @@
+id: churn
+title: Prédire les résiliations d'abonnés
+company: Une plateforme de streaming musical (8 millions d'abonnés)
+difficulty: easy
+minutes: 25
+summary: Le classique pour se lancer. Bien définir le label, éviter les fuites, et transformer une probabilité en action marketing rentable.
+context: |
+  L'équipe marketing veut **réduire le churn** (résiliation). Elle peut offrir une réduction de 30 % pendant 3 mois aux abonnés « à risque », mais le budget est limité : environ 50 000 offres par mois.
+
+  Tu as accès aux données d'abonnement, à l'historique d'écoute, aux paiements et aux tickets du support.
+steps:
+  - id: framing
+    title: Cadrage et métriques
+    question: Quel est l'objectif métier exact, et comment mesures-tu le succès, côté business et côté modèle ?
+    points:
+      - "Objectif réel : maximiser les abonnés **retenus** (ou le revenu sauvé), pas « prédire le churn » pour lui-même"
+      - "Définition précise du churn : résiliation dans les **30 prochains jours** (horizon et fenêtre explicites)"
+      - "Métrique business : revenu net sauvé = abonnés retenus × valeur − coût des offres"
+      - "Métrique modèle adaptée au budget : **precision@50k** ou lift sur le top du classement, plutôt que l'accuracy"
+      - "Le vrai effet visé est l'**uplift** (l'offre fait-elle rester ?), pas seulement le risque"
+    answer: |
+      On ne veut pas seulement savoir **qui** va partir, mais **qui on peut retenir** avec une offre, sous un budget de 50 000 offres.
+
+      - **Label** : « résilie dans les 30 jours suivant la date de prédiction ». Sans horizon, le problème est mal posé.
+      - **Business** : revenu sauvé − coût des remises. Mesuré par un A/B test (groupe contrôle sans offre).
+      - **Offline** : comme on agit sur le top 50 000, la **precision@k** (ou le lift dans le premier décile) compte plus que l'AUC globale. Avec ~3 % de churn mensuel, l'accuracy est inutile : prédire « reste » partout donne 97 %.
+      - Niveau supérieur : un **modèle d'uplift** cible les clients *persuadables* (qui restent grâce à l'offre), pas ceux qui partiront quoi qu'il arrive ni ceux qui seraient restés de toute façon.
+  - id: data
+    title: Données et labels
+    question: Comment construis-tu le jeu d'entraînement ? Quels pièges sur les données et les labels ?
+    points:
+      - "Snapshots temporels : features calculées **à la date de prédiction**, label sur les 30 jours suivants"
+      - "Éviter la fuite : aucune information postérieure à la date de prédiction (ex. demande de résiliation, dernier login après la date)"
+      - "Distinguer churn volontaire et involontaire (échec de paiement), qui appellent des actions différentes"
+      - "Classes déséquilibrées (~3 % de positifs) : pondération ou métriques adaptées, pas de rééchantillonnage du test"
+      - "Split temporel : entraîner sur les mois passés, valider sur un mois ultérieur"
+    answer: |
+      On fabrique des **exemples datés** : pour chaque abonné et chaque mois *t*, les features sont calculées avec les données disponibles jusqu'à *t*, et le label regarde *t* → *t + 30 jours*. Cela multiplie les exemples et reproduit exactement les conditions de production.
+
+      Pièges :
+      - **Fuite temporelle** : une feature comme « a consulté la page de résiliation » calculée *après* la date de prédiction rend le modèle parfait en test et inutile en production.
+      - **Churn involontaire** (carte expirée) : un rappel de paiement suffit, pas besoin d'une remise. On le traite à part.
+      - **Validation temporelle** (*out-of-time*) : entraîner jusqu'en mars, valider sur avril. Un split aléatoire mélange les périodes et surestime la performance.
+  - id: features
+    title: Features et modèle
+    question: Quelles features construirais-tu, et quel modèle choisirais-tu en premier ?
+    points:
+      - "Engagement et sa **tendance** : heures d'écoute sur 7/30/90 jours, ratio récent / ancien"
+      - "Signaux de friction : tickets support, erreurs de lecture, échecs de paiement, changements de formule"
+      - "Contexte : ancienneté, formule, prix payé, fin de promotion imminente, appareil"
+      - "Baseline simple (règle sur la baisse d'écoute ou régression logistique) avant un modèle complexe"
+      - "Gradient boosting (LightGBM / XGBoost) : adapté au tabulaire, gère les interactions et les valeurs manquantes"
+    answer: |
+      Les meilleures features décrivent un **changement de comportement** :
+      - écoute sur 7, 30 et 90 jours, **variation** récente (−60 % en 2 semaines est plus parlant qu'un niveau absolu) ;
+      - jours depuis la dernière écoute, diversité des artistes, utilisation des playlists ;
+      - frictions : tickets, bugs, échecs de paiement ; contexte : ancienneté, formule, fin d'une période promotionnelle.
+
+      Modèle : d'abord une **baseline** (règle « écoute en baisse de 50 % » ou régression logistique), puis un **gradient boosting**, l'état de l'art en tabulaire. On garde la logistique si le gain est faible : elle est plus simple à expliquer au marketing.
+  - id: evaluation
+    title: Évaluation offline et online
+    question: Comment valides-tu que le modèle est bon avant et après le lancement ?
+    points:
+      - "Offline : precision@k / lift sur un mois tenu à l'écart (out-of-time), courbe precision-recall"
+      - "Calibration des probabilités si on les utilise pour des calculs de valeur"
+      - "Online : **A/B test** avec un groupe contrôle qui ne reçoit pas d'offre"
+      - "Mesurer le **revenu net** (rétention gagnée − coût des remises) et les effets de bord (cannibalisation)"
+      - "Durée et taille du test fixées à l'avance (puissance statistique)"
+    answer: |
+      **Offline** : precision@50k et lift sur le mois le plus récent, jamais vu à l'entraînement. Comparer à la baseline et à la règle métier actuelle.
+
+      **Online** : le modèle ne prouve rien tant qu'on ne mesure pas l'**effet causal de l'offre**. On randomise les clients à risque en deux groupes : offre vs pas d'offre. Le gain = différence de rétention × valeur client − coût des remises. On fixe à l'avance la taille d'échantillon et la durée (au moins un cycle de facturation) pour éviter de conclure trop tôt.
+  - id: production
+    title: Déploiement et monitoring
+    question: Comment le modèle tourne-t-il en production, et que surveilles-tu dans le temps ?
+    points:
+      - "Scoring **batch** mensuel ou hebdomadaire (pas besoin de temps réel) dans le CRM"
+      - "Monitoring du drift des features (distribution de l'écoute, nouvelles formules)"
+      - "Suivi de la performance réelle quand les labels arrivent (30 jours plus tard)"
+      - "Boucle de rétroaction : les clients ayant reçu une offre changent de comportement, attention en ré-entraînant"
+      - "Ré-entraînement planifié et explicabilité pour les équipes marketing"
+    answer: |
+      - **Batch** hebdomadaire : un job calcule les scores et pousse la liste priorisée dans le CRM. Le temps réel serait de la complexité inutile.
+      - **Monitoring** : drift des features (ex. une nouvelle formule familiale), taux de positifs prédit, puis performance réelle quand les labels arrivent, avec 30 jours de décalage.
+      - **Piège du feedback** : les clients ciblés ont reçu une remise. Si on ré-entraîne sur eux sans en tenir compte, le modèle apprend que « ces profils restent ». On garde un groupe contrôle permanent ou on ajoute la variable « a reçu une offre ».
+      - Explications (importance des features, SHAP) pour que le marketing adapte le message : prix, contenu, problème technique.

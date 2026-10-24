@@ -1,0 +1,54 @@
+id: stats-birthday
+title: Le paradoxe des anniversaires
+domain: stats
+difficulty: easy
+minutes: 7
+interview: true
+tags: [complémentaire, probabilité exacte]
+cards: [st-complement]
+statement: |
+  1. `p_shared(n)` : la probabilité exacte qu'au moins deux personnes parmi `n` partagent leur jour d'anniversaire (365 jours équiprobables, pas d'années bissextiles).
+  2. `min_people(p)` : le plus petit `n` tel que `p_shared(n) >= p`.
+
+  Astuce : il est beaucoup plus simple de calculer la probabilité que **tous** les anniversaires soient différents.
+
+  Essaie d'abord de deviner `min_people(0.5)` avant de lancer ton code, puis fais le défi « Le paradoxe des anniversaires » de la section Probas & stats.
+starter: |
+  def p_shared(n):
+      pass
+
+
+  def min_people(p):
+      pass
+solution: |
+  def p_shared(n):
+      all_distinct = 1.0
+      for i in range(n):
+          all_distinct *= (365 - i) / 365
+      return 1 - all_distinct
+
+
+  def min_people(p):
+      n = 1
+      while p_shared(n) < p:
+          n += 1
+      return n
+tests:
+  - call: p_shared(23)
+    expected: "0.5072972343239857"
+  - call: p_shared(1)
+    expected: "0.0"
+  - call: p_shared(366)
+    expected: "1.0"
+  - call: min_people(0.5)
+    expected: "23"
+  - call: min_people(0.99)
+    hidden: true
+hints:
+  - "P(tous différents) = 365/365 × 364/365 × … × (365 − n + 1)/365."
+  - "P(au moins un anniversaire partagé) = 1 − P(tous différents)."
+explanation: |
+  **Le réflexe « au moins un »** : passer par le complémentaire, $P(A) = 1 - P(\bar A)$.
+
+  - Pourquoi si peu de personnes ? On compare **toutes les paires** : avec 23 personnes, il y en a $\binom{23}{2} = 253$.
+  - Applications : collisions de hash (*birthday attack*), doublons dans des identifiants aléatoires, probabilité de faux positifs quand on fait beaucoup de comparaisons.

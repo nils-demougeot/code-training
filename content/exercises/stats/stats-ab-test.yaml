@@ -1,0 +1,73 @@
+id: stats-ab-test
+title: Analyser un A/B test
+domain: stats
+difficulty: medium
+minutes: 10
+interview: true
+tags: [A/B test, test z, p-value, taille d'échantillon]
+cards: [st-pvalue-def, st-ab-z]
+statement: |
+  Variante A : `conv_a` conversions sur `n_a` visiteurs. Variante B : `conv_b` sur `n_b`.
+
+  1. `ab_test(conv_a, n_a, conv_b, n_b)` renvoie `(uplift, z, p_value)` :
+     - `uplift` = taux de B / taux de A − 1 ;
+     - `z` = statistique du test de deux proportions avec le taux **poolé** $\hat p = \frac{conv_a + conv_b}{n_a + n_b}$ : $z = \frac{p_b - p_a}{\sqrt{\hat p (1 - \hat p)(1/n_a + 1/n_b)}}$ ;
+     - `p_value` **bilatérale**.
+  2. `sample_size(p_a, p_b, alpha=0.05, power=0.8)` : taille **par groupe** (arrondie à l'entier supérieur) :
+     $$n = \frac{\left(z_{1-\alpha/2}\sqrt{2\bar p(1-\bar p)} + z_{power}\sqrt{p_a(1-p_a)+p_b(1-p_b)}\right)^2}{(p_b - p_a)^2}, \quad \bar p = \frac{p_a + p_b}{2}$$
+
+  Utilise `scipy.stats.norm` (`cdf`, `sf`, `ppf`).
+starter: |
+  import math
+  from scipy import stats
+
+
+  def ab_test(conv_a, n_a, conv_b, n_b):
+      pass
+
+
+  def sample_size(p_a, p_b, alpha=0.05, power=0.8):
+      pass
+solution: |
+  import math
+  from scipy import stats
+
+
+  def ab_test(conv_a, n_a, conv_b, n_b):
+      p_a, p_b = conv_a / n_a, conv_b / n_b
+      pooled = (conv_a + conv_b) / (n_a + n_b)
+      se = math.sqrt(pooled * (1 - pooled) * (1 / n_a + 1 / n_b))
+      z = (p_b - p_a) / se
+      p_value = 2 * stats.norm.sf(abs(z))
+      return p_b / p_a - 1, z, p_value
+
+
+  def sample_size(p_a, p_b, alpha=0.05, power=0.8):
+      z_a = stats.norm.ppf(1 - alpha / 2)
+      z_b = stats.norm.ppf(power)
+      p_bar = (p_a + p_b) / 2
+      num = z_a * math.sqrt(2 * p_bar * (1 - p_bar)) + z_b * math.sqrt(p_a * (1 - p_a) + p_b * (1 - p_b))
+      return math.ceil(num ** 2 / (p_b - p_a) ** 2)
+tests:
+  - call: ab_test(200, 2000, 245, 2000)
+    rtol: 0.000001
+  - name: Pas de différence → p-value = 1
+    call: ab_test(100, 1000, 100, 1000)[2]
+    expected: "1.0"
+  - call: sample_size(0.10, 0.11)
+    expected: "14751"
+  - call: sample_size(0.10, 0.12)
+  - name: Cohérence avec statsmodels (formule)
+    check: |
+      up, z, p = ab_test(500, 10_000, 560, 10_000)
+      assert abs(up - 0.12) < 1e-9
+      assert 0.05 < p < 0.07, f"p-value {p:.4f}"
+hints:
+  - "p-value bilatérale : `2 * stats.norm.sf(abs(z))` (sf = 1 − cdf)."
+  - "`stats.norm.ppf(0.975)` ≈ 1,96 ; `stats.norm.ppf(0.8)` ≈ 0,84."
+  - "`math.ceil` pour arrondir la taille d'échantillon au-dessus."
+explanation: |
+  - La **p-value** est la probabilité d'observer un écart au moins aussi grand **si B ne faisait rien**. Ce n'est pas la probabilité que B soit meilleur.
+  - Ici : +22,5 % d'uplift, p ≈ 0,026 → significatif à 5 %. Mais l'intervalle de confiance de l'uplift est large : à rapporter avec l'effet, pas seulement « significatif ».
+  - Taille d'échantillon en $1/\text{effet}^2$ : détecter +1 point (10 % → 11 %) demande ~14 750 visiteurs **par groupe** ; +2 points, environ 4 fois moins.
+  - Pièges : regarder les résultats en continu (*peeking*), tester 20 métriques à la fois, arrêter le test un mardi (effet jour de semaine). À voir dans le lab **A/B tests**.

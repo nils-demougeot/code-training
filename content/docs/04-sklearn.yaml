@@ -1,0 +1,176 @@
+id: sklearn
+title: scikit-learn
+domain: ml
+setup: |
+  import numpy as np
+  from sklearn.datasets import load_iris, make_classification
+  X, y = make_classification(n_samples=300, n_features=5, random_state=0)
+sections:
+  - title: Données et découpage
+    entries:
+      - name: datasets
+        signature: load_iris · load_breast_cancer · load_digits · make_classification · make_regression · make_moons
+        description: "Jeux de données intégrés et générateurs synthétiques. Les exemples de cette page ont déjà `X, y = make_classification(...)`."
+        example: |
+          X_iris, y_iris = load_iris(return_X_y=True)
+          X_iris.shape, np.bincount(y_iris), X.shape
+      - name: train_test_split
+        signature: train_test_split(X, y, test_size=0.2, stratify=y, random_state=0)
+        description: "Ordre de retour : `X_train, X_test, y_train, y_test`. `stratify=y` garde les proportions de classes."
+        example: |
+          from sklearn.model_selection import train_test_split
+          X_tr, X_te, y_tr, y_te = train_test_split(X, y, test_size=0.25, stratify=y, random_state=0)
+          X_tr.shape, X_te.shape, y_tr.mean().round(2), y_te.mean().round(2)
+  - title: L'API commune
+    entries:
+      - name: fit / predict / predict_proba / score
+        signature: model.fit(X, y) · model.predict(X) · model.predict_proba(X) · model.score(X, y)
+        description: "Même API pour tous les modèles. `fit` renvoie le modèle (chaînable). `predict_proba` : une colonne par classe."
+        example: |
+          from sklearn.linear_model import LogisticRegression
+          model = LogisticRegression().fit(X, y)
+          model.predict(X[:3]), model.predict_proba(X[:2]).round(3), round(model.score(X, y), 3)
+      - name: fit / transform / fit_transform
+        signature: scaler.fit(X_train) · scaler.transform(X) · fit_transform(X_train)
+        description: "Les transformers apprennent sur le train (`fit`), puis s'appliquent partout (`transform`). Jamais de `fit` sur le test."
+        example: |
+          from sklearn.preprocessing import StandardScaler
+          scaler = StandardScaler().fit(X[:200])
+          Z = scaler.transform(X[200:])
+          scaler.mean_.round(2), Z.mean(axis=0).round(2)
+      - name: attributs appris (suffixe _)
+        signature: coef_ · intercept_ · feature_importances_ · classes_ · n_features_in_
+        description: "Ce qui est appris pendant `fit` se termine par `_`."
+        example: |
+          from sklearn.tree import DecisionTreeClassifier
+          tree = DecisionTreeClassifier(max_depth=3, random_state=0).fit(X, y)
+          tree.classes_, tree.feature_importances_.round(2), tree.get_depth()
+  - title: Prétraitement
+    entries:
+      - name: StandardScaler / MinMaxScaler
+        signature: StandardScaler() · MinMaxScaler(feature_range=(0, 1))
+        description: "Centrer-réduire (moyenne 0, écart-type 1) ou ramener dans un intervalle."
+        example: |
+          from sklearn.preprocessing import MinMaxScaler, StandardScaler
+          data = np.array([[1., 100.], [2., 300.], [3., 200.]])
+          StandardScaler().fit_transform(data).round(2), MinMaxScaler().fit_transform(data)
+      - name: OneHotEncoder
+        signature: OneHotEncoder(handle_unknown='ignore', sparse_output=False)
+        description: "Encode les catégories en colonnes 0/1. `handle_unknown='ignore'` évite de planter sur une catégorie nouvelle."
+        example: |
+          from sklearn.preprocessing import OneHotEncoder
+          enc = OneHotEncoder(handle_unknown='ignore', sparse_output=False).fit([['Paris'], ['Lyon']])
+          enc.transform([['Lyon'], ['Nice']]), enc.get_feature_names_out()
+      - name: SimpleImputer
+        signature: SimpleImputer(strategy='mean'|'median'|'most_frequent'|'constant')
+        description: "Remplace les valeurs manquantes par une statistique apprise sur le train."
+        example: |
+          from sklearn.impute import SimpleImputer
+          SimpleImputer(strategy='median').fit_transform([[1.], [np.nan], [3.], [10.]]).ravel()
+      - name: PolynomialFeatures
+        signature: PolynomialFeatures(degree=2, include_bias=False)
+        description: "Ajoute les puissances et produits croisés des features (rend un modèle linéaire non linéaire)."
+        example: |
+          from sklearn.preprocessing import PolynomialFeatures
+          pf = PolynomialFeatures(degree=2, include_bias=False)
+          pf.fit_transform([[2, 3]]), pf.get_feature_names_out(['a', 'b'])
+  - title: Pipelines
+    entries:
+      - name: Pipeline / make_pipeline
+        signature: "Pipeline([('nom', etape), ...]) · make_pipeline(etape1, etape2)"
+        description: "Enchaîne transformers et modèle en un seul objet : pas de fuite de données en validation croisée, un seul objet à déployer."
+        example: |
+          from sklearn.linear_model import LogisticRegression
+          from sklearn.pipeline import Pipeline
+          from sklearn.preprocessing import StandardScaler
+          pipe = Pipeline([('scaler', StandardScaler()), ('clf', LogisticRegression(C=0.5))]).fit(X, y)
+          list(pipe.named_steps), pipe.named_steps['clf'].C, round(pipe.score(X, y), 3)
+      - name: ColumnTransformer
+        signature: "ColumnTransformer([('nom', transformer, colonnes), ...], remainder='drop')"
+        description: "Un traitement différent par groupe de colonnes (numériques, catégorielles…) d'un DataFrame."
+        example: |
+          import pandas as pd
+          from sklearn.compose import ColumnTransformer
+          from sklearn.preprocessing import OneHotEncoder, StandardScaler
+          df = pd.DataFrame({'age': [20, 35, 50], 'ville': ['Paris', 'Lyon', 'Paris']})
+          ct = ColumnTransformer([('num', StandardScaler(), ['age']), ('cat', OneHotEncoder(), ['ville'])])
+          ct.fit_transform(df).round(2), ct.get_feature_names_out()
+  - title: Évaluation et réglage
+    entries:
+      - name: cross_val_score
+        signature: cross_val_score(model, X, y, cv=5, scoring='accuracy'|'f1'|'roc_auc'|...)
+        description: "Score sur k folds : estimation plus fiable qu'un seul split."
+        example: |
+          from sklearn.linear_model import LogisticRegression
+          from sklearn.model_selection import cross_val_score
+          scores = cross_val_score(LogisticRegression(), X, y, cv=5, scoring='f1')
+          scores.round(3), scores.mean().round(3)
+      - name: GridSearchCV
+        signature: GridSearchCV(model, param_grid, cv=5, scoring=...) · best_params_ · best_estimator_
+        description: "Teste toutes les combinaisons d'hyperparamètres en validation croisée. Dans un pipeline : `'etape__param'`."
+        example: |
+          from sklearn.model_selection import GridSearchCV
+          from sklearn.neighbors import KNeighborsClassifier
+          search = GridSearchCV(KNeighborsClassifier(), {'n_neighbors': [1, 5, 15]}, cv=5).fit(X, y)
+          search.best_params_, round(search.best_score_, 3)
+      - name: StratifiedKFold / TimeSeriesSplit / GroupKFold
+        signature: StratifiedKFold(n_splits=5, shuffle=True, random_state=0)
+        description: "Schémas de validation : stratifié (classes déséquilibrées), temporel (jamais le futur dans le train), par groupe (même client pas dans train et test)."
+        example: |
+          from sklearn.model_selection import TimeSeriesSplit
+          [(len(tr), te.tolist()) for tr, te in TimeSeriesSplit(n_splits=3).split(np.arange(8))]
+      - name: métriques de classification
+        signature: accuracy_score · precision_score · recall_score · f1_score · roc_auc_score · confusion_matrix
+        description: "`roc_auc_score` prend des **scores/probabilités**, les autres des classes prédites."
+        example: |
+          from sklearn.metrics import confusion_matrix, f1_score, roc_auc_score
+          y_true = [0, 1, 1, 0, 1]
+          y_pred = [0, 1, 0, 0, 1]
+          confusion_matrix(y_true, y_pred), round(f1_score(y_true, y_pred), 3), roc_auc_score(y_true, [0.1, 0.9, 0.4, 0.3, 0.8])
+      - name: classification_report
+        signature: classification_report(y_true, y_pred)
+        description: "Precision, recall, F1 et support pour chaque classe d'un coup."
+        example: |
+          from sklearn.metrics import classification_report
+          print(classification_report([0, 1, 1, 0, 1], [0, 1, 0, 0, 1]))
+      - name: métriques de régression
+        signature: mean_absolute_error · mean_squared_error · r2_score
+        description: "MAE (robuste), RMSE (pénalise les grosses erreurs), R² (part de variance expliquée)."
+        example: |
+          from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+          y_true, y_hat = [3., 5., 7.], [2.5, 5., 8.]
+          mean_absolute_error(y_true, y_hat), mean_squared_error(y_true, y_hat) ** 0.5, round(r2_score(y_true, y_hat), 3)
+  - title: Modèles courants
+    entries:
+      - name: modèles linéaires
+        signature: LinearRegression · Ridge(alpha) · Lasso(alpha) · LogisticRegression(C, class_weight)
+        description: "Baselines rapides et interprétables. `C` = inverse de la régularisation ; `alpha` = force de la régularisation."
+        example: |
+          from sklearn.linear_model import Lasso, Ridge
+          from sklearn.datasets import make_regression
+          Xr, yr = make_regression(n_samples=100, n_features=5, n_informative=2, noise=5, random_state=0)
+          Ridge(alpha=1).fit(Xr, yr).coef_.round(1), Lasso(alpha=5).fit(Xr, yr).coef_.round(1)
+      - name: arbres et ensembles
+        signature: DecisionTreeClassifier(max_depth) · RandomForestClassifier(n_estimators) · HistGradientBoostingClassifier()
+        description: "Pas besoin de standardiser. Le gradient boosting est souvent le meilleur en tabulaire."
+        example: |
+          from sklearn.ensemble import HistGradientBoostingClassifier, RandomForestClassifier
+          from sklearn.model_selection import cross_val_score
+          [cross_val_score(m, X, y, cv=3).mean().round(3) for m in (RandomForestClassifier(50, random_state=0), HistGradientBoostingClassifier())]
+      - name: kNN / SVM / Naive Bayes
+        signature: KNeighborsClassifier(n_neighbors) · SVC(C, kernel='rbf', probability=False) · GaussianNB()
+        description: "kNN et SVM exigent des features standardisées."
+        example: |
+          from sklearn.naive_bayes import GaussianNB
+          from sklearn.neighbors import KNeighborsClassifier
+          from sklearn.svm import SVC
+          [round(m.fit(X, y).score(X, y), 3) for m in (KNeighborsClassifier(5), SVC(), GaussianNB())]
+      - name: KMeans / PCA
+        signature: KMeans(n_clusters, n_init=10) · PCA(n_components)
+        description: "Clustering et réduction de dimension (non supervisés : `fit(X)` sans y)."
+        example: |
+          from sklearn.cluster import KMeans
+          from sklearn.decomposition import PCA
+          labels = KMeans(n_clusters=2, n_init=10, random_state=0).fit_predict(X)
+          pca = PCA(n_components=2).fit(X)
+          np.bincount(labels), pca.explained_variance_ratio_.round(2)

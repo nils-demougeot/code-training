@@ -9,19 +9,23 @@ Python s'exécute **dans le navigateur** (Pyodide/WebAssembly, sur le processeur
 | Section | Contenu |
 |---|---|
 | **Accueil** | Plan du jour (cartes → exercice → quiz), objectif d'XP, série de jours, maîtrise par domaine, heatmap d'activité, badges |
-| **Exercices** | 64 exercices avec tests visibles et cachés : Python, NumPy, Pandas, SQL, ML, Deep Learning, algo. Indices progressifs, solution, fiche « À retenir », notes perso, chrono |
-| **Mémoire** | 172 cartes de syntaxe. Tu **tapes** la réponse, elle est **exécutée** et comparée à la référence (types et dtypes compris), puis reprogrammée par répétition espacée (SM-2) |
-| **Quiz éclair** | 76 questions « prédis la sortie » chronométrées, avec combo. Les questions ratées reviennent plus souvent |
-| **Labs** | 4 labs interactifs : réseau de neurones large vs profond (entraînement en direct, gradient par couche), comparaison de modèles de ML (biais-variance), optimiseurs (SGD, Momentum, Adam), shapes et broadcasting. 21 expériences guidées |
+| **Exercices** | 74 exercices avec tests visibles et cachés : Python, NumPy, Pandas, SQL, probas & stats, ML, Deep Learning, algo. Indices progressifs, solution, fiche « À retenir », notes perso, chrono. Certains ont un **bonus de complexité** : validés même en O(n²), mais avec un conseil si la complexité attendue en entretien n'est pas atteinte |
+| **Mémoire** | 192 cartes de syntaxe. Tu **tapes** la réponse, elle est **exécutée** et comparée à la référence (types et dtypes compris), puis reprogrammée par répétition espacée (SM-2). Mode **« Réécris de mémoire »** : refaire un exercice déjà résolu depuis une page blanche, avec chrono et diff contre la solution de référence |
+| **Quiz éclair** | 90 questions « prédis la sortie » chronométrées, avec combo. Les questions ratées reviennent plus souvent |
+| **Labs** | 7 labs interactifs : réseau de neurones large vs profond (entraînement en direct, gradient par couche), comparaison de modèles de ML (biais-variance), optimiseurs (SGD, Momentum, Adam), shapes et broadcasting, théorème central limite, A/B tests (puissance, peeking), Bayes et dépistage. 31 expériences guidées |
 | **Projets** | 5 projets multi-étapes : réseau de neurones from scratch, pipeline ML de bout en bout, analyse e-commerce Pandas, moteur de recherche TF-IDF, classifieur PyTorch |
-| **Fiches** | 10 synthèses : list vs ndarray vs DataFrame vs Tensor, axes et broadcasting, Pandas, pipelines scikit-learn, choix de modèle, métriques, réseaux de neurones, boucle PyTorch, complexité, méthode d'entretien |
+| **Design ML** | 6 cas « conçois un système de… » (churn, fraude, recommandation, ETA, modération, prévision) en 5 étapes : tu rédiges ta réponse, puis tu coches les points clés couverts et tu compares à une réponse modèle |
+| **Probas & stats** | 11 défis d'intuition (anniversaires, Monty Hall, dépistage, A/B test…) : tu devines, puis une simulation Monte-Carlo converge vers la vraie réponse. Plus les labs, exercices, quiz, cartes et fiche du domaine |
+| **Fiches** | 11 synthèses : list vs ndarray vs DataFrame vs Tensor, axes et broadcasting, Pandas, pipelines scikit-learn, choix de modèle, métriques, réseaux de neurones, boucle PyTorch, complexité, méthode d'entretien, probas & stats |
+| **Documentation** | Une doc maison de 149 entrées (Python, NumPy, Pandas, scikit-learn, PyTorch, SQL, scipy.stats), avec un exemple typique **exécutable** pour chacune. Aussi accessible en tiroir depuis l'éditeur (bouton Doc, ou `F2` sur un mot) |
 | **Entretien blanc** | Chrono, 1 à 3 problèmes, sans indice ni autocomplétion, checklist de méthode, débrief |
 
 Fonctions transverses :
 
 - Les exercices résolus **reviennent en révision** quelques jours plus tard, pour les re-résoudre de mémoire.
 - XP, niveaux et badges.
-- Recherche globale avec `Ctrl+K`. `Ctrl+Entrée` exécute, `Ctrl+Maj+Entrée` soumet.
+- Recherche globale avec `Ctrl+K` (exercices, cartes, doc, cas de design…).
+- `Ctrl+Entrée` ou `Ctrl+S` **exécute sans valider** : chaque expression de premier niveau est affichée (pas besoin de `print`), et les exemples de l'énoncé sont appelés sur ton code. `Ctrl+Maj+Entrée` soumet.
 
 ## Démarrer en local
 
@@ -76,11 +80,13 @@ Tout le contenu est en YAML dans [`content/`](content), sans code à toucher dan
 
 ```
 content/
-  exercises/<domaine>/<id>.yaml   # domaine : python, numpy, pandas, sql, ml, dl, algo
+  exercises/<domaine>/<id>.yaml   # domaine : python, numpy, pandas, sql, stats, ml, dl, algo
   cards/*.yaml                    # paquets de cartes
   quiz/<domaine>.yaml
   projects/*.yaml
   fiches/*.yaml
+  docs/*.yaml                     # documentation maison (exemples exécutés par le validateur)
+  design/*.yaml                   # cas de design ML
   shared/*.py                     # setup partagé (base SQLite, DataFrame de commandes)
 ```
 
@@ -119,6 +125,20 @@ explanation: |
 
 Options de test : `strict` (types et dtypes identiques), `unordered`, `rtol`, `atol`. Exercices SQL : `language: sql` + `shared: sql_shop`, la requête est disponible en Python sous le nom `QUERY`.
 
+Bonus de complexité : un test `bonus: true` ne bloque pas la validation. Il s'accompagne d'un bloc `complexity` (et d'une solution `naive` que le validateur vérifie : elle passe les tests requis mais échoue au bonus). `growth_exponent(f, make_input)` mesure l'exposant k de t ∝ nᵏ, indépendamment de la vitesse de la machine :
+
+```yaml
+complexity: {target: "O(n)", note: "Un dict des valeurs déjà vues évite la double boucle."}
+naive: |
+  ...
+tests:
+  - name: "Bonus : complexité O(n)"
+    bonus: true
+    check: |
+      k = growth_exponent(two_sum, lambda n: (list(range(n)), 2 * n - 3))
+      assert k < 1.5, f"Ta solution semble en O(n^{k:.1f})"
+```
+
 Cartes : `kind: expr` (défaut, compare des valeurs), `stmt` (compare la variable `var`), `stdout`, ou `reveal` (auto-évaluée). `loose: true` ignore les différences de type.
 
 ### Valider le contenu
@@ -129,7 +149,7 @@ pip install -r scripts/requirements-content.txt     # mêmes versions que Pyodid
 python scripts/validate_content.py                  # --only <id> pour cibler, --skip-local sans PyTorch
 ```
 
-Le validateur vérifie que chaque **solution passe** ses tests, que chaque **code de départ échoue**, que chaque carte s'exécute, et que la réponse de chaque question de quiz `verify: true` est bien la sortie réelle du code. La CI le lance sur chaque pull request.
+Le validateur vérifie que chaque **solution passe** ses tests, que chaque **code de départ échoue**, que chaque carte et chaque exemple de doc s'exécutent, que les solutions naïves déclenchent bien le bonus de complexité, et que la réponse de chaque question de quiz `verify: true` est bien la sortie réelle du code. La CI le lance sur chaque pull request.
 
 ## Architecture
 

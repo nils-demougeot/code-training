@@ -1,10 +1,10 @@
 import clsx from 'clsx'
-import { BookMarked, ChevronDown, Layers, Play, Repeat } from 'lucide-react'
+import { BookMarked, Brain, ChevronDown, Layers, Play, Repeat, Shuffle } from 'lucide-react'
 import { useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { CodeBlock } from '@/components/Markdown'
 import { DomainChip, PageHeader, ProgressBar } from '@/components/ui'
-import { decks } from '@/lib/content'
+import { decks, exercises } from '@/lib/content'
 import { DOMAINS } from '@/lib/domains'
 import { useProgress } from '@/lib/progress'
 import { dueCards, newCards } from '@/lib/recommend'
@@ -15,6 +15,15 @@ export default function Memory() {
   const due = useMemo(() => dueCards(p), [p])
   const fresh = useMemo(() => newCards(p), [p])
   const [open, setOpen] = useState<string | null>(null)
+  const navigate = useNavigate()
+  // Solved exercises, the ones rewritten from memory the longest time ago first.
+  const recallable = useMemo(
+    () =>
+      exercises
+        .filter((e) => p.exercises[e.id]?.status === 'solved' && e.engine !== 'local')
+        .sort((a, b) => (p.exercises[a.id].lastSolvedAt ?? 0) - (p.exercises[b.id].lastSolvedAt ?? 0)),
+    [p],
+  )
 
   const upcoming = useMemo(() => {
     const now = Date.now()
@@ -67,6 +76,56 @@ export default function Memory() {
             </div>
           </div>
         </div>
+      </section>
+
+      <section className="card mb-8 p-6">
+        <div className="flex flex-wrap items-start gap-4">
+          <div className="flex size-11 items-center justify-center rounded-xl bg-accent/15 text-accent">
+            <Brain className="size-6" />
+          </div>
+          <div className="min-w-60 flex-1">
+            <h2 className="font-semibold">Réécrire de mémoire</h2>
+            <p className="text-sm text-muted">
+              Reprends un exercice déjà résolu sur une page blanche, sans indice ni solution, contre la montre. À la fin, un
+              diff te montre ce qui diffère de la référence. Le meilleur moyen de graver la syntaxe.
+            </p>
+          </div>
+          <button
+            className="btn btn-primary"
+            disabled={!recallable.length}
+            onClick={() => {
+              // Random pick among the least recently practiced half.
+              const pool = recallable.slice(0, Math.max(1, Math.ceil(recallable.length / 2)))
+              const pick = pool[Math.floor(Math.random() * pool.length)]
+              navigate(`/exercices/${pick.id}?recall=1`)
+            }}
+          >
+            <Shuffle className="size-4" />
+            Défi aléatoire
+          </button>
+        </div>
+        {recallable.length === 0 ? (
+          <p className="mt-4 text-sm text-faint">Résous d’abord quelques exercices : ils apparaîtront ici.</p>
+        ) : (
+          <div className="mt-5 grid gap-2 sm:grid-cols-2">
+            {recallable.slice(0, 8).map((e) => {
+              const ep = p.exercises[e.id]
+              return (
+                <Link
+                  key={e.id}
+                  to={`/exercices/${e.id}?recall=1`}
+                  className="flex items-center gap-3 rounded-xl border border-line bg-white/[0.02] px-3 py-2 transition hover:border-line-strong"
+                >
+                  <span className="size-2 shrink-0 rounded-full" style={{ background: DOMAINS[e.domain].color }} />
+                  <span className="min-w-0 flex-1 truncate text-sm">{e.title}</span>
+                  <span className="shrink-0 text-[11px] text-faint">
+                    {ep.recalls ? `${ep.recalls}× · record ${ep.bestRecallSec}s` : 'jamais réécrit'}
+                  </span>
+                </Link>
+              )
+            })}
+          </div>
+        )}
       </section>
 
       <div className="section-title mb-3">Paquets</div>

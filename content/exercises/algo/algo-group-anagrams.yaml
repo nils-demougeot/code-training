@@ -36,6 +36,11 @@ tests:
     expected: "[['a', 'a'], ['b']]"
   - call: "group_anagrams(['eat', 'tea', 'tan', 'ate', 'nat', 'bat'])"
     hidden: true
+  - name: "Bonus : complexité linéaire"
+    bonus: true
+    check: |
+      k = growth_exponent(group_anagrams, lambda n: ([f"w{i}" for i in range(n)],))
+      assert k < 1.5, f"Ta solution semble en O(n^{k:.1f}) : chercher le groupe d'un mot en parcourant tous les groupes coûte cher. Une clé canonique dans un dict trouve le groupe en O(1)."
 hints:
   - "Deux anagrammes ont les mêmes lettres triées : `''.join(sorted(w))` est une **clé canonique**."
   - "Un dict `clé → liste de mots` ; depuis Python 3.7, les dicts gardent l'ordre d'insertion."
@@ -43,3 +48,18 @@ explanation: |
   - Pattern **clé canonique** : regrouper des objets « équivalents » en calculant une représentation commune (lettres triées, tuple de comptes de lettres, forme normalisée…).
   - Clé alternative en O(L) au lieu de O(L log L) : `tuple(Counter(w).items())` triés, ou un tableau de 26 compteurs.
   - Les clés d'un dict doivent être **hashables** : `str`, `tuple`, oui ; `list`, `dict`, non.
+complexity:
+  target: O(n·L log L)
+  note: |
+    Pour chaque mot, parcourir les groupes existants pour trouver le sien coûte O(nombre de groupes), donc O(n²) au total. Avec un **dict** indexé par la clé canonique `''.join(sorted(w))`, chaque mot trouve son groupe en O(1) (plus le tri de ses L lettres).
+naive: |
+  def group_anagrams(words):
+      groups = []
+      for w in words:
+          for g in groups:
+              if sorted(g[0]) == sorted(w):
+                  g.append(w)
+                  break
+          else:
+              groups.append([w])
+      return groups
