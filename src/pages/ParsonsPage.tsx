@@ -532,13 +532,15 @@ function Column({
 }
 
 function BlockView({
-  block, language, className, children, highlighted,
+  block, language, className, children, highlighted, wrap,
 }: {
   block: ParsonsBlock
   language?: string
   className?: string
   children?: React.ReactNode
   highlighted?: boolean
+  /** Wrap long lines (narrow pool column) instead of scrolling. */
+  wrap?: boolean
 }) {
   return (
     <div
@@ -551,7 +553,7 @@ function BlockView({
       <span className="flex items-center px-1 text-faint">
         <GripVertical className="size-3.5" />
       </span>
-      <pre className="min-w-0 flex-1 overflow-x-auto py-1.5 pr-2 text-[#c0caf5]">
+      <pre className={clsx('min-w-0 flex-1 py-1.5 pr-2 text-[#c0caf5]', wrap ? 'whitespace-pre-wrap break-all' : 'overflow-x-auto')}>
         <code dangerouslySetInnerHTML={{ __html: highlight(blockText(block), language === 'sql' ? 'sql' : 'python') }} />
       </pre>
       {children}
@@ -610,7 +612,7 @@ function SortableBlock({
       onClick={inProgram ? undefined : onClick}
       data-block={id}
     >
-      <BlockView block={block} language={language} highlighted={highlighted} className={clsx(!inProgram && 'cursor-pointer')}>
+      <BlockView block={block} language={language} highlighted={highlighted} wrap={!inProgram} className={clsx(!inProgram && 'cursor-pointer')}>
         {inProgram && (
           <span
             className="absolute top-1/2 right-1 hidden -translate-y-1/2 items-center gap-0.5 rounded-md border border-white/10 bg-[#11131c]/95 px-0.5 shadow-lg group-hover/block:flex group-focus/block:flex"

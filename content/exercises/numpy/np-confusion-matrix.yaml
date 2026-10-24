@@ -47,7 +47,7 @@ tests:
     check: |
       from sklearn.metrics import confusion_matrix as sk_cm, recall_score
       rng = np.random.default_rng(1)
-      yt, yp = rng.integers(0, 4, 500), rng.integers(0, 4, 500)
+      yt, yp = rng.integers(0, 4, 500).astype(int), rng.integers(0, 4, 500).astype(int)
       C = confusion_matrix(yt, yp, 4)
       assert np.array_equal(C, sk_cm(yt, yp, labels=range(4)))
       assert np.allclose(per_class_recall(C), recall_score(yt, yp, average=None))
@@ -89,6 +89,7 @@ hints:
   - "Encode chaque couple `(vrai, prédit)` en un seul entier `vrai * n + prédit`, puis compte avec `np.bincount(..., minlength=n * n)`."
   - "`C[y_true, y_pred] += 1` ne marche pas : avec des indices répétés, chaque case n'est incrémentée qu'une fois. `np.add.at(C, (y_true, y_pred), 1)` gère les doublons."
   - "Recall de la classe i : diagonale divisée par la somme de la **ligne** i."
+  - "Dans le navigateur (WebAssembly, 32 bits), `np.bincount` exige des entiers de la taille native : convertis avec `.astype(np.intp)` si tes étiquettes sont en `int64`."
 explanation: |
   - Astuce d'encodage : `i * n + j` transforme une paire en indice unique → un seul `bincount`.
   - ⚠️ `C[idx] += 1` avec des indices dupliqués est **bufferisé** : chaque position n'est incrémentée qu'une fois. `np.add.at` est la version non bufferisée.
