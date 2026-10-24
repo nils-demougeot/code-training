@@ -1,0 +1,101 @@
+id: algo-product-except-self
+title: Produit de tous les autres
+domain: algo
+difficulty: medium
+minutes: 10
+interview: true
+tags: [préfixes, suffixes, tableau]
+statement: |
+  Écris `product_except_self(nums)` : une liste où l'élément `i` est le produit de **tous les éléments de `nums` sauf `nums[i]`**.
+
+  ```python
+  product_except_self([1, 2, 3, 4])   # [24, 12, 8, 6]
+  ```
+
+  Contrainte classique d'entretien : **sans division** (les zéros la rendraient fausse), en O(n).
+starter: |
+  def product_except_self(nums):
+      pass
+solution: |
+  def product_except_self(nums):
+      n = len(nums)
+      out = [1] * n
+      prefix = 1
+      for i in range(n):
+          out[i] = prefix
+          prefix *= nums[i]
+      suffix = 1
+      for i in range(n - 1, -1, -1):
+          out[i] *= suffix
+          suffix *= nums[i]
+      return out
+tests:
+  - call: product_except_self([1, 2, 3, 4])
+    expected: "[24, 12, 8, 6]"
+  - call: product_except_self([2, 0, 3])
+    expected: "[0, 6, 0]"
+  - call: product_except_self([0, 0, 5])
+    expected: "[0, 0, 0]"
+  - call: product_except_self([7])
+    expected: "[1]"
+  - call: product_except_self([-1, 1, 0, -3, 3])
+  - name: Comparé à la définition
+    check: |
+      import math, random
+      rnd = random.Random(2)
+      for _ in range(200):
+          nums = [rnd.randint(-3, 3) for _ in range(rnd.randint(1, 8))]
+          expected = [math.prod(nums[:i] + nums[i + 1:]) for i in range(len(nums))]
+          assert product_except_self(nums) == expected, nums
+  - name: "Bonus : complexité O(n)"
+    bonus: true
+    check: |
+      k = growth_exponent(product_except_self, lambda n: ([1, -1] * (n // 2),))
+      assert k < 1.5, f"Ta solution semble en O(n^{k:.1f}) : recalculer le produit des autres pour chaque i coûte O(n). Utilise les produits préfixes et suffixes."
+complexity:
+  target: O(n)
+  note: |
+    Le produit de tous sauf `i` = (produit de tout ce qui est **avant** `i`) × (produit de tout ce qui est **après** `i`). Deux passes, l'une de gauche à droite, l'autre de droite à gauche, suffisent.
+naive: |
+  def product_except_self(nums):
+      out = []
+      for i in range(len(nums)):
+          p = 1
+          for j, x in enumerate(nums):
+              if j != i:
+                  p *= x
+          out.append(p)
+      return out
+wrong:
+  - |
+    import math
+
+
+    def product_except_self(nums):
+        total = math.prod(nums)
+        return [total // x if x else 0 for x in nums]
+  - |
+    def product_except_self(nums):
+        n = len(nums)
+        out = [1] * n
+        prefix = 1
+        for i in range(n):
+            prefix *= nums[i]
+            out[i] = prefix
+        suffix = 1
+        for i in range(n - 1, -1, -1):
+            suffix *= nums[i]
+            out[i] *= suffix
+        return out
+parsons:
+  distractors:
+    - line: "for i in range(n - 1, 0, -1):"
+      replaces: "for i in range(n - 1, -1, -1):"
+hints:
+  - "`out[i]` = produit de `nums[:i]` × produit de `nums[i+1:]`."
+  - "Première passe : écris dans `out[i]` le produit de tout ce qui précède, **avant** de multiplier par `nums[i]`."
+  - "Deuxième passe en sens inverse avec un produit suffixe."
+explanation: |
+  - Le pattern **préfixe / suffixe** : précalculer ce qui est à gauche et à droite de chaque position. On le retrouve dans « pluie piégée » (trapping rain water) et dans les sommes de plages.
+  - La division échoue avec un zéro (et deux zéros rendent tout nul) : la version préfixe/suffixe les gère naturellement.
+  - Ordre crucial dans la boucle : affecter `out[i] = prefix` **puis** `prefix *= nums[i]`.

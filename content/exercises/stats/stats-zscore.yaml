@@ -1,0 +1,110 @@
+id: stats-zscore
+title: Détecter des valeurs aberrantes
+domain: stats
+difficulty: easy
+minutes: 7
+tags: [z-score, IQR, robustesse, médiane]
+statement: |
+  Des temps de chargement de page (en ms) contiennent quelques valeurs aberrantes.
+
+  1. `zscores(x)` : les z-scores $\frac{x - \bar x}{s}$ (écart-type **d'échantillon**, `ddof=1`), en tableau NumPy.
+  2. `outliers_z(x, k=3)` : un masque booléen des points avec $|z| > k$.
+  3. `outliers_iqr(x)` : un masque booléen des points en dehors de $[Q_1 - 1{,}5 \cdot IQR,\ Q_3 + 1{,}5 \cdot IQR]$ avec `np.percentile`.
+
+  Avec **Exécuter**, compare les deux méthodes sur `LATENCES` : laquelle détecte les deux pics ?
+setup: |
+  import numpy as np
+  LATENCES = np.array([120, 115, 130, 125, 118, 122, 2400, 119, 127, 121, 116, 1800, 124, 123, 117])
+starter: |
+  import numpy as np
+
+
+  def zscores(x):
+      pass
+
+
+  def outliers_z(x, k=3):
+      pass
+
+
+  def outliers_iqr(x):
+      pass
+solution: |
+  import numpy as np
+
+
+  def zscores(x):
+      x = np.asarray(x, dtype=float)
+      return (x - x.mean()) / x.std(ddof=1)
+
+
+  def outliers_z(x, k=3):
+      return np.abs(zscores(x)) > k
+
+
+  def outliers_iqr(x):
+      q1, q3 = np.percentile(x, [25, 75])
+      iqr = q3 - q1
+      return (x < q1 - 1.5 * iqr) | (x > q3 + 1.5 * iqr)
+tests:
+  - call: zscores([1, 2, 3])
+    expected: np.array([-1.0, 0.0, 1.0])
+  - call: outliers_z(LATENCES)
+  - name: Les deux pics détectés par l'IQR
+    call: np.flatnonzero(outliers_iqr(LATENCES))
+    expected: np.array([6, 11])
+  - call: outliers_iqr(np.array([1, 2, 3, 4, 100]))
+  - name: Sur une gaussienne, environ 0,3 % au-delà de 3 sigma
+    check: |
+      z = np.random.default_rng(0).normal(10, 2, 200_000)
+      rate = outliers_z(z).mean()
+      assert 0.002 < rate < 0.0035, rate
+wrong:
+  - |
+    import numpy as np
+
+
+    def zscores(x):
+        x = np.asarray(x, dtype=float)
+        return (x - np.median(x)) / x.std()
+
+
+    def outliers_z(x, k=3):
+        return zscores(x) > k
+
+
+    def outliers_iqr(x):
+        q1, q3 = np.percentile(x, [25, 75])
+        iqr = q3 - q1
+        return (x < q1 - 1.5 * iqr) | (x > q3 + 1.5 * iqr)
+  - |
+    import numpy as np
+
+
+    def zscores(x):
+        x = np.asarray(x, dtype=float)
+        return (x - x.mean()) / x.std(ddof=1)
+
+
+    def outliers_z(x, k=3):
+        return np.abs(zscores(x)) > k
+
+
+    def outliers_iqr(x):
+        q1, q3 = np.percentile(x, [25, 75])
+        return (x < q1) | (x > q3)
+parsons:
+  distractors:
+    - line: "return zscores(x) > k"
+      replaces: "return np.abs(zscores(x)) > k"
+    - line: "return (x < q1 - 1.5 * iqr) & (x > q3 + 1.5 * iqr)"
+      replaces: "return (x < q1 - 1.5 * iqr) | (x > q3 + 1.5 * iqr)"
+hints:
+  - "z-score : `(x - x.mean()) / x.std(ddof=1)`."
+  - "`np.abs(z) > k` pour détecter des deux côtés."
+  - "`q1, q3 = np.percentile(x, [25, 75])`, puis combine deux masques avec `|` (et des parenthèses)."
+explanation: |
+  - Le z-score s'appuie sur la **moyenne et l'écart-type**, eux-mêmes gonflés par les valeurs aberrantes (*masking*) : ici aucun point ne dépasse 3, alors que 2 400 ms est absurde.
+  - La règle de l'**IQR** (celle des boîtes à moustaches) repose sur des quantiles, robustes aux extrêmes.
+  - Variante robuste du z-score : utiliser la médiane et la MAD (*median absolute deviation*).
+  - Une valeur aberrante n'est pas forcément une erreur : une latence de 2,4 s est peut-être *le* problème à investiguer.

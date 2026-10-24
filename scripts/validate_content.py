@@ -13,7 +13,9 @@ import argparse
 import json
 import os
 import re
+import shutil
 import signal
+import subprocess
 import sys
 import tempfile
 from pathlib import Path
@@ -35,11 +37,16 @@ errors: list[str] = []
 warnings: list[str] = []
 
 
-class Timeout(Exception):
-    pass
+class Timeout(BaseException):
+    """BaseException so that an `except Exception` in the code under test cannot swallow it."""
+
+
+_timed_out = False
 
 
 def _alarm(_signum, _frame):
+    global _timed_out
+    _timed_out = True
     raise Timeout()
 
 
@@ -47,13 +54,21 @@ signal.signal(signal.SIGALRM, _alarm)
 
 
 def run(payload, seconds=120):
-    signal.alarm(seconds)
+    """Runs the harness with a deadline. The harness reports every exception to the user (it catches
+    BaseException), so a single alarm would be swallowed by the current test and the next one could
+    loop forever: past the deadline the alarm fires again every 0.5 s until the harness returns."""
+    global _timed_out
+    _timed_out = False
+    signal.setitimer(signal.ITIMER_REAL, seconds, 0.5)
     try:
-        return json.loads(harness.run(json.dumps(payload)))
+        result = json.loads(harness.run(json.dumps(payload)))
     except Timeout:
-        return {"ok": False, "error": f"timeout after {seconds}s"}
+        result = None
     finally:
-        signal.alarm(0)
+        signal.setitimer(signal.ITIMER_REAL, 0)
+    if _timed_out or result is None:
+        return {"ok": False, "error": f"timeout after {seconds}s"}
+    return result
 
 
 def torch_available():
@@ -130,6 +145,11 @@ def check_exercise(path, ex, card_ids, skip_local):
     res = run({"mode": "test", "code": to_python(ex, ex["starter"]), "solution": solution, "setup": setup, "tests": tests})
     if res.get("ok") and res.get("total") and res.get("passed") == res.get("total"):
         errors.append(f"{eid}: starter already passes every test")
+    # Typical mistakes: the tests must reject each of them.
+    for i, wrong in enumerate(ex.get("wrong") or []):
+        res = run({"mode": "test", "code": to_python(ex, wrong), "solution": solution, "setup": setup, "tests": tests}, 20)
+        if res.get("ok") and res.get("total") and res.get("passed") == res.get("total"):
+            errors.append(f"{eid}: wrong variant #{i + 1} passes every test (tests too weak)")
 
 
 def check_project(path, pr, skip_local):
@@ -240,6 +260,54 @@ def check_docs(path, lib):
     return n
 
 
+PARSONS_FIELDS = ["id", "title", "domain", "difficulty", "statement", "solution", "tests"]
+
+
+def check_parsons(items, only):
+    """Parsons problems: the program rebuilt from the blocks passes the tests, every distractor
+    swapped in for the line it imitates makes them fail."""
+    if not shutil.which("node"):
+        warnings.append("node not found: Parsons blocks not checked")
+        return 0
+    exported = json.loads(subprocess.run(
+        ["node", str(ROOT / "scripts" / "parsons-export.mjs")], capture_output=True, text=True, check=True, cwd=ROOT,
+    ).stdout)
+    n = 0
+    for entry in exported:
+        item = items.get(entry["id"])
+        if item is None or (only and only not in entry["id"]):
+            continue
+        name = f"blocs {entry['id']}"
+        if entry["kind"] == "parsons":
+            for key in PARSONS_FIELDS:
+                if key not in item:
+                    errors.append(f"{name}: missing field {key!r}")
+            if item.get("domain") not in DOMAINS or item.get("difficulty") not in DIFFICULTIES:
+                errors.append(f"{name}: bad domain or difficulty")
+            if not entry["eligible"]:
+                errors.append(f"{name}: needs between 3 and 32 blocks (has {entry['blocks']})")
+        if not entry["eligible"]:
+            continue
+        n += 1
+        setup = setup_of(item)
+        tests = [t for t in item["tests"] if not t.get("bonus")]
+        solution = to_python(item, item["solution"])
+        res = run({"mode": "test", "code": to_python(item, entry["program"]), "solution": solution, "setup": setup, "tests": tests})
+        if not res.get("ok") or res.get("passed") != res.get("total"):
+            errors.append(f"{name}: program rebuilt from the blocks fails\n{describe_failures(res)}")
+        for d in entry["distractors"]:
+            if d["program"] is None:
+                errors.append(f"{name}: distractor {d['line']!r} replaces no block")
+                continue
+            res = run({"mode": "test", "code": to_python(item, d["program"]), "solution": solution, "setup": setup, "tests": tests}, 20)
+            if res.get("ok") and res.get("total") and res.get("passed") == res.get("total"):
+                errors.append(f"{name}: distractor {d['line']!r} still passes every test")
+            elif "timeout" in str(res.get("error")):
+                # In the app the learner would wait for the engine timeout: pick a trap that fails fast.
+                warnings.append(f"{name}: distractor {d['line']!r} only fails by timeout")
+    return n
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--only", help="only check items whose id contains this string")
@@ -282,6 +350,17 @@ def main():
         print(f"  · {ex.get('id')}", flush=True)
         check_exercise(path, ex, card_ids, args.skip_local)
 
+    parsons_items = {}
+    for path in sorted((CONTENT / "exercises").rglob("*.yaml")):
+        ex = yaml.safe_load(path.read_text())
+        parsons_items[ex.get("id")] = ex
+    for path in sorted((CONTENT / "parsons").glob("*.yaml")):
+        item = yaml.safe_load(path.read_text())
+        if item.get("id") in parsons_items:
+            errors.append(f"duplicate id {item.get('id')} (parsons)")
+        parsons_items[item.get("id")] = item
+    n_parsons = check_parsons(parsons_items, args.only)
+
     n_proj = 0
     for path in sorted((CONTENT / "projects").glob("*.yaml")):
         pr = yaml.safe_load(path.read_text())
@@ -317,7 +396,7 @@ def main():
             if key not in f:
                 errors.append(f"{path.name}: missing {key}")
 
-    print(f"\n{n_ex} exercices, {n_proj} projets, {n_cards} cartes, {n_quiz} questions de quiz, {n_docs} entrées de doc vérifiés.")
+    print(f"\n{n_ex} exercices, {n_proj} projets, {n_cards} cartes, {n_quiz} questions de quiz, {n_docs} entrées de doc, {n_parsons} problèmes de blocs vérifiés.")
     for w in warnings:
         print(f"⚠️  {w}")
     for e in errors:

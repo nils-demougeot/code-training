@@ -1,0 +1,88 @@
+id: dl-dropout
+title: Dropout (inverted)
+domain: dl
+difficulty: easy
+minutes: 7
+tags: [dropout, régularisation, masque, train vs eval]
+statement: |
+  Implémente le **dropout inversé** en NumPy : `dropout(x, p, training, rng)`.
+
+  - En entraînement (`training=True`) : chaque élément est mis à zéro avec probabilité `p` (masque tiré avec `rng.random(x.shape) >= p`), et les éléments conservés sont **divisés par `1 - p`**.
+  - En évaluation (`training=False`) ou si `p == 0` : renvoie `x` inchangé.
+  - Lève une `ValueError` si `p` n'est pas dans `[0, 1)`.
+
+  Renvoie le tableau de sortie.
+starter: |
+  import numpy as np
+
+
+  def dropout(x, p, training, rng):
+      pass
+solution: |
+  import numpy as np
+
+
+  def dropout(x, p, training, rng):
+      if not 0 <= p < 1:
+          raise ValueError("p doit être dans [0, 1)")
+      if not training or p == 0:
+          return x
+      mask = rng.random(x.shape) >= p
+      return x * mask / (1 - p)
+tests:
+  - name: Mode évaluation = identité
+    check: |
+      x = np.arange(6.0).reshape(2, 3)
+      assert np.array_equal(dropout(x, 0.5, False, np.random.default_rng(0)), x)
+  - name: Même masque que la référence
+    call: dropout(np.ones((3, 4)), 0.5, True, np.random.default_rng(1))
+  - name: L'espérance est conservée
+    check: |
+      out = dropout(np.ones(400_000), 0.3, True, np.random.default_rng(2))
+      assert abs(out.mean() - 1) < 0.01, out.mean()
+      assert abs((out == 0).mean() - 0.3) < 0.005
+      assert np.allclose(out[out != 0], 1 / 0.7)
+  - name: p invalide
+    check: |
+      for bad in (-0.1, 1.0, 1.5):
+          try:
+              dropout(np.ones(3), bad, True, np.random.default_rng(0))
+          except ValueError:
+              continue
+          raise AssertionError(f"ValueError attendue pour p={bad}")
+wrong:
+  - |
+    import numpy as np
+
+
+    def dropout(x, p, training, rng):
+        if not 0 <= p < 1:
+            raise ValueError("p")
+        if not training:
+            return x * (1 - p)
+        mask = rng.random(x.shape) >= p
+        return x * mask
+  - |
+    import numpy as np
+
+
+    def dropout(x, p, training, rng):
+        if not 0 <= p < 1:
+            raise ValueError("p")
+        if not training or p == 0:
+            return x
+        mask = rng.random(x.shape) < p
+        return x * mask / (1 - p)
+parsons:
+  distractors:
+    - line: "return x * mask"
+      replaces: "return x * mask / (1 - p)"
+    - line: "mask = rng.random(x.shape) < p"
+      replaces: "mask = rng.random(x.shape) >= p"
+hints:
+  - "Le masque garde un élément avec probabilité `1 - p` : `rng.random(x.shape) >= p`."
+  - "Diviser par `1 - p` en entraînement garde la même **espérance** : en évaluation, on n'a alors rien à faire."
+explanation: |
+  - Le dropout éteint des neurones au hasard : le réseau ne peut pas compter sur un neurone précis, ce qui réduit le sur-apprentissage (un ensemble implicite de sous-réseaux).
+  - **Inverted dropout** : on compense à l'entraînement (`/ (1 - p)`), donc l'inférence est l'identité. C'est ce que fait `nn.Dropout`.
+  - D'où l'importance de `model.train()` / `model.eval()` en PyTorch : oublier `eval()` laisse le dropout actif pendant l'évaluation.

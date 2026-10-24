@@ -51,6 +51,17 @@ export interface PuzzleProgress {
   at: number
 }
 
+/** Code blocks (Parsons): which modes were solved at least once. */
+export interface ParsonsProgress {
+  attempts: number
+  solvedAt?: number
+  /** Solved while also placing the indentation. */
+  indent?: boolean
+  /** Solved with distractor blocks mixed in. */
+  traps?: boolean
+  updatedAt: number
+}
+
 export interface InterviewRecord {
   id: string
   date: number
@@ -78,6 +89,7 @@ export interface Progress {
   interviews: InterviewRecord[]
   design: Record<string, DesignProgress>
   puzzles: Record<string, PuzzleProgress>
+  parsons: Record<string, ParsonsProgress>
   badges: Record<string, number>
   updatedAt: number
 }
@@ -93,6 +105,7 @@ export const emptyProgress = (): Progress => ({
   interviews: [],
   design: {},
   puzzles: {},
+  parsons: {},
   badges: {},
   updatedAt: 0,
 })
@@ -226,6 +239,14 @@ export const BADGES: BadgeDef[] = [
     id: 'puzzles-5', emoji: '🎲', label: 'Intuition statistique', description: 'Obtenir 3 étoiles à 5 défis de probabilité',
     test: (p) => Object.values(p.puzzles ?? {}).filter((x) => x.stars >= 3).length >= 5,
   },
+  {
+    id: 'parsons-10', emoji: '🧩', label: 'Assembleur', description: 'Remettre en ordre 10 programmes en blocs',
+    test: (p) => Object.values(p.parsons ?? {}).filter((x) => x.solvedAt).length >= 10,
+  },
+  {
+    id: 'parsons-traps', emoji: '🪤', label: 'Déjoue les pièges', description: 'Réussir 5 programmes en blocs avec indentation et pièges',
+    test: (p) => Object.values(p.parsons ?? {}).filter((x) => x.indent && x.traps).length >= 5,
+  },
   { id: 'xp-1000', emoji: '🏆', label: 'Millier', description: 'Atteindre 1 000 XP', test: (p) => totalXp(p) >= 1000 },
 ]
 
@@ -296,6 +317,16 @@ export function mergeProgress(local: Progress, remote: Progress): Progress {
     puzzles: mergeRecords(local.puzzles ?? {}, r.puzzles ?? {}, (x, y) =>
       !x ? y : !y ? x : y.stars > x.stars || (y.stars === x.stars && y.at > x.at) ? y : x,
     ),
+    parsons: mergeRecords(local.parsons ?? {}, r.parsons ?? {}, (x, y) => {
+      if (!x || !y) return x ?? y
+      return {
+        attempts: Math.max(x.attempts, y.attempts),
+        solvedAt: minDefined(x.solvedAt, y.solvedAt),
+        indent: x.indent || y.indent,
+        traps: x.traps || y.traps,
+        updatedAt: Math.max(x.updatedAt, y.updatedAt),
+      }
+    }),
     badges: mergeRecords(local.badges, r.badges, minDefined),
     updatedAt: Math.max(local.updatedAt, r.updatedAt),
   }
@@ -350,6 +381,9 @@ interface ProgressStore {
   setDesignChecked: (caseId: string, stepId: string, checked: number[]) => void
   completeDesign: (caseId: string) => void
   answerPuzzle: (id: string, guess: number, stars: number) => void
+  attemptParsons: (id: string) => void
+  /** Returns the XP earned (first solve, then each harder mode solved for the first time). */
+  solveParsons: (id: string, mode: { indent: boolean; traps: boolean }) => number
 }
 
 let rewardId = 1
@@ -598,6 +632,32 @@ export const useProgress = create<ProgressStore>((set, get) => {
         40,
         'Cas de design ML terminé',
       )
+    },
+
+    attemptParsons: (id) =>
+      commit((p) => {
+        p.parsons ??= {}
+        const x = (p.parsons[id] ??= { attempts: 0, updatedAt: Date.now() })
+        x.attempts += 1
+        x.updatedAt = Date.now()
+      }),
+
+    solveParsons: (id, mode) => {
+      const prev = get().p.parsons?.[id]
+      const xp = (prev?.solvedAt ? 0 : 10) + (mode.indent && !prev?.indent ? 5 : 0) + (mode.traps && !prev?.traps ? 5 : 0)
+      commit(
+        (p) => {
+          p.parsons ??= {}
+          const x = (p.parsons[id] ??= { attempts: 0, updatedAt: Date.now() })
+          x.solvedAt ??= Date.now()
+          x.indent ||= mode.indent
+          x.traps ||= mode.traps
+          x.updatedAt = Date.now()
+        },
+        xp,
+        'Programme en blocs',
+      )
+      return xp
     },
 
     answerPuzzle: (id, guess, stars) => {

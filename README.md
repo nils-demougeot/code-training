@@ -9,9 +9,10 @@ Python s'exécute **dans le navigateur** (Pyodide/WebAssembly, sur le processeur
 | Section | Contenu |
 |---|---|
 | **Accueil** | Plan du jour (cartes → exercice → quiz), objectif d'XP, série de jours, maîtrise par domaine, heatmap d'activité, badges |
-| **Exercices** | 74 exercices avec tests visibles et cachés : Python, NumPy, Pandas, SQL, probas & stats, ML, Deep Learning, algo. Indices progressifs, solution, fiche « À retenir », notes perso, chrono. Certains ont un **bonus de complexité** : validés même en O(n²), mais avec un conseil si la complexité attendue en entretien n'est pas atteinte |
-| **Mémoire** | 192 cartes de syntaxe. Tu **tapes** la réponse, elle est **exécutée** et comparée à la référence (types et dtypes compris), puis reprogrammée par répétition espacée (SM-2). Mode **« Réécris de mémoire »** : refaire un exercice déjà résolu depuis une page blanche, avec chrono et diff contre la solution de référence |
-| **Quiz éclair** | 90 questions « prédis la sortie » chronométrées, avec combo. Les questions ratées reviennent plus souvent |
+| **Exercices** | 137 exercices avec tests visibles et cachés : Python, NumPy, Pandas, SQL, probas & stats, ML, Deep Learning, algo. Indices progressifs, solution, fiche « À retenir », notes perso, chrono. Certains ont un **bonus de complexité** : validés même en O(n²), mais avec un conseil si la complexité attendue en entretien n'est pas atteinte |
+| **Mémoire** | 247 cartes de syntaxe. Tu **tapes** la réponse, elle est **exécutée** et comparée à la référence (types et dtypes compris), puis reprogrammée par répétition espacée (SM-2). Mode **« Réécris de mémoire »** : refaire un exercice déjà résolu depuis une page blanche, avec chrono et diff contre la solution de référence |
+| **Quiz éclair** | 163 questions « prédis la sortie » chronométrées, avec combo. Les questions ratées reviennent plus souvent |
+| **Blocs de code** | Remettre les lignes d'une solution dans l'ordre et les indenter, sans se soucier de la syntaxe (glisser-déposer, clic ou clavier). Le programme assemblé est validé par les vrais tests, donc tout ordre correct est accepté. Options : indentation fournie ou à placer, pièges (lignes fausses mais plausibles). Plus de 140 programmes : tous les exercices, plus 14 problèmes écrits pour ce mode (boucle d'entraînement, backprop, BFS, tri fusion…) |
 | **Labs** | 7 labs interactifs : réseau de neurones large vs profond (entraînement en direct, gradient par couche), comparaison de modèles de ML (biais-variance), optimiseurs (SGD, Momentum, Adam), shapes et broadcasting, théorème central limite, A/B tests (puissance, peeking), Bayes et dépistage. 31 expériences guidées |
 | **Projets** | 5 projets multi-étapes : réseau de neurones from scratch, pipeline ML de bout en bout, analyse e-commerce Pandas, moteur de recherche TF-IDF, classifieur PyTorch |
 | **Design ML** | 6 cas « conçois un système de… » (churn, fraude, recommandation, ETA, modération, prévision) en 5 étapes : tu rédiges ta réponse, puis tu coches les points clés couverts et tu compares à une réponse modèle |
@@ -87,6 +88,7 @@ content/
   fiches/*.yaml
   docs/*.yaml                     # documentation maison (exemples exécutés par le validateur)
   design/*.yaml                   # cas de design ML
+  parsons/*.yaml                  # problèmes écrits pour le mode blocs de code
   shared/*.py                     # setup partagé (base SQLite, DataFrame de commandes)
 ```
 
@@ -125,6 +127,19 @@ explanation: |
 
 Options de test : `strict` (types et dtypes identiques), `unordered`, `rtol`, `atol`. Exercices SQL : `language: sql` + `shared: sql_shop`, la requête est disponible en Python sous le nom `QUERY`.
 
+Erreurs typiques et blocs de code : `wrong:` liste des solutions fausses réalistes (le validateur exige qu'au moins un test les rejette, ce qui prouve que les tests sont assez forts). `parsons:` règle la version en blocs : `skip: true`, ou des `distractors` (une ligne fausse et la ligne qu'elle imite, qui doit faire échouer les tests).
+
+```yaml
+wrong:
+  - |
+    def dedupe(items):
+        return list(set(items))      # perd l'ordre : doit échouer
+parsons:
+  distractors:
+    - line: "if k in seen:"
+      replaces: "if k not in seen:"
+```
+
 Bonus de complexité : un test `bonus: true` ne bloque pas la validation. Il s'accompagne d'un bloc `complexity` (et d'une solution `naive` que le validateur vérifie : elle passe les tests requis mais échoue au bonus). `growth_exponent(f, make_input)` mesure l'exposant k de t ∝ nᵏ, indépendamment de la vitesse de la machine :
 
 ```yaml
@@ -149,7 +164,7 @@ pip install -r scripts/requirements-content.txt     # mêmes versions que Pyodid
 python scripts/validate_content.py                  # --only <id> pour cibler, --skip-local sans PyTorch
 ```
 
-Le validateur vérifie que chaque **solution passe** ses tests, que chaque **code de départ échoue**, que chaque carte et chaque exemple de doc s'exécutent, que les solutions naïves déclenchent bien le bonus de complexité, et que la réponse de chaque question de quiz `verify: true` est bien la sortie réelle du code. La CI le lance sur chaque pull request.
+Le validateur vérifie que chaque **solution passe** ses tests, que chaque **code de départ échoue**, que chaque **erreur typique** listée dans `wrong:` est bien rejetée par les tests, que le programme reconstruit à partir des blocs passe et que chaque **piège** le fait échouer, que chaque carte et chaque exemple de doc s'exécutent, que les solutions naïves déclenchent bien le bonus de complexité, et que la réponse de chaque question de quiz `verify: true` est bien la sortie réelle du code. La CI le lance sur chaque pull request.
 
 ## Architecture
 

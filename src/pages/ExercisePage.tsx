@@ -2,7 +2,7 @@ import confetti from 'canvas-confetti'
 import clsx from 'clsx'
 import {
   ArrowLeft, ArrowRight, BookOpenCheck, Brain, CheckCircle2, Clock, Cpu, Eye, Gauge, Lightbulb, Lock, Medal, Mic,
-  NotebookPen, RotateCcw, Sparkles, Timer, X,
+  NotebookPen, Puzzle, RotateCcw, Sparkles, Timer, X,
 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
@@ -10,7 +10,7 @@ import { docLibForDomain } from '@/components/DocBrowser'
 import { CodeBlock, Markdown } from '@/components/Markdown'
 import { DifficultyBadge, DomainChip, Empty, Tabs } from '@/components/ui'
 import { SplitPane, Workspace } from '@/components/Workspace'
-import { cardById, exerciseById, exercises, setupOf, toPython } from '@/lib/content'
+import { cardById, exerciseById, exercises, parsonsById, setupOf, toPython } from '@/lib/content'
 import { runCode, runTests } from '@/lib/engine'
 import { diffLines, similarity } from '@/lib/diff'
 import { exerciseXp, useProgress } from '@/lib/progress'
@@ -259,6 +259,12 @@ function ExerciseView({ ex }: { ex: Exercise }) {
               <Gauge className="size-3" />
               Bonus {ex.complexity.target}
             </span>
+          )}
+          {parsonsById.has(ex.id) && !recall && (
+            <Link to={`/blocs/${ex.id}`} className="chip hover:text-fg" title="Remettre les lignes de la solution dans l’ordre, sans écrire de code">
+              <Puzzle className="size-3" />
+              En blocs
+            </Link>
           )}
           {!solved && (
             <span className="chip ml-auto text-accent-2" title="XP si tu réussis maintenant">

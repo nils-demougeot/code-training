@@ -1,0 +1,90 @@
+id: pd-melt
+title: Format large ↔ format long
+domain: pandas
+difficulty: medium
+minutes: 8
+tags: [melt, pivot, tidy data, reshape]
+statement: |
+  Un tableur de ventes est souvent en **format large** : une colonne par mois. Pour l'analyse (groupby, graphiques), on veut le **format long** : une ligne par observation.
+
+  1. `to_long(wide)` : `wide` a une colonne `store` puis une colonne par mois (`'2024-01'`, `'2024-02'`…). Renvoie un DataFrame à 3 colonnes `store`, `month`, `sales`, trié par `store` puis `month`, index `0..n-1`. Les ventes manquantes (`NaN`) sont **retirées**.
+  2. `to_wide(long)` : l'inverse, avec `store` en **colonne** (pas en index), les mois en colonnes dans l'ordre chronologique, et sans nom d'axe pour les colonnes.
+setup: |
+  import numpy as np
+  import pandas as pd
+  WIDE = pd.DataFrame({
+      "store": ["Lyon", "Paris", "Nantes"],
+      "2024-01": [120.0, 340.0, 80.0],
+      "2024-02": [135.0, np.nan, 95.0],
+      "2024-03": [150.0, 360.0, np.nan],
+  })
+starter: |
+  import pandas as pd
+
+
+  def to_long(wide):
+      pass
+
+
+  def to_wide(long):
+      pass
+solution: |
+  import pandas as pd
+
+
+  def to_long(wide):
+      long = wide.melt(id_vars='store', var_name='month', value_name='sales')
+      return long.dropna(subset=['sales']).sort_values(['store', 'month']).reset_index(drop=True)
+
+
+  def to_wide(long):
+      wide = long.pivot(index='store', columns='month', values='sales')
+      wide = wide.reset_index()
+      wide.columns.name = None
+      return wide
+tests:
+  - call: to_long(WIDE)
+  - call: len(to_long(WIDE))
+    expected: "7"
+  - call: to_wide(to_long(WIDE))
+  - name: Aller-retour (aux NaN et à l'ordre des lignes près)
+    check: |
+      back = to_wide(to_long(WIDE)).set_index('store').sort_index()
+      ref = WIDE.set_index('store').sort_index()
+      pd.testing.assert_frame_equal(back, ref, check_names=False)
+wrong:
+  - |
+    import pandas as pd
+
+
+    def to_long(wide):
+        return wide.melt(id_vars='store', var_name='month', value_name='sales')
+
+
+    def to_wide(long):
+        return long.pivot(index='store', columns='month', values='sales')
+  - |
+    import pandas as pd
+
+
+    def to_long(wide):
+        long = wide.melt(id_vars='store', var_name='month', value_name='sales')
+        return long.fillna(0).sort_values(['store', 'month']).reset_index(drop=True)
+
+
+    def to_wide(long):
+        wide = long.pivot(index='store', columns='month', values='sales').reset_index()
+        wide.columns.name = None
+        return wide
+parsons:
+  distractors:
+    - line: "long = wide.melt(id_vars='month', var_name='store', value_name='sales')"
+      replaces: "long = wide.melt(id_vars='store', var_name='month', value_name='sales')"
+hints:
+  - "`melt(id_vars='store', var_name='month', value_name='sales')` : les colonnes non listées dans `id_vars` deviennent des lignes."
+  - "`pivot(index=..., columns=..., values=...)` fait l'inverse ; `reset_index()` remet `store` en colonne."
+  - "`wide.columns.name = None` efface le nom d'axe `month` hérité du pivot."
+explanation: |
+  - **Tidy data** : une ligne = une observation, une colonne = une variable. C'est le format attendu par `groupby`, `seaborn`, la plupart des modèles.
+  - `melt` (large → long) et `pivot` / `pivot_table` (long → large) sont inverses. `pivot` échoue s'il y a des doublons `(index, columns)` : `pivot_table` agrège alors.
+  - En SQL, le passage long → large se fait avec des `SUM(CASE WHEN month = '2024-01' THEN sales END)`.

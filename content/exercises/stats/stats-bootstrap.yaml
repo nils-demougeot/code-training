@@ -59,6 +59,16 @@ tests:
   - name: Reproductible
     check: |
       assert bootstrap_ci(REVENUS, seed=5) == bootstrap_ci(REVENUS, seed=5)
+  - name: Le niveau alpha est respecté
+    check: |
+      x = np.random.default_rng(4).normal(0, 1, 500)
+      w05 = np.subtract(*bootstrap_ci(x, np.mean, n_boot=6000, alpha=0.05)[::-1])
+      w20 = np.subtract(*bootstrap_ci(x, np.mean, n_boot=6000, alpha=0.20)[::-1])
+      w50 = np.subtract(*bootstrap_ci(x, np.mean, n_boot=6000, alpha=0.50)[::-1])
+      assert 1.4 < w05 / w20 < 1.65, f"ratio des largeurs 95 % / 80 % : {w05 / w20:.2f} (≈ 1,53 attendu)"
+      assert 2.6 < w05 / w50 < 3.2, f"ratio des largeurs 95 % / 50 % : {w05 / w50:.2f} (≈ 2,91 attendu)"
+      lo, hi = bootstrap_ci(x, np.mean, n_boot=6000, alpha=0.05)
+      assert abs((lo + hi) / 2 - x.mean()) < 0.02, "l'intervalle devrait être centré sur la moyenne"
 hints:
   - "Rééchantillonner avec remise : `rng.choice(x, size=len(x), replace=True)` ou des indices `rng.integers(0, n, size=n)`."
   - "Version vectorisée : `idx = rng.integers(0, n, size=(n_boot, n))`, puis `np.median(x[idx], axis=1)`."

@@ -1,0 +1,118 @@
+id: pd-string-clean
+title: Nettoyer du texte avec .str
+domain: pandas
+difficulty: easy
+minutes: 7
+tags: [str accessor, regex, nettoyage, contains]
+statement: |
+  Un export CRM contient des emails et des numéros de téléphone saisis à la main.
+
+  1. `clean_emails(s)` : une Series où chaque email est en **minuscules** et sans espaces autour.
+  2. `email_domain(s)` : le domaine de chaque email nettoyé (la partie après `@`), ou `NaN` si l'email ne contient pas de `@`.
+  3. `normalize_phone(s)` : ne garde que les **chiffres**, puis remplace un préfixe `33` par `0` (`+33 6 12…` → `0612…`).
+  4. `is_professional(s)` : `True` si le domaine nettoyé n'est **pas** dans `{'gmail.com', 'yahoo.fr', 'hotmail.com'}`, `False` sinon (et `False` pour un email sans `@`).
+
+  Sans `apply` ni boucle : uniquement l'accessor `.str` et des opérations vectorisées.
+setup: |
+  import pandas as pd
+  EMAILS = pd.Series(["  Alice@Gmail.com", "bruno@DataCorp.io ", "chloe.yahoo.fr", "DAVID@yahoo.fr", "emma@startup.ai"])
+  PHONES = pd.Series(["+33 6 12 34 56 78", "06.98.76.54.32", "(33) 7-11-22-33-44", "0145678900"])
+starter: |
+  import pandas as pd
+
+
+  def clean_emails(s):
+      pass
+
+
+  def email_domain(s):
+      pass
+
+
+  def normalize_phone(s):
+      pass
+
+
+  def is_professional(s):
+      pass
+solution: |
+  import pandas as pd
+
+  PERSONAL = {'gmail.com', 'yahoo.fr', 'hotmail.com'}
+
+
+  def clean_emails(s):
+      return s.str.strip().str.lower()
+
+
+  def email_domain(s):
+      return clean_emails(s).str.extract(r'@(.+)$', expand=False)
+
+
+  def normalize_phone(s):
+      digits = s.str.replace(r'\D', '', regex=True)
+      return digits.str.replace(r'^33', '0', regex=True)
+
+
+  def is_professional(s):
+      domain = email_domain(s)
+      return domain.notna() & ~domain.isin(PERSONAL)
+tests:
+  - call: clean_emails(EMAILS)
+  - call: email_domain(EMAILS)
+  - call: normalize_phone(PHONES)
+    expected: "pd.Series(['0612345678', '0698765432', '0711223344', '0145678900'])"
+  - call: is_professional(EMAILS)
+    expected: "pd.Series([False, True, False, False, True])"
+wrong:
+  - |
+    import pandas as pd
+
+
+    def clean_emails(s):
+        return s.str.lower()
+
+
+    def email_domain(s):
+        return clean_emails(s).str.split('@').str[1]
+
+
+    def normalize_phone(s):
+        return s.str.replace(' ', '').str.replace('+33', '0')
+
+
+    def is_professional(s):
+        return ~email_domain(s).isin({'gmail.com', 'yahoo.fr', 'hotmail.com'})
+  - |
+    import pandas as pd
+
+
+    def clean_emails(s):
+        return s.str.strip().str.lower()
+
+
+    def email_domain(s):
+        return clean_emails(s).str.extract(r'@(.+)$', expand=False)
+
+
+    def normalize_phone(s):
+        return s.str.replace(r'\D', '', regex=True).str.replace('33', '0')
+
+
+    def is_professional(s):
+        return ~email_domain(s).isin({'gmail.com', 'yahoo.fr', 'hotmail.com'})
+parsons:
+  distractors:
+    - line: "return digits.str.replace('33', '0')"
+      replaces: "return digits.str.replace(r'^33', '0', regex=True)"
+    - line: "return s.str.lower().str.strip"
+      replaces: "return s.str.strip().str.lower()"
+hints:
+  - "Toutes les méthodes de `str` existent sur une Series via `.str` : `.str.strip()`, `.str.lower()`, `.str.replace(...)`."
+  - "`.str.extract(r'@(.+)$', expand=False)` renvoie le groupe capturé, ou `NaN` si pas de correspondance."
+  - "`\\D` = tout sauf un chiffre. `^33` ne remplace que **au début**."
+  - "`~serie.isin(ensemble)` inverse un test d'appartenance ; attention aux `NaN`."
+explanation: |
+  - L'accessor `.str` vectorise les méthodes de chaînes et gère les `NaN` sans planter.
+  - `str.replace('33', '0')` remplacerait **tous** les `33` du numéro : ancre la regex avec `^`.
+  - `~domain.isin(...)` vaut `True` pour `NaN` : combine avec `domain.notna()`.

@@ -85,3 +85,81 @@ questions:
     choices: ["Une erreur de calcul", "Le modèle est pire que prédire la moyenne", "Le modèle est parfait", "Les données sont standardisées"]
     answer: 1
     explain: "R² = 1 − SS_res / SS_tot. Si les erreurs du modèle dépassent celles de la moyenne constante, R² < 0."
+  - id: q-ml-stratify
+    topic: Validation
+    question: "Pourquoi `train_test_split(X, y, stratify=y)` sur un problème de fraude à 1 % ?"
+    choices:
+      - "Pour mélanger les données"
+      - "Pour garder 1 % de fraudes dans le train et dans le test"
+      - "Pour équilibrer les classes à 50/50"
+      - "Pour accélérer l'entraînement"
+    answer: 1
+    explain: "Sans stratification, le test peut contenir trop peu (voire aucune) fraude et les métriques deviennent instables. `stratify` ne rééquilibre pas : il conserve les proportions."
+  - id: q-ml-tree-scaling
+    topic: Prétraitement
+    question: "Quel modèle n'a **pas** besoin de standardiser les features ?"
+    choices: ["k plus proches voisins", "Régression logistique régularisée", "Random forest", "SVM à noyau RBF"]
+    answer: 2
+    explain: "Les arbres coupent sur des seuils d'une feature à la fois : une transformation monotone (comme l'échelle) ne change pas les splits. kNN, SVM et modèles régularisés dépendent des distances ou de la norme des poids."
+  - id: q-ml-onehot-trees
+    topic: Prétraitement
+    question: "Une feature `ville` a 5 000 modalités. Quel encodage éviter pour une régression logistique ?"
+    choices: ["One-hot sans précaution (5 000 colonnes creuses, risque de sur-apprentissage des villes rares)", "Regrouper les villes rares dans « autre »", "Target encoding calculé dans la validation croisée", "Embeddings appris"]
+    answer: 0
+    explain: "Un one-hot de très haute cardinalité crée beaucoup de colonnes vues une ou deux fois. On regroupe les modalités rares, ou on utilise un target encoding **sans fuite** (calculé sur les folds d'entraînement)."
+  - id: q-ml-gradient-boosting
+    topic: Modèles
+    question: "Différence entre random forest et gradient boosting ?"
+    choices:
+      - "Aucune, ce sont deux noms du même algorithme"
+      - "La forêt moyenne des arbres profonds indépendants (réduit la variance) ; le boosting ajoute des arbres peu profonds qui corrigent les erreurs des précédents (réduit le biais)"
+      - "Le boosting n'utilise pas d'arbres"
+      - "La forêt est séquentielle, le boosting parallèle"
+    answer: 1
+    explain: "Bagging (forêt) : arbres en parallèle sur des échantillons bootstrap. Boosting (XGBoost, LightGBM) : arbres en série sur les résidus. Le boosting est souvent le plus performant sur des données tabulaires, mais plus sensible aux hyperparamètres."
+  - id: q-ml-precision-recall-tradeoff
+    topic: Métriques
+    question: "On baisse le seuil de décision d'un classifieur de 0,5 à 0,2. En général…"
+    choices: ["precision ↑, recall ↓", "precision ↓, recall ↑", "les deux augmentent", "rien ne change pour l'AUC… ni pour la precision"]
+    answer: 1
+    explain: "Plus de prédictions positives : on rattrape plus de vrais positifs (recall ↑) mais avec plus de fausses alertes (precision ↓). L'AUC, elle, ne dépend pas du seuil."
+  - id: q-ml-cv-score-sklearn
+    topic: scikit-learn
+    verify: true
+    question: Qu'affiche ce code ?
+    code: |
+      from sklearn.datasets import load_iris
+      from sklearn.model_selection import cross_val_score
+      from sklearn.tree import DecisionTreeClassifier
+      X, y = load_iris(return_X_y=True)
+      scores = cross_val_score(DecisionTreeClassifier(random_state=0), X, y, cv=5)
+      print(scores.shape, type(scores).__name__)
+    choices: ["(5,) ndarray", "() float", "(5,) list", "(150,) ndarray"]
+    answer: 0
+    explain: "`cross_val_score` renvoie **un score par fold**. On rapporte la moyenne **et** l'écart-type : `scores.mean(), scores.std()`."
+  - id: q-ml-fit-on-test
+    topic: Fuite de données
+    question: "Quelle pratique crée une fuite de données ?"
+    choices:
+      - "Ajuster un StandardScaler sur tout le dataset avant le train_test_split"
+      - "Mettre le scaler dans un Pipeline évalué par validation croisée"
+      - "Choisir les hyperparamètres sur un jeu de validation"
+      - "Garder un jeu de test intouché jusqu'à la fin"
+    answer: 0
+    explain: "La moyenne et l'écart-type incluent alors des informations du test. Le Pipeline garantit que chaque étape est ajustée sur les seuls folds d'entraînement."
+  - id: q-ml-pca
+    topic: Non supervisé
+    question: "Que fait une ACP (PCA) ?"
+    choices:
+      - "Elle sélectionne les features les plus corrélées à la cible"
+      - "Elle projette les données sur les directions de plus grande variance, sans utiliser la cible"
+      - "Elle regroupe les points en clusters"
+      - "Elle normalise chaque feature entre 0 et 1"
+    answer: 1
+    explain: "L'ACP est non supervisée : les composantes maximisent la variance expliquée. Il faut standardiser avant, sinon les features de grande échelle dominent."
+  - id: q-ml-baseline
+    topic: Méthode
+    question: "Premier modèle à entraîner sur un nouveau problème de classification ?"
+    choices: ["Un réseau de neurones profond", "Une baseline simple (classe majoritaire, puis régression logistique)", "Un ensemble de 10 modèles", "XGBoost avec une recherche d'hyperparamètres de 12 h"]
+    answer: 1
+    explain: "La baseline fixe le niveau à battre et vérifie le pipeline de bout en bout. Si un modèle complexe ne la bat pas nettement, il ne vaut pas sa complexité."

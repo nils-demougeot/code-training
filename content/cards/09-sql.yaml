@@ -100,3 +100,58 @@ cards:
       SELECT id, customer_id, order_date,
              LAG(order_date) OVER (PARTITION BY customer_id ORDER BY order_date) AS prev_date
       FROM orders;
+  - id: sql-dense-rank
+    kind: reveal
+    prompt: "Le 2e salaire le plus élevé (ex æquo compris) avec une window function."
+    answer: |-
+      SELECT DISTINCT salary FROM (
+          SELECT salary, DENSE_RANK() OVER (ORDER BY salary DESC) AS rk
+          FROM employees
+      ) WHERE rk = 2;
+    note: "`DENSE_RANK` ne laisse pas de trou après une égalité (1, 2, 2, 3) ; `RANK` oui (1, 2, 2, 4)."
+  - id: sql-share-total
+    kind: reveal
+    prompt: "Part (en %) du CA de chaque client dans le total, sans GROUP BY supplémentaire."
+    answer: |-
+      SELECT name, revenue,
+             100.0 * revenue / SUM(revenue) OVER () AS share_pct
+      FROM revenue_per_customer;
+  - id: sql-moving-avg
+    kind: reveal
+    prompt: "Moyenne mobile sur 3 mois du CA mensuel."
+    answer: |-
+      SELECT month, revenue,
+             AVG(revenue) OVER (ORDER BY month ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) AS ma3
+      FROM monthly;
+  - id: sql-self-join-pairs
+    kind: reveal
+    prompt: "Les paires de produits achetés dans la même commande (chaque paire une seule fois)."
+    answer: |-
+      SELECT a.product_id, b.product_id, COUNT(*) AS n
+      FROM order_items a
+      JOIN order_items b ON a.order_id = b.order_id AND a.product_id < b.product_id
+      GROUP BY a.product_id, b.product_id;
+  - id: sql-not-exists
+    kind: reveal
+    prompt: "Les clients sans commande, avec NOT EXISTS (robuste aux NULL)."
+    answer: |-
+      SELECT c.name FROM customers c
+      WHERE NOT EXISTS (SELECT 1 FROM orders o WHERE o.customer_id = c.id);
+    note: "`NOT IN (sous-requête)` renvoie zéro ligne si la sous-requête contient un NULL."
+  - id: sql-conditional-agg
+    kind: reveal
+    prompt: "Par ville : nombre total de commandes et nombre de commandes annulées, en une requête."
+    answer: |-
+      SELECT city, COUNT(*) AS n,
+             SUM(CASE WHEN status = 'annulée' THEN 1 ELSE 0 END) AS n_cancelled
+      FROM orders JOIN customers ON customers.id = orders.customer_id
+      GROUP BY city;
+  - id: sql-first-per-group
+    kind: reveal
+    prompt: "La première commande de chaque client (une ligne par client, toutes les colonnes)."
+    answer: |-
+      WITH ranked AS (
+          SELECT *, ROW_NUMBER() OVER (PARTITION BY customer_id ORDER BY order_date, id) AS rn
+          FROM orders
+      )
+      SELECT * FROM ranked WHERE rn = 1;

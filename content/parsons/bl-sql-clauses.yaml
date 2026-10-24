@@ -1,0 +1,32 @@
+id: bl-sql-clauses
+title: L'ordre des clauses SQL
+domain: sql
+difficulty: easy
+language: sql
+shared: sql_shop
+statement: |
+  Remets dans l'ordre une requête complète : le **CA par catégorie** (commandes non annulées), pour les catégories dont le CA dépasse 300, trié par CA décroissant, en gardant les 3 premières.
+
+  Colonnes : `category`, `revenue`.
+solution: |
+  SELECT p.category, SUM(oi.quantity * p.price) AS revenue
+  FROM order_items oi
+  JOIN products p ON p.id = oi.product_id
+  JOIN orders o ON o.id = oi.order_id
+  WHERE o.status <> 'annulée'
+  GROUP BY p.category
+  HAVING SUM(oi.quantity * p.price) > 300
+  ORDER BY revenue DESC
+  LIMIT 3
+tests:
+  - name: Résultat de la requête
+    call: q(QUERY)
+distractors:
+  - line: "WHERE SUM(oi.quantity * p.price) > 300"
+    replaces: "HAVING SUM(oi.quantity * p.price) > 300"
+  - line: "ORDER BY revenue"
+    replaces: "ORDER BY revenue DESC"
+explanation: |
+  Ordre d'**écriture** : `SELECT … FROM … JOIN … WHERE … GROUP BY … HAVING … ORDER BY … LIMIT`.
+
+  Ordre d'**exécution** : `FROM/JOIN → WHERE → GROUP BY → HAVING → SELECT → ORDER BY → LIMIT`. C'est pourquoi le filtre sur un agrégat va dans `HAVING`, et l'alias `revenue` est utilisable dans `ORDER BY` mais pas dans `WHERE`.

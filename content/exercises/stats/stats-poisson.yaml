@@ -1,0 +1,144 @@
+id: stats-poisson
+title: Loi de Poisson et événements rares
+domain: stats
+difficulty: medium
+minutes: 8
+tags: [Poisson, math.exp, factorielle, approximation, scipy.stats]
+statement: |
+  Un service support reçoit en moyenne **λ = 4 tickets par heure**, au hasard.
+
+  1. `poisson_pmf(k, lam)` : $P(X = k) = e^{-\lambda} \frac{\lambda^k}{k!}$ avec `math`.
+  2. `p_more_than(k, lam)` : $P(X > k)$.
+  3. `staff_needed(lam, capacity_per_agent, risk=0.05)` : le **plus petit** nombre d'agents tel que la probabilité de recevoir plus de tickets que la capacité totale (`agents * capacity_per_agent`) soit **inférieure ou égale** à `risk`.
+  4. `simulate_counts(lam, hours, seed=0)` : simule le nombre de tickets sur `hours` heures en tirant des **temps d'attente exponentiels** entre tickets (moyenne `1 / lam`). Renvoie un tableau d'entiers de longueur `hours`.
+starter: |
+  import math
+  import numpy as np
+
+
+  def poisson_pmf(k, lam):
+      pass
+
+
+  def p_more_than(k, lam):
+      pass
+
+
+  def staff_needed(lam, capacity_per_agent, risk=0.05):
+      pass
+
+
+  def simulate_counts(lam, hours, seed=0):
+      pass
+solution: |
+  import math
+  import numpy as np
+
+
+  def poisson_pmf(k, lam):
+      return math.exp(-lam) * lam ** k / math.factorial(k)
+
+
+  def p_more_than(k, lam):
+      return 1 - sum(poisson_pmf(i, lam) for i in range(k + 1))
+
+
+  def staff_needed(lam, capacity_per_agent, risk=0.05):
+      agents = 1
+      while p_more_than(agents * capacity_per_agent, lam) > risk:
+          agents += 1
+      return agents
+
+
+  def simulate_counts(lam, hours, seed=0):
+      rng = np.random.default_rng(seed)
+      counts = np.zeros(hours, dtype=int)
+      t = rng.exponential(1 / lam)
+      while t < hours:
+          counts[int(t)] += 1
+          t += rng.exponential(1 / lam)
+      return counts
+tests:
+  - call: poisson_pmf(0, 4)
+    expected: "0.01831563888873418"
+  - call: poisson_pmf(4, 4)
+  - call: p_more_than(8, 4)
+  - name: Comparé à scipy.stats.poisson
+    check: |
+      from scipy import stats
+      for lam in (0.5, 4, 12):
+          for k in range(25):
+              assert abs(poisson_pmf(k, lam) - stats.poisson.pmf(k, lam)) < 1e-12
+              assert abs(p_more_than(k, lam) - stats.poisson.sf(k, lam)) < 1e-9
+  - call: staff_needed(4, 3)
+    expected: "3"
+  - call: staff_needed(30, 4, risk=0.01)
+  - name: Simulation cohérente avec Poisson(λ)
+    check: |
+      c = simulate_counts(4, 20_000)
+      assert c.dtype.kind == 'i' and len(c) == 20_000
+      assert abs(c.mean() - 4) < 0.08 and abs(c.var() - 4) < 0.25, (c.mean(), c.var())
+      assert abs((c == 0).mean() - np.exp(-4)) < 0.005
+wrong:
+  - |
+    import math
+    import numpy as np
+
+
+    def poisson_pmf(k, lam):
+        return math.exp(-lam) * lam ** k / math.factorial(k)
+
+
+    def p_more_than(k, lam):
+        return 1 - sum(poisson_pmf(i, lam) for i in range(k))
+
+
+    def staff_needed(lam, capacity_per_agent, risk=0.05):
+        return math.ceil(lam / capacity_per_agent)
+
+
+    def simulate_counts(lam, hours, seed=0):
+        return np.random.default_rng(seed).poisson(lam, hours)
+  - |
+    import math
+    import numpy as np
+
+
+    def poisson_pmf(k, lam):
+        return math.exp(-lam) * lam ** k / math.factorial(k)
+
+
+    def p_more_than(k, lam):
+        return 1 - sum(poisson_pmf(i, lam) for i in range(k + 1))
+
+
+    def staff_needed(lam, capacity_per_agent, risk=0.05):
+        agents = 1
+        while p_more_than(agents * capacity_per_agent, lam) > risk:
+            agents += 1
+        return agents
+
+
+    def simulate_counts(lam, hours, seed=0):
+        rng = np.random.default_rng(seed)
+        counts = np.zeros(hours, dtype=int)
+        t = rng.exponential(lam)
+        while t < hours:
+            counts[int(t)] += 1
+            t += rng.exponential(lam)
+        return counts
+parsons:
+  distractors:
+    - line: "t += rng.exponential(lam)"
+      replaces: "t += rng.exponential(1 / lam)"
+    - line: "return 1 - sum(poisson_pmf(i, lam) for i in range(k))"
+      replaces: "return 1 - sum(poisson_pmf(i, lam) for i in range(k + 1))"
+hints:
+  - "$P(X > k) = 1 - \\sum_{i=0}^{k} P(X = i)$ : attention à inclure `k`."
+  - "Dimensionnement : augmente le nombre d'agents tant que le risque de débordement dépasse le seuil."
+  - "Processus de Poisson : les temps entre événements sont exponentiels de moyenne `1 / λ` ; `rng.exponential(scale)` prend la **moyenne** en paramètre."
+explanation: |
+  - La loi de Poisson modélise un **nombre d'événements** sur une durée (tickets, clics, pannes) quand ils arrivent indépendamment à un rythme constant. Espérance = variance = λ.
+  - Les temps entre événements suivent une loi **exponentielle** : les deux vues décrivent le même processus.
+  - Dimensionner à la moyenne (`λ / capacité`) sous-estime les besoins : il faut absorber les pics. C'est le principe du dimensionnement de serveurs et de centres d'appels.
+  - ⚠️ `numpy.random.exponential(scale)` prend la moyenne $1/\lambda$, pas le taux $\lambda$.

@@ -1,0 +1,58 @@
+id: bl-merge-sort
+title: Tri fusion
+domain: algo
+difficulty: medium
+statement: |
+  Remets dans l'ordre un **tri fusion** : `merge(a, b)` fusionne deux listes triées avec deux pointeurs, `merge_sort(nums)` trie récursivement.
+
+  Renvoie une **nouvelle** liste ; le tri doit être **stable**.
+solution: |
+  def merge(a, b):
+      out = []
+      i = j = 0
+      while i < len(a) and j < len(b):
+          if a[i] <= b[j]:
+              out.append(a[i])
+              i += 1
+          else:
+              out.append(b[j])
+              j += 1
+      out.extend(a[i:])
+      out.extend(b[j:])
+      return out
+
+
+  def merge_sort(nums):
+      if len(nums) <= 1:
+          return list(nums)
+      mid = len(nums) // 2
+      return merge(merge_sort(nums[:mid]), merge_sort(nums[mid:]))
+tests:
+  - call: merge([1, 4, 9], [2, 3, 10, 11])
+    expected: "[1, 2, 3, 4, 9, 10, 11]"
+  - call: merge_sort([5, 2, 9, 1, 5, 6])
+    expected: "[1, 2, 5, 5, 6, 9]"
+  - call: merge_sort([])
+    expected: "[]"
+  - name: Comparé à sorted et stable
+    check: |
+      import random
+      rnd = random.Random(0)
+      for _ in range(200):
+          nums = [rnd.randint(0, 9) for _ in range(rnd.randint(0, 20))]
+          assert merge_sort(nums) == sorted(nums)
+      class K:
+          def __init__(self, k, tag): self.k, self.tag = k, tag
+          def __le__(self, o): return self.k <= o.k
+          def __lt__(self, o): return self.k < o.k
+      items = [K(1, 'a'), K(0, 'b'), K(1, 'c'), K(0, 'd')]
+      assert [x.tag for x in merge_sort(items)] == ['b', 'd', 'a', 'c'], "le tri doit être stable"
+distractors:
+  - line: "if a[i] < b[j]:"
+    replaces: "if a[i] <= b[j]:"
+  - line: "return merge(merge_sort(nums[:mid]), nums[mid:])"
+    replaces: "return merge(merge_sort(nums[:mid]), merge_sort(nums[mid:]))"
+explanation: |
+  - **Diviser pour régner** : couper en deux, trier chaque moitié, fusionner. O(n log n) dans tous les cas, O(n) de mémoire.
+  - `<=` (et pas `<`) dans la fusion garantit la **stabilité** : à égalité, l'élément de gauche passe en premier.
+  - Après la boucle, une seule des deux listes a encore des éléments : on les ajoute d'un bloc.

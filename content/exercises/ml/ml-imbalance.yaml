@@ -1,0 +1,140 @@
+id: ml-imbalance
+title: Classes déséquilibrées
+domain: ml
+difficulty: medium
+minutes: 10
+interview: true
+tags: [déséquilibre, class_weight, balanced accuracy, baseline]
+statement: |
+  Détection de fraude : **3 %** de positifs.
+
+  1. `baseline_accuracy(y)` : l'accuracy d'un modèle qui prédit **toujours la classe majoritaire**.
+  2. `balanced_accuracy(y, pred)` : la moyenne des recalls de chaque classe (calculée à la main).
+  3. `train_models(X_train, y_train)` : renvoie un tuple de deux `LogisticRegression(max_iter=1000)` entraînées : la première sans pondération, la seconde avec `class_weight='balanced'`.
+  4. `minority_recall(model, X, y)` : le recall de la classe `1`.
+setup: |
+  import numpy as np
+  from sklearn.datasets import make_classification
+  from sklearn.model_selection import train_test_split
+  X, y = make_classification(n_samples=4000, n_features=10, n_informative=4, weights=[0.97], flip_y=0, class_sep=0.8, random_state=3)
+  X_TR, X_TE, Y_TR, Y_TE = train_test_split(X, y, test_size=0.5, stratify=y, random_state=0)
+starter: |
+  import numpy as np
+  from sklearn.linear_model import LogisticRegression
+
+
+  def baseline_accuracy(y):
+      pass
+
+
+  def balanced_accuracy(y, pred):
+      pass
+
+
+  def train_models(X_train, y_train):
+      pass
+
+
+  def minority_recall(model, X, y):
+      pass
+solution: |
+  import numpy as np
+  from sklearn.linear_model import LogisticRegression
+
+
+  def baseline_accuracy(y):
+      return float(np.bincount(y).max() / len(y))
+
+
+  def balanced_accuracy(y, pred):
+      return float(np.mean([(pred[y == c] == c).mean() for c in np.unique(y)]))
+
+
+  def train_models(X_train, y_train):
+      plain = LogisticRegression(max_iter=1000).fit(X_train, y_train)
+      weighted = LogisticRegression(max_iter=1000, class_weight='balanced').fit(X_train, y_train)
+      return plain, weighted
+
+
+  def minority_recall(model, X, y):
+      pred = model.predict(X)
+      return float((pred[y == 1] == 1).mean())
+tests:
+  - call: baseline_accuracy(np.array([0, 0, 0, 1]))
+    expected: "0.75"
+  - call: baseline_accuracy(Y_TE)
+  - call: balanced_accuracy(np.array([0, 0, 0, 1]), np.array([0, 0, 0, 0]))
+    expected: "0.5"
+  - name: Comparé à scikit-learn
+    check: |
+      from sklearn.metrics import balanced_accuracy_score
+      rng = np.random.default_rng(0)
+      yt, yp = rng.integers(0, 3, 300), rng.integers(0, 3, 300)
+      assert abs(balanced_accuracy(yt, yp) - balanced_accuracy_score(yt, yp)) < 1e-12
+  - name: Deux modèles, le second pondéré
+    check: |
+      plain, weighted = train_models(X_TR, Y_TR)
+      assert plain.class_weight is None and weighted.class_weight == 'balanced'
+      assert hasattr(weighted, 'coef_'), "les modèles doivent être entraînés"
+  - name: La pondération améliore nettement le recall de la minorité
+    check: |
+      plain, weighted = train_models(X_TR, Y_TR)
+      r_plain, r_weighted = minority_recall(plain, X_TE, Y_TE), minority_recall(weighted, X_TE, Y_TE)
+      assert r_weighted > r_plain + 0.2, (r_plain, r_weighted)
+      assert abs(r_plain - ((plain.predict(X_TE)[Y_TE == 1]) == 1).mean()) < 1e-12
+wrong:
+  - |
+    import numpy as np
+    from sklearn.linear_model import LogisticRegression
+
+
+    def baseline_accuracy(y):
+        return 0.5
+
+
+    def balanced_accuracy(y, pred):
+        return float((y == pred).mean())
+
+
+    def train_models(X_train, y_train):
+        m = LogisticRegression(max_iter=1000).fit(X_train, y_train)
+        return m, m
+
+
+    def minority_recall(model, X, y):
+        return float((model.predict(X) == y).mean())
+  - |
+    import numpy as np
+    from sklearn.linear_model import LogisticRegression
+
+
+    def baseline_accuracy(y):
+        return float(np.bincount(y).max() / len(y))
+
+
+    def balanced_accuracy(y, pred):
+        return float(np.mean([(pred[y == c] == c).mean() for c in np.unique(y)]))
+
+
+    def train_models(X_train, y_train):
+        plain = LogisticRegression(max_iter=1000).fit(X_train, y_train)
+        weighted = LogisticRegression(max_iter=1000, class_weight='balanced').fit(X_train, y_train)
+        return plain, weighted
+
+
+    def minority_recall(model, X, y):
+        pred = model.predict(X)
+        return float((y[pred == 1] == 1).mean())
+parsons:
+  distractors:
+    - line: "return float((y[pred == 1] == 1).mean())"
+      replaces: "return float((pred[y == 1] == 1).mean())"
+hints:
+  - "`np.bincount(y).max() / len(y)` : la part de la classe majoritaire."
+  - "Recall de la classe `c` : parmi les exemples de vraie classe `c`, la part prédite `c` → `(pred[y == c] == c).mean()`."
+  - "`class_weight='balanced'` pondère chaque classe par l'inverse de sa fréquence dans la loss."
+explanation: |
+  - Avec 97 % de négatifs, **97 % d'accuracy ne vaut rien** : c'est le score d'un modèle qui ne détecte jamais de fraude. Toujours comparer à la baseline.
+  - Métriques adaptées : recall et precision de la classe rare, F1, PR-AUC, balanced accuracy.
+  - `class_weight='balanced'` augmente le poids des erreurs sur la minorité : le recall monte, la precision baisse. Alternatives : sur/sous-échantillonnage, ajustement du seuil.
+  - Toujours un `train_test_split(..., stratify=y)` pour garder la même proportion de positifs.

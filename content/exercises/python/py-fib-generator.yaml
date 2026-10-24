@@ -1,0 +1,111 @@
+id: py-fib-generator
+title: Générateurs infinis et islice
+domain: python
+difficulty: easy
+minutes: 6
+tags: [yield, générateur, itertools.islice, lazy]
+statement: |
+  1. `fib()` : un **générateur infini** qui produit 0, 1, 1, 2, 3, 5, 8…
+  2. `take(n, iterable)` : la liste des `n` premiers éléments d'un itérable (éventuellement infini).
+  3. `first_above(threshold)` : le premier nombre de Fibonacci **strictement supérieur** à `threshold`.
+
+  Aucune liste complète ne doit être construite : la suite est infinie.
+starter: |
+  from itertools import islice
+
+
+  def fib():
+      pass
+
+
+  def take(n, iterable):
+      pass
+
+
+  def first_above(threshold):
+      pass
+solution: |
+  from itertools import islice
+
+
+  def fib():
+      a, b = 0, 1
+      while True:
+          yield a
+          a, b = b, a + b
+
+
+  def take(n, iterable):
+      return list(islice(iterable, n))
+
+
+  def first_above(threshold):
+      return next(x for x in fib() if x > threshold)
+tests:
+  - call: take(10, fib())
+    expected: "[0, 1, 1, 2, 3, 5, 8, 13, 21, 34]"
+  - call: take(3, 'abcdef')
+  - call: take(0, fib())
+  - call: first_above(100)
+    expected: "144"
+  - call: first_above(0)
+  - name: fib() est un générateur
+    check: |
+      import types
+      assert isinstance(fib(), types.GeneratorType), "utilise yield"
+  - name: take consomme l'itérateur au fur et à mesure
+    check: |
+      it = fib()
+      assert take(3, it) == [0, 1, 1]
+      assert take(3, it) == [2, 3, 5], "take doit continuer là où l'itérateur s'est arrêté"
+  - call: first_above(10 ** 12)
+    hidden: true
+wrong:
+  - |
+    from itertools import islice
+
+
+    def fib():
+        a, b = 0, 1
+        while True:
+            yield a
+            a, b = b, a + b
+
+
+    def take(n, iterable):
+        return [next(iter(iterable)) for _ in range(n)]
+
+
+    def first_above(threshold):
+        return next(x for x in fib() if x > threshold)
+  - |
+    def fib():
+        a, b = 1, 1
+        while True:
+            yield a
+            a, b = b, a + b
+
+
+    def take(n, iterable):
+        from itertools import islice
+        return list(islice(iterable, n))
+
+
+    def first_above(threshold):
+        return next(x for x in fib() if x >= threshold)
+parsons:
+  distractors:
+    - line: "while a < 1000:"
+      replaces: "while True:"
+    - line: "return a"
+      replaces: "yield a"
+hints:
+  - "Un `yield` dans une fonction en fait un générateur : chaque `next()` reprend juste après le `yield`."
+  - "`a, b = b, a + b` met à jour les deux variables **en même temps**."
+  - "`itertools.islice(it, n)` prend les n premiers éléments sans tout consommer."
+  - "`next(x for x in fib() if x > threshold)` : le premier élément qui vérifie la condition."
+explanation: |
+  - Un générateur calcule ses valeurs **à la demande** : idéal pour les flux, les gros fichiers lus ligne à ligne, ou les suites infinies.
+  - `list(iterable)[:n]` sur un générateur infini ne termine jamais.
+  - `next(gen_expr)` est l'idiome « premier élément qui vérifie… » ; ajoute un défaut avec `next(gen, None)` si rien n'est garanti.
+  - Un générateur ne se parcourt **qu'une fois** : un deuxième `list(gen)` est vide.

@@ -1,0 +1,98 @@
+id: sql-dense-rank
+title: RANK, DENSE_RANK et ROW_NUMBER
+domain: sql
+difficulty: medium
+minutes: 8
+language: sql
+shared: sql_shop
+tags: [RANK, DENSE_RANK, ROW_NUMBER, égalités]
+statement: |
+  Classe les produits par **quantité totale vendue** (toutes commandes sauf annulées ; un produit jamais vendu a une quantité 0).
+
+  Colonnes : `name`, `total_qty`, puis trois classements par quantité décroissante :
+
+  - `rn` : `ROW_NUMBER()` (égalités départagées par `name`) ;
+  - `rk` : `RANK()` ;
+  - `drk` : `DENSE_RANK()`.
+
+  Tri par `total_qty` décroissant puis `name`.
+starter: |
+  SELECT p.name, SUM(oi.quantity) AS total_qty
+  FROM products p
+  JOIN order_items oi ON oi.product_id = p.id
+  GROUP BY p.id
+solution: |
+  WITH sold AS (
+      SELECT p.name, COALESCE(SUM(oi.quantity), 0) AS total_qty
+      FROM products p
+      LEFT JOIN order_items oi ON oi.product_id = p.id
+          AND oi.order_id IN (SELECT id FROM orders WHERE status <> 'annulée')
+      GROUP BY p.id, p.name
+  )
+  SELECT name,
+         total_qty,
+         ROW_NUMBER() OVER (ORDER BY total_qty DESC, name) AS rn,
+         RANK() OVER (ORDER BY total_qty DESC) AS rk,
+         DENSE_RANK() OVER (ORDER BY total_qty DESC) AS drk
+  FROM sold
+  ORDER BY total_qty DESC, name
+tests:
+  - name: Résultat de la requête
+    call: q(QUERY)
+  - name: Un nouveau produit jamais vendu apparaît avec 0
+    check: |
+      for db in (_db, ref._db):
+          db.execute("INSERT INTO products VALUES (11, 'Webcam HD', 'Informatique', 59.0)")
+      got, expected = q(QUERY), ref.q(ref.QUERY)
+      assert ('Webcam HD', 0) in [r[:2] for r in got], "les produits sans vente doivent apparaître avec 0"
+      assert got == expected, f"obtenu {got}"
+wrong:
+  - |
+    WITH sold AS (
+        SELECT p.name, SUM(oi.quantity) AS total_qty
+        FROM products p
+        JOIN order_items oi ON oi.product_id = p.id
+        JOIN orders o ON o.id = oi.order_id
+        WHERE o.status <> 'annulée'
+        GROUP BY p.id, p.name
+    )
+    SELECT name,
+           total_qty,
+           ROW_NUMBER() OVER (ORDER BY total_qty DESC, name) AS rn,
+           RANK() OVER (ORDER BY total_qty DESC) AS rk,
+           DENSE_RANK() OVER (ORDER BY total_qty DESC) AS drk
+    FROM sold
+    ORDER BY total_qty DESC, name
+  - |
+    WITH sold AS (
+        SELECT p.name, COALESCE(SUM(oi.quantity), 0) AS total_qty
+        FROM products p
+        LEFT JOIN order_items oi ON oi.product_id = p.id
+            AND oi.order_id IN (SELECT id FROM orders WHERE status <> 'annulée')
+        GROUP BY p.id, p.name
+    )
+    SELECT name,
+           total_qty,
+           ROW_NUMBER() OVER (ORDER BY total_qty DESC, name) AS rn,
+           DENSE_RANK() OVER (ORDER BY total_qty DESC) AS rk,
+           RANK() OVER (ORDER BY total_qty DESC) AS drk
+    FROM sold
+    ORDER BY total_qty DESC, name
+parsons:
+  distractors:
+    - line: "RANK() OVER (ORDER BY total_qty) AS rk,"
+      replaces: "RANK() OVER (ORDER BY total_qty DESC) AS rk,"
+hints:
+  - "Pour garder les produits jamais vendus : `LEFT JOIN` et `COALESCE(SUM(...), 0)`."
+  - "Le filtre sur le statut doit rester dans la condition de jointure (sinon le `LEFT JOIN` redevient un `INNER JOIN`)."
+  - "Sur `[10, 8, 8, 5]` : ROW_NUMBER → 1, 2, 3, 4 ; RANK → 1, 2, 2, 4 ; DENSE_RANK → 1, 2, 2, 3."
+explanation: |
+  | valeurs | ROW_NUMBER | RANK | DENSE_RANK |
+  |---|---|---|---|
+  | 10 | 1 | 1 | 1 |
+  | 8 | 2 | 2 | 2 |
+  | 8 | 3 | 2 | 2 |
+  | 5 | 4 | **4** | **3** |
+
+  - « Le 2e plus gros salaire » : `DENSE_RANK() = 2` (les ex æquo ne créent pas de trou).
+  - « Exactement une ligne par groupe » : `ROW_NUMBER() = 1` avec un départage explicite.

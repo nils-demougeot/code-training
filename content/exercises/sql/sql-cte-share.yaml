@@ -1,0 +1,81 @@
+id: sql-cte-share
+title: Part du CA avec une CTE
+domain: sql
+difficulty: medium
+minutes: 8
+language: sql
+shared: sql_shop
+interview: true
+tags: [CTE, WITH, window function, SUM OVER, pourcentage]
+statement: |
+  Pour chaque client, calcule son CA (`quantity * price`, commandes **livrées** uniquement) et sa **part du CA total** en pourcentage arrondie à 1 décimale.
+
+  Colonnes : `name`, `revenue`, `share_pct`. Seuls les clients avec un CA > 0 apparaissent. Tri par `revenue` décroissant puis `name`.
+
+  Utilise une CTE pour le CA par client, et `SUM(...) OVER ()` pour le total.
+starter: |
+  WITH revenue AS (
+      SELECT o.customer_id, SUM(oi.quantity) AS revenue
+      FROM orders o
+      JOIN order_items oi ON oi.order_id = o.id
+      GROUP BY o.customer_id
+  )
+  SELECT * FROM revenue
+solution: |
+  WITH revenue AS (
+      SELECT c.name, SUM(oi.quantity * p.price) AS revenue
+      FROM orders o
+      JOIN customers c ON c.id = o.customer_id
+      JOIN order_items oi ON oi.order_id = o.id
+      JOIN products p ON p.id = oi.product_id
+      WHERE o.status = 'livrée'
+      GROUP BY c.id, c.name
+  )
+  SELECT name, revenue, ROUND(100.0 * revenue / SUM(revenue) OVER (), 1) AS share_pct
+  FROM revenue
+  ORDER BY revenue DESC, name
+tests:
+  - name: Résultat de la requête
+    call: q(QUERY)
+  - name: Les parts somment à ~100 %
+    check: |
+      total = sum(row[2] for row in q(QUERY))
+      assert abs(total - 100) < 0.5, total
+wrong:
+  - |
+    WITH revenue AS (
+        SELECT c.name, SUM(oi.quantity * p.price) AS revenue
+        FROM orders o
+        JOIN customers c ON c.id = o.customer_id
+        JOIN order_items oi ON oi.order_id = o.id
+        JOIN products p ON p.id = oi.product_id
+        GROUP BY c.id, c.name
+    )
+    SELECT name, revenue, ROUND(100.0 * revenue / SUM(revenue) OVER (), 1) AS share_pct
+    FROM revenue
+    ORDER BY revenue DESC, name
+  - |
+    WITH revenue AS (
+        SELECT c.name, SUM(oi.quantity * p.price) AS revenue
+        FROM orders o
+        JOIN customers c ON c.id = o.customer_id
+        JOIN order_items oi ON oi.order_id = o.id
+        JOIN products p ON p.id = oi.product_id
+        WHERE o.status = 'livrée'
+        GROUP BY c.id, c.name
+    )
+    SELECT name, revenue, ROUND(100 * revenue / MAX(revenue) OVER (), 1) AS share_pct
+    FROM revenue
+    ORDER BY revenue DESC, name
+parsons:
+  distractors:
+    - line: "SELECT name, revenue, ROUND(100.0 * revenue / SUM(revenue), 1) AS share_pct"
+      replaces: "SELECT name, revenue, ROUND(100.0 * revenue / SUM(revenue) OVER (), 1) AS share_pct"
+hints:
+  - "La CTE joint `orders` → `order_items` → `products` pour avoir `quantity * price`, et `customers` pour le nom."
+  - "`SUM(revenue) OVER ()` : la somme sur **toutes** les lignes, répétée sur chaque ligne, sans regrouper."
+  - "`SUM(revenue)` sans `OVER` ferait un `GROUP BY` implicite et renverrait une seule ligne."
+explanation: |
+  - `WITH nom AS (...)` rend la requête lisible : chaque étape a un nom.
+  - Une **window function** calcule sur un ensemble de lignes sans les fusionner : `SUM(x) OVER ()` = total global, `OVER (PARTITION BY g)` = total du groupe.
+  - Calcul de part en pandas : `df['revenue'] / df['revenue'].sum()`.

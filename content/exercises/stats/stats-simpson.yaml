@@ -1,0 +1,121 @@
+id: stats-simpson
+title: Le paradoxe de Simpson
+domain: stats
+difficulty: medium
+minutes: 8
+interview: true
+tags: [paradoxe de Simpson, variable confondante, taux, groupby]
+statement: |
+  Deux traitements de calculs rénaux (données réelles, Charig et al., 1986). Chaque ligne de `KIDNEY` : `(traitement, taille_du_calcul, succès, total)`.
+
+  1. `overall_rates(rows)` : le taux de succès **global** de chaque traitement, `{traitement: taux}`.
+  2. `rates_by_group(rows)` : le taux par traitement **et** par taille, `{(traitement, taille): taux}`.
+  3. `simpson(rows)` : `True` si un traitement est meilleur dans **chaque** groupe de taille mais moins bon globalement (avec deux traitements).
+
+  Avec **Exécuter**, regarde quel traitement gagne globalement, puis par taille.
+setup: |
+  KIDNEY = [
+      ("A", "petit", 81, 87),
+      ("A", "gros", 192, 263),
+      ("B", "petit", 234, 270),
+      ("B", "gros", 55, 80),
+  ]
+starter: |
+  from collections import defaultdict
+
+
+  def overall_rates(rows):
+      pass
+
+
+  def rates_by_group(rows):
+      pass
+
+
+  def simpson(rows):
+      pass
+solution: |
+  from collections import defaultdict
+
+
+  def overall_rates(rows):
+      success, total = defaultdict(int), defaultdict(int)
+      for treatment, _, s, n in rows:
+          success[treatment] += s
+          total[treatment] += n
+      return {t: success[t] / total[t] for t in total}
+
+
+  def rates_by_group(rows):
+      return {(treatment, group): s / n for treatment, group, s, n in rows}
+
+
+  def simpson(rows):
+      overall = overall_rates(rows)
+      by_group = rates_by_group(rows)
+      t1, t2 = sorted(overall)
+      groups = {g for _, g in by_group}
+      t1_wins_all = all(by_group[(t1, g)] > by_group[(t2, g)] for g in groups)
+      t2_wins_all = all(by_group[(t2, g)] > by_group[(t1, g)] for g in groups)
+      return (t1_wins_all and overall[t1] < overall[t2]) or (t2_wins_all and overall[t2] < overall[t1])
+tests:
+  - call: overall_rates(KIDNEY)
+    expected: "{'A': 273 / 350, 'B': 289 / 350}"
+  - call: rates_by_group(KIDNEY)
+  - call: simpson(KIDNEY)
+    expected: "True"
+  - name: Pas de paradoxe
+    call: "simpson([('A', 'x', 9, 10), ('A', 'y', 8, 10), ('B', 'x', 5, 10), ('B', 'y', 4, 10)])"
+    expected: "False"
+  - name: Paradoxe dans l'autre sens
+    call: "simpson([('A', 'x', 55, 80), ('A', 'y', 234, 270), ('B', 'x', 192, 263), ('B', 'y', 81, 87)])"
+    expected: "True"
+wrong:
+  - |
+    def overall_rates(rows):
+        rates = {}
+        for treatment, _, s, n in rows:
+            rates.setdefault(treatment, []).append(s / n)
+        return {t: sum(r) / len(r) for t, r in rates.items()}
+
+
+    def rates_by_group(rows):
+        return {(t, g): s / n for t, g, s, n in rows}
+
+
+    def simpson(rows):
+        o = overall_rates(rows)
+        b = rates_by_group(rows)
+        return b[('A', 'petit')] > b[('B', 'petit')] and o['A'] < o['B']
+  - |
+    from collections import defaultdict
+
+
+    def overall_rates(rows):
+        success, total = defaultdict(int), defaultdict(int)
+        for treatment, _, s, n in rows:
+            success[treatment] += s
+            total[treatment] += n
+        return {t: success[t] / total[t] for t in total}
+
+
+    def rates_by_group(rows):
+        return {(treatment, group): s / n for treatment, group, s, n in rows}
+
+
+    def simpson(rows):
+        overall = overall_rates(rows)
+        by_group = rates_by_group(rows)
+        t1, t2 = sorted(overall)
+        groups = {g for _, g in by_group}
+        t1_wins_all = all(by_group[(t1, g)] > by_group[(t2, g)] for g in groups)
+        return t1_wins_all and overall[t1] < overall[t2]
+parsons:
+  skip: true
+hints:
+  - "Taux global : somme des succès / somme des totaux, **pas** la moyenne des taux des groupes."
+  - "Le traitement A est meilleur sur les petits **et** sur les gros calculs… mais il a surtout traité des gros calculs, plus difficiles."
+explanation: |
+  - A gagne dans chaque groupe (93 % contre 87 %, 73 % contre 69 %) mais perd globalement (78 % contre 83 %) : les médecins réservaient A aux cas **difficiles** (gros calculs). La taille du calcul est une **variable confondante**.
+  - Moralité : un taux agrégé mélange des populations différentes. Avant de conclure, segmente par les variables qui influencent à la fois le traitement et le résultat.
+  - En A/B test, la **randomisation** répartit les confondants équitablement : c'est pour cela qu'elle permet de conclure à une causalité.

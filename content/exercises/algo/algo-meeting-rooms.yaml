@@ -1,0 +1,107 @@
+id: algo-meeting-rooms
+title: Nombre de salles de réunion
+domain: algo
+difficulty: medium
+minutes: 10
+interview: true
+tags: [heapq, intervalles, tri, balayage]
+statement: |
+  `meetings` est une liste d'intervalles `(début, fin)` avec `début < fin`. Une réunion qui finit à 10 libère sa salle pour une réunion qui commence à 10.
+
+  Écris `min_rooms(meetings)` : le nombre minimum de salles nécessaires pour tenir toutes les réunions.
+
+  ```python
+  min_rooms([(0, 30), (5, 10), (15, 20)])   # 2
+  min_rooms([(7, 10), (2, 4)])               # 1
+  ```
+starter: |
+  import heapq
+
+
+  def min_rooms(meetings):
+      pass
+solution: |
+  import heapq
+
+
+  def min_rooms(meetings):
+      ends = []
+      for start, end in sorted(meetings):
+          if ends and ends[0] <= start:
+              heapq.heapreplace(ends, end)
+          else:
+              heapq.heappush(ends, end)
+      return len(ends)
+tests:
+  - call: min_rooms([(0, 30), (5, 10), (15, 20)])
+    expected: "2"
+  - call: min_rooms([(7, 10), (2, 4)])
+    expected: "1"
+  - call: min_rooms([])
+    expected: "0"
+  - name: Fin et début au même instant
+    call: min_rooms([(1, 5), (5, 8), (8, 9)])
+    expected: "1"
+  - call: min_rooms([(1, 10), (2, 9), (3, 8), (4, 7)])
+    expected: "4"
+  - name: Comparé à un balayage minute par minute
+    check: |
+      import random
+      rnd = random.Random(6)
+      for _ in range(300):
+          ms = []
+          for _ in range(rnd.randint(0, 9)):
+              s = rnd.randint(0, 20)
+              ms.append((s, s + rnd.randint(1, 8)))
+          peak = max((sum(s <= t < e for s, e in ms) for t in range(30)), default=0)
+          assert min_rooms(ms) == peak, (ms, min_rooms(ms), peak)
+  - name: "Bonus : complexité O(n log n)"
+    bonus: true
+    check: |
+      k = growth_exponent(min_rooms, lambda n: ([(i, i + 1000) for i in range(n)],))
+      assert k < 1.5, f"Ta solution semble en O(n^{k:.1f}) : compare chaque réunion seulement à la salle qui se libère le plus tôt (un tas)."
+complexity:
+  target: O(n log n)
+  note: |
+    Pour chaque réunion, la seule salle qui compte est celle qui se **libère le plus tôt** : un tas (min-heap) des heures de fin la donne en O(log n). Trier puis balayer : O(n log n) au total.
+naive: |
+  def min_rooms(meetings):
+      best = 0
+      for s, _ in meetings:
+          best = max(best, sum(1 for a, b in meetings if a <= s < b))
+      return best
+wrong:
+  - |
+    def min_rooms(meetings):
+        meetings = sorted(meetings)
+        rooms = 1 if meetings else 0
+        for (s1, e1), (s2, e2) in zip(meetings, meetings[1:]):
+            if s2 < e1:
+                rooms += 1
+        return rooms
+  - |
+    import heapq
+
+
+    def min_rooms(meetings):
+        ends = []
+        for start, end in sorted(meetings):
+            if ends and ends[0] < start:
+                heapq.heapreplace(ends, end)
+            else:
+                heapq.heappush(ends, end)
+        return len(ends)
+parsons:
+  distractors:
+    - line: "if ends and ends[0] < start:"
+      replaces: "if ends and ends[0] <= start:"
+    - line: "for start, end in meetings:"
+      replaces: "for start, end in sorted(meetings):"
+hints:
+  - "Trie les réunions par heure de début."
+  - "Garde dans un tas les heures de fin des salles occupées. Si la salle qui se libère le plus tôt (`ends[0]`) est libre au début de la réunion, réutilise-la."
+  - "La taille finale du tas = le nombre de salles."
+explanation: |
+  - Pattern **intervalles + tas** : trier par début, suivre les fins dans un min-heap. O(n log n).
+  - Alternative élégante : trier séparément les débuts et les fins, puis balayer avec deux pointeurs (le maximum de réunions simultanées).
+  - Attention aux bornes : `<=` (une salle libérée à 10 sert à 10) contre `<`.

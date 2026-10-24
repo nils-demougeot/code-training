@@ -1,0 +1,105 @@
+id: py-adjacency
+title: Construire un graphe d'amis
+domain: python
+difficulty: medium
+minutes: 8
+tags: [defaultdict, set, graphe, compréhension]
+statement: |
+  `edges` est une liste de paires d'amis `(a, b)` (amitié **réciproque**).
+
+  1. `build_graph(edges)` : un dict `{personne: set(amis)}`. Les doublons et les auto-boucles `(a, a)` sont ignorés.
+  2. `suggest(graph, person)` : les **amis d'amis** de `person` qui ne sont ni elle-même ni déjà ses amis, triés par **nombre d'amis en commun** décroissant puis par nom. Renvoie une liste de noms.
+setup: |
+  EDGES = [("ana", "ben"), ("ana", "cleo"), ("ben", "dan"), ("cleo", "dan"),
+           ("dan", "eve"), ("ben", "ana"), ("cleo", "fred"), ("gus", "gus")]
+starter: |
+  from collections import defaultdict
+
+
+  def build_graph(edges):
+      pass
+
+
+  def suggest(graph, person):
+      pass
+solution: |
+  from collections import Counter, defaultdict
+
+
+  def build_graph(edges):
+      graph = defaultdict(set)
+      for a, b in edges:
+          if a != b:
+              graph[a].add(b)
+              graph[b].add(a)
+      return dict(graph)
+
+
+  def suggest(graph, person):
+      friends = graph.get(person, set())
+      common = Counter(
+          fof
+          for friend in friends
+          for fof in graph[friend]
+          if fof != person and fof not in friends
+      )
+      return sorted(common, key=lambda name: (-common[name], name))
+tests:
+  - call: build_graph(EDGES)
+    expected: "{'ana': {'ben', 'cleo'}, 'ben': {'ana', 'dan'}, 'cleo': {'ana', 'dan', 'fred'}, 'dan': {'ben', 'cleo', 'eve'}, 'eve': {'dan'}, 'fred': {'cleo'}}"
+  - call: build_graph([])
+    expected: "{}"
+  - call: suggest(build_graph(EDGES), "ana")
+    expected: "['dan', 'fred']"
+  - call: suggest(build_graph(EDGES), "eve")
+    expected: "['ben', 'cleo']"
+  - call: suggest(build_graph(EDGES), "zoe")
+    expected: "[]"
+  - call: "suggest(build_graph(EDGES + [('ana', 'hal'), ('hal', 'fred')]), 'ana')"
+    hidden: true
+wrong:
+  - |
+    from collections import defaultdict
+
+
+    def build_graph(edges):
+        graph = defaultdict(set)
+        for a, b in edges:
+            graph[a].add(b)
+        return dict(graph)
+
+
+    def suggest(graph, person):
+        friends = graph.get(person, set())
+        out = {fof for f in friends for fof in graph.get(f, ()) if fof != person and fof not in friends}
+        return sorted(out)
+  - |
+    from collections import Counter, defaultdict
+
+
+    def build_graph(edges):
+        graph = defaultdict(set)
+        for a, b in edges:
+            graph[a].add(b)
+            graph[b].add(a)
+        return dict(graph)
+
+
+    def suggest(graph, person):
+        friends = graph.get(person, set())
+        common = Counter(fof for f in friends for fof in graph[f] if fof != person and fof not in friends)
+        return sorted(common, key=lambda name: (-common[name], name))
+parsons:
+  distractors:
+    - line: "graph[a] = {b}"
+      replaces: "graph[a].add(b)"
+    - line: "friends = graph[person]"
+      replaces: "friends = graph.get(person, set())"
+hints:
+  - "Amitié réciproque : ajoute `b` aux amis de `a` **et** `a` aux amis de `b`."
+  - "Amis d'amis : une double boucle `for friend in friends for fof in graph[friend]`."
+  - "`Counter` compte combien de chemins mènent à chaque suggestion = nombre d'amis en commun."
+explanation: |
+  - Un graphe se représente naturellement par une **liste d'adjacence** : `dict[noeud, set[voisins]]`.
+  - `Counter` sur les amis d'amis donne directement le score de « personnes que vous pourriez connaître » (le principe de base des recommandations sociales).
+  - Pense aux cas limites : auto-boucles, doublons, personne absente du graphe (`graph.get(person, set())`).

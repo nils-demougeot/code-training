@@ -175,7 +175,7 @@ export default function ExerciseList() {
   )
 }
 
-function FilterButton({
+export function FilterButton({
   active, onClick, children, color,
 }: {
   active: boolean

@@ -1,0 +1,76 @@
+id: py-invert-dict
+title: Inverser un dictionnaire
+domain: python
+difficulty: easy
+minutes: 5
+tags: [dict, defaultdict, setdefault]
+statement: |
+  On a un dictionnaire `{élève: classe}`. Écris `invert(d)` qui renvoie `{classe: [élèves]}`, avec les élèves **triés par ordre alphabétique** dans chaque liste.
+
+  ```python
+  invert({'léa': 'A', 'tom': 'B', 'ana': 'A'})
+  # {'A': ['ana', 'léa'], 'B': ['tom']}
+  ```
+
+  Plusieurs clés peuvent partager la même valeur : un simple `{v: k for k, v in d.items()}` ne suffit pas.
+starter: |
+  def invert(d):
+      pass
+solution: |
+  from collections import defaultdict
+
+
+  def invert(d):
+      out = defaultdict(list)
+      for key, value in d.items():
+          out[value].append(key)
+      return {value: sorted(keys) for value, keys in out.items()}
+tests:
+  - call: "invert({'léa': 'A', 'tom': 'B', 'ana': 'A'})"
+    expected: "{'A': ['ana', 'léa'], 'B': ['tom']}"
+  - call: invert({})
+    expected: "{}"
+  - call: "invert({'x': 1, 'y': 1, 'z': 1})"
+  - name: Le résultat est un dict classique
+    check: |
+      out = invert({'a': 1})
+      assert type(out) is dict, f"type {type(out).__name__} : convertis le defaultdict en dict"
+  - call: "invert({'e': 2, 'd': 1, 'c': 2, 'b': 3, 'a': 1})"
+    hidden: true
+wrong:
+  - |
+    def invert(d):
+        return {v: k for k, v in d.items()}
+  - |
+    from collections import defaultdict
+
+
+    def invert(d):
+        out = defaultdict(list)
+        for key, value in d.items():
+            out[value].append(key)
+        return out
+  - |
+    def invert(d):
+        out = {}
+        for key, value in d.items():
+            out.setdefault(value, []).append(key)
+        return out
+parsons:
+  distractors:
+    - line: "out[value] = [key]"
+      replaces: "out[value].append(key)"
+    - line: "out[key].append(value)"
+      replaces: "out[value].append(key)"
+hints:
+  - "`defaultdict(list)` crée une liste vide la première fois qu'on accède à une clé."
+  - "Sans import : `out.setdefault(value, []).append(key)`."
+  - "N'oublie pas de trier chaque liste, et de renvoyer un `dict` (pas un `defaultdict`)."
+explanation: |
+  ```python
+  out = defaultdict(list)
+  for k, v in d.items():
+      out[v].append(k)
+  ```
+  - C'est un **group by** à la main : on regroupe les clés par valeur.
+  - `dict(out)` ou une compréhension convertit le `defaultdict` : sinon, lire une clé absente plus tard la **crée** silencieusement.

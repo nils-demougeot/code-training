@@ -1,0 +1,40 @@
+id: bl-early-stopping
+title: Early stopping avec patience
+domain: dl
+difficulty: medium
+statement: |
+  Remets dans l'ordre `train_with_early_stopping(val_losses, patience)` : on parcourt les loss de validation epoch par epoch ; on garde la **meilleure** (et son epoch) ; si la loss ne s'améliore pas pendant `patience` epochs consécutives, on **arrête**.
+
+  Renvoie `(best_epoch, best_loss, stopped_at)` où `stopped_at` est l'epoch où l'on s'arrête (la dernière epoch si on ne s'arrête jamais).
+solution: |
+  def train_with_early_stopping(val_losses, patience):
+      best_loss = float('inf')
+      best_epoch = 0
+      bad_epochs = 0
+      for epoch, loss in enumerate(val_losses):
+          if loss < best_loss:
+              best_loss, best_epoch = loss, epoch
+              bad_epochs = 0
+          else:
+              bad_epochs += 1
+              if bad_epochs >= patience:
+                  return best_epoch, best_loss, epoch
+      return best_epoch, best_loss, len(val_losses) - 1
+tests:
+  - call: train_with_early_stopping([1.0, 0.8, 0.7, 0.72, 0.71, 0.75, 0.6], 3)
+    expected: "(2, 0.7, 5)"
+  - call: train_with_early_stopping([1.0, 0.8, 0.7, 0.72, 0.65, 0.75, 0.6], 3)
+    expected: "(6, 0.6, 6)"
+  - call: train_with_early_stopping([0.5, 0.6, 0.7], 1)
+    expected: "(0, 0.5, 1)"
+  - call: train_with_early_stopping([0.9, 0.9, 0.9, 0.9], 2)
+    expected: "(0, 0.9, 2)"
+distractors:
+  - line: "if loss <= best_loss:"
+    replaces: "if loss < best_loss:"
+  - line: "bad_epochs = 1"
+    replaces: "bad_epochs += 1"
+explanation: |
+  - L'early stopping arrête l'entraînement quand la validation ne progresse plus : une régularisation gratuite contre le sur-apprentissage.
+  - On remet le compteur à zéro à **chaque** amélioration. On recharge ensuite les poids de la meilleure epoch (checkpoint).
+  - Une égalité n'est pas une amélioration (`<` strict), sinon un plateau ne déclencherait jamais l'arrêt.

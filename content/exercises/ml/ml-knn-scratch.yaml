@@ -49,6 +49,9 @@ tests:
       theirs = KNeighborsClassifier(5).fit(X[tr], y[tr]).predict(X[te])
       agree = (ours == theirs).mean()
       assert agree >= 0.97, f"seulement {agree:.0%} d'accord avec sklearn"
+  - name: Égalité de votes → la plus petite classe
+    call: knn_predict(np.array([[0.0], [2.0]]), np.array([1, 0]), np.array([[1.0], [1.4]]), 2)
+    expected: np.array([0, 0])
 hints:
   - "Matrice des distances au carré `(n_test, n_train)` : `((X_test[:, None, :] - X_train[None, :, :]) ** 2).sum(-1)` (pas besoin de la racine pour trier)."
   - "`np.argsort(d2, axis=1)[:, :k]` donne les indices des k plus proches ; `y_train[ces_indices]` leurs labels."

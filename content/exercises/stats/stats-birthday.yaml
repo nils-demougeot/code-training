@@ -44,6 +44,8 @@ tests:
     expected: "23"
   - call: min_people(0.99)
     hidden: true
+  - call: min_people(0.7)
+    expected: "30"
 hints:
   - "P(tous différents) = 365/365 × 364/365 × … × (365 − n + 1)/365."
   - "P(au moins un anniversaire partagé) = 1 − P(tous différents)."

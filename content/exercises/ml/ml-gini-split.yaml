@@ -1,0 +1,156 @@
+id: ml-gini-split
+title: Le meilleur split d'un arbre de décision
+domain: ml
+difficulty: hard
+minutes: 12
+interview: true
+tags: [arbre de décision, Gini, split, from scratch]
+statement: |
+  Un arbre de décision choisit à chaque nœud la question « `x[feature] <= seuil` ? » qui rend les deux enfants les plus **purs**.
+
+  1. `gini(y)` : l'impureté de Gini $1 - \sum_c p_c^2$ d'un tableau d'étiquettes (0 pour un tableau vide).
+  2. `split_score(x, y, threshold)` : l'impureté **pondérée** des deux enfants (`x <= threshold` à gauche, le reste à droite) : $\frac{n_g}{n} G_g + \frac{n_d}{n} G_d$.
+  3. `best_split(X, y)` : le triplet `(feature, threshold, score)` de score minimal. Les seuils candidats sont les **milieux entre deux valeurs distinctes consécutives** de chaque feature. En cas d'égalité, la plus petite feature puis le plus petit seuil. Renvoie `None` si aucun split n'est possible.
+setup: |
+  import numpy as np
+  X_TOY = np.array([[2.0, 1.0], [3.0, 1.5], [1.0, 3.0], [4.0, 3.5], [5.0, 2.0], [6.0, 4.0]])
+  Y_TOY = np.array([0, 0, 0, 1, 1, 1])
+starter: |
+  import numpy as np
+
+
+  def gini(y):
+      pass
+
+
+  def split_score(x, y, threshold):
+      pass
+
+
+  def best_split(X, y):
+      pass
+solution: |
+  import numpy as np
+
+
+  def gini(y):
+      if len(y) == 0:
+          return 0.0
+      _, counts = np.unique(y, return_counts=True)
+      p = counts / len(y)
+      return float(1 - np.sum(p ** 2))
+
+
+  def split_score(x, y, threshold):
+      left = x <= threshold
+      n = len(y)
+      return left.sum() / n * gini(y[left]) + (~left).sum() / n * gini(y[~left])
+
+
+  def best_split(X, y):
+      best = None
+      for feature in range(X.shape[1]):
+          values = np.unique(X[:, feature])
+          for threshold in (values[:-1] + values[1:]) / 2:
+              score = split_score(X[:, feature], y, threshold)
+              if best is None or score < best[2]:
+                  best = (feature, float(threshold), float(score))
+      return best
+tests:
+  - call: gini(np.array([0, 0, 1, 1]))
+    expected: "0.5"
+  - call: gini(np.array([1, 1, 1]))
+    expected: "0.0"
+  - call: gini(np.array([0, 1, 2]))
+  - call: split_score(X_TOY[:, 0], Y_TOY, 3.5)
+    expected: "0.0"
+  - call: best_split(X_TOY, Y_TOY)
+    expected: "(0, 3.5, 0.0)"
+  - name: Égalité → la plus petite feature
+    call: best_split(np.column_stack([X_TOY[:, 0], X_TOY[:, 0]]), Y_TOY)
+    expected: "(0, 3.5, 0.0)"
+  - name: Égalité → le plus petit seuil
+    call: best_split(np.array([[1.0], [2.0], [3.0]]), np.array([0, 1, 0]))
+    expected: "(0, 1.5, 1 / 3)"
+  - call: best_split(np.array([[1.0], [1.0]]), np.array([0, 1]))
+    expected: None
+  - name: Même premier split qu'un arbre scikit-learn
+    check: |
+      from sklearn.datasets import load_iris
+      from sklearn.tree import DecisionTreeClassifier
+      Xi, yi = load_iris(return_X_y=True)
+      tree = DecisionTreeClassifier(max_depth=1, random_state=0).fit(Xi, yi)
+      f, t, s = best_split(Xi, yi)
+      root_impurity = tree.tree_.impurity[0]
+      children = tree.tree_.impurity[1:3] @ tree.tree_.n_node_samples[1:3] / len(yi)
+      assert abs(s - children) < 1e-9, (s, children)
+      assert abs(gini(yi) - root_impurity) < 1e-12
+wrong:
+  - |
+    import numpy as np
+
+
+    def gini(y):
+        if len(y) == 0:
+            return 0.0
+        _, counts = np.unique(y, return_counts=True)
+        p = counts / len(y)
+        return float(1 - np.sum(p ** 2))
+
+
+    def split_score(x, y, threshold):
+        left = x <= threshold
+        return (gini(y[left]) + gini(y[~left])) / 2
+
+
+    def best_split(X, y):
+        best = None
+        for feature in range(X.shape[1]):
+            values = np.unique(X[:, feature])
+            for threshold in (values[:-1] + values[1:]) / 2:
+                score = split_score(X[:, feature], y, threshold)
+                if best is None or score < best[2]:
+                    best = (feature, float(threshold), float(score))
+        return best
+  - |
+    import numpy as np
+
+
+    def gini(y):
+        if len(y) == 0:
+            return 0.0
+        _, counts = np.unique(y, return_counts=True)
+        p = counts / len(y)
+        return float(-np.sum(p * np.log2(p)))
+
+
+    def split_score(x, y, threshold):
+        left = x <= threshold
+        n = len(y)
+        return left.sum() / n * gini(y[left]) + (~left).sum() / n * gini(y[~left])
+
+
+    def best_split(X, y):
+        best = None
+        for feature in range(X.shape[1]):
+            for threshold in np.unique(X[:, feature]):
+                score = split_score(X[:, feature], y, threshold)
+                if best is None or score <= best[2]:
+                    best = (feature, float(threshold), float(score))
+        return best
+parsons:
+  distractors:
+    - line: "if best is None or score <= best[2]:"
+      replaces: "if best is None or score < best[2]:"
+    - line: "return float(np.sum(p ** 2))"
+      replaces: "return float(1 - np.sum(p ** 2))"
+hints:
+  - "`np.unique(y, return_counts=True)` donne les effectifs par classe."
+  - "Pondère l'impureté de chaque enfant par sa **taille** relative."
+  - "Seuils candidats : `(values[:-1] + values[1:]) / 2` avec `values = np.unique(colonne)`."
+  - "`<` strict garde le premier meilleur trouvé, donc la plus petite feature et le plus petit seuil."
+explanation: |
+  - Un arbre de décision est un algorithme **glouton** : à chaque nœud, il teste toutes les features et tous les seuils, et garde le split qui réduit le plus l'impureté. Puis il recommence dans chaque enfant.
+  - Gini (scikit-learn par défaut) et entropie donnent presque toujours les mêmes arbres.
+  - Sans pondération par la taille, un split qui isole un seul point pur paraît excellent.
+  - C'est aussi la base de la **feature importance** : la somme des réductions d'impureté apportées par chaque feature.

@@ -1,0 +1,122 @@
+id: algo-topo-sort
+title: Ordre des cours (tri topologique)
+domain: algo
+difficulty: medium
+minutes: 12
+interview: true
+tags: [graphe, tri topologique, Kahn, détection de cycle]
+statement: |
+  Il y a `n` cours numérotés de `0` à `n - 1`. `prereqs` est une liste de couples `(a, b)` : il faut avoir suivi `b` **avant** `a`.
+
+  Écris `course_order(n, prereqs)` qui renvoie **un** ordre valide pour suivre tous les cours (une liste de `n` entiers), ou une liste **vide** si c'est impossible (dépendances circulaires).
+
+  Plusieurs ordres peuvent être valides : n'importe lequel est accepté.
+starter: |
+  from collections import deque
+
+
+  def course_order(n, prereqs):
+      pass
+solution: |
+  from collections import deque
+
+
+  def course_order(n, prereqs):
+      children = [[] for _ in range(n)]
+      indegree = [0] * n
+      for course, before in prereqs:
+          children[before].append(course)
+          indegree[course] += 1
+      queue = deque(i for i in range(n) if indegree[i] == 0)
+      order = []
+      while queue:
+          node = queue.popleft()
+          order.append(node)
+          for child in children[node]:
+              indegree[child] -= 1
+              if indegree[child] == 0:
+                  queue.append(child)
+      return order if len(order) == n else []
+setup: |
+  def is_valid(order, n, prereqs):
+      pos = {c: i for i, c in enumerate(order)}
+      return sorted(order) == list(range(n)) and all(pos[b] < pos[a] for a, b in prereqs)
+tests:
+  - name: Chaîne simple
+    call: course_order(3, [(1, 0), (2, 1)])
+    expected: "[0, 1, 2]"
+  - name: Ordre valide (plusieurs possibles)
+    check: |
+      prereqs = [(1, 0), (2, 0), (3, 1), (3, 2), (5, 4)]
+      order = course_order(6, prereqs)
+      assert is_valid(order, 6, prereqs), order
+  - name: Cycle → liste vide
+    call: course_order(3, [(0, 1), (1, 2), (2, 0)])
+    expected: "[]"
+  - name: Cours sans prérequis
+    check: |
+      assert sorted(course_order(4, [])) == [0, 1, 2, 3]
+  - name: Graphes aléatoires
+    check: |
+      import random
+      rnd = random.Random(4)
+      for _ in range(200):
+          n = rnd.randint(1, 8)
+          prereqs = [(rnd.randrange(n), rnd.randrange(n)) for _ in range(rnd.randint(0, 10))]
+          prereqs = [(a, b) for a, b in prereqs if a != b]
+          order = course_order(n, prereqs)
+          # Cycle ? Un DFS de référence tranche.
+          state = [0] * n
+          adj = [[] for _ in range(n)]
+          for a, b in prereqs:
+              adj[b].append(a)
+          def has_cycle(u):
+              state[u] = 1
+              for v in adj[u]:
+                  if state[v] == 1 or (state[v] == 0 and has_cycle(v)):
+                      return True
+              state[u] = 2
+              return False
+          cyclic = any(state[u] == 0 and has_cycle(u) for u in range(n))
+          if cyclic:
+              assert order == [], (n, prereqs, order)
+          else:
+              assert is_valid(order, n, prereqs), (n, prereqs, order)
+wrong:
+  - |
+    def course_order(n, prereqs):
+        order = []
+        seen = set()
+        graph = {i: [b for a, b in prereqs if a == i] for i in range(n)}
+        def visit(u):
+            if u in seen:
+                return
+            seen.add(u)
+            for v in graph[u]:
+                visit(v)
+            order.append(u)
+        for i in range(n):
+            visit(i)
+        return order
+  - |
+    def course_order(n, prereqs):
+        indegree = [0] * n
+        for course, before in prereqs:
+            indegree[course] += 1
+        return sorted(range(n), key=lambda i: indegree[i])
+parsons:
+  distractors:
+    - line: "children[course].append(before)"
+      replaces: "children[before].append(course)"
+    - line: "return order"
+      replaces: "return order if len(order) == n else []"
+hints:
+  - "Compte pour chaque cours le nombre de prérequis restants (**degré entrant**)."
+  - "Commence par les cours sans prérequis. Quand on « suit » un cours, on décrémente le degré de ceux qui en dépendent ; ceux qui tombent à 0 deviennent disponibles."
+  - "S'il reste des cours jamais disponibles, il y a un cycle."
+explanation: |
+  **Algorithme de Kahn** : une file des nœuds de degré entrant nul, on les retire un par un. O(V + E).
+
+  - Un cycle se détecte gratuitement : l'ordre obtenu contient moins de `n` nœuds.
+  - Alternative : DFS avec trois états (non visité / en cours / terminé) ; un arc vers un nœud « en cours » signale un cycle.
+  - Usages : ordonnancement de tâches, résolution de dépendances (pip, Makefile), graphes de calcul (autograd parcourt le graphe en ordre topologique inverse).

@@ -1,0 +1,143 @@
+id: ml-validation-curve
+title: Sous-apprentissage et sur-apprentissage
+domain: ml
+difficulty: medium
+minutes: 10
+interview: true
+tags: [biais-variance, polyfit, validation, sur-apprentissage]
+statement: |
+  On ajuste des polynômes de degré croissant sur un petit jeu de données bruité.
+
+  1. `fit_predict(x_train, y_train, x_eval, degree)` : ajuste un polynôme de degré `degree` (`np.polyfit`) sur le train et renvoie ses prédictions sur `x_eval` (`np.polyval`).
+  2. `mse(a, b)` : l'erreur quadratique moyenne.
+  3. `validation_curve(x_tr, y_tr, x_val, y_val, degrees)` : deux listes `(train_errors, val_errors)`, une valeur par degré.
+  4. `best_degree(x_tr, y_tr, x_val, y_val, degrees)` : le degré à la plus petite erreur de **validation** (le plus petit en cas d'égalité).
+setup: |
+  import numpy as np
+  _rng = np.random.default_rng(0)
+  X_TR = np.sort(_rng.uniform(-3, 3, 20))
+  Y_TR = np.sin(X_TR) + _rng.normal(0, 0.3, 20)
+  X_VAL = np.sort(_rng.uniform(-3, 3, 200))
+  Y_VAL = np.sin(X_VAL) + _rng.normal(0, 0.3, 200)
+  DEGREES = list(range(0, 13))
+starter: |
+  import numpy as np
+
+
+  def fit_predict(x_train, y_train, x_eval, degree):
+      pass
+
+
+  def mse(a, b):
+      pass
+
+
+  def validation_curve(x_tr, y_tr, x_val, y_val, degrees):
+      pass
+
+
+  def best_degree(x_tr, y_tr, x_val, y_val, degrees):
+      pass
+solution: |
+  import numpy as np
+
+
+  def fit_predict(x_train, y_train, x_eval, degree):
+      coefs = np.polyfit(x_train, y_train, degree)
+      return np.polyval(coefs, x_eval)
+
+
+  def mse(a, b):
+      return float(np.mean((np.asarray(a) - np.asarray(b)) ** 2))
+
+
+  def validation_curve(x_tr, y_tr, x_val, y_val, degrees):
+      train_errors, val_errors = [], []
+      for d in degrees:
+          train_errors.append(mse(fit_predict(x_tr, y_tr, x_tr, d), y_tr))
+          val_errors.append(mse(fit_predict(x_tr, y_tr, x_val, d), y_val))
+      return train_errors, val_errors
+
+
+  def best_degree(x_tr, y_tr, x_val, y_val, degrees):
+      _, val_errors = validation_curve(x_tr, y_tr, x_val, y_val, degrees)
+      return degrees[int(np.argmin(val_errors))]
+tests:
+  - call: mse([1, 2, 3], [1, 2, 5])
+    expected: "4 / 3"
+  - call: fit_predict(np.array([0.0, 1.0, 2.0]), np.array([1.0, 3.0, 5.0]), np.array([10.0]), 1)
+    expected: np.array([21.0])
+  - name: L'erreur d'entraînement diminue avec le degré
+    check: |
+      tr, va = validation_curve(X_TR, Y_TR, X_VAL, Y_VAL, DEGREES)
+      assert len(tr) == len(va) == len(DEGREES)
+      assert all(b <= a + 1e-9 for a, b in zip(tr, tr[1:])), tr
+  - name: L'erreur de validation remonte (sur-apprentissage)
+    check: |
+      tr, va = validation_curve(X_TR, Y_TR, X_VAL, Y_VAL, DEGREES)
+      best = int(np.argmin(va))
+      assert va[-1] > 2 * va[best], (va[best], va[-1])
+      assert va[0] > 2 * va[best], "le degré 0 sous-apprend"
+  - call: best_degree(X_TR, Y_TR, X_VAL, Y_VAL, DEGREES)
+wrong:
+  - |
+    import numpy as np
+
+
+    def fit_predict(x_train, y_train, x_eval, degree):
+        return np.polyval(np.polyfit(x_train, y_train, degree), x_eval)
+
+
+    def mse(a, b):
+        return float(np.mean((np.asarray(a) - np.asarray(b)) ** 2))
+
+
+    def validation_curve(x_tr, y_tr, x_val, y_val, degrees):
+        tr, va = [], []
+        for d in degrees:
+            tr.append(mse(fit_predict(x_tr, y_tr, x_tr, d), y_tr))
+            va.append(mse(fit_predict(x_val, y_val, x_val, d), y_val))
+        return tr, va
+
+
+    def best_degree(x_tr, y_tr, x_val, y_val, degrees):
+        tr, va = validation_curve(x_tr, y_tr, x_val, y_val, degrees)
+        return degrees[int(np.argmin(va))]
+  - |
+    import numpy as np
+
+
+    def fit_predict(x_train, y_train, x_eval, degree):
+        return np.polyval(np.polyfit(x_train, y_train, degree), x_eval)
+
+
+    def mse(a, b):
+        return float(np.mean(np.abs(np.asarray(a) - np.asarray(b))))
+
+
+    def validation_curve(x_tr, y_tr, x_val, y_val, degrees):
+        tr, va = [], []
+        for d in degrees:
+            tr.append(mse(fit_predict(x_tr, y_tr, x_tr, d), y_tr))
+            va.append(mse(fit_predict(x_tr, y_tr, x_val, d), y_val))
+        return tr, va
+
+
+    def best_degree(x_tr, y_tr, x_val, y_val, degrees):
+        tr, va = validation_curve(x_tr, y_tr, x_val, y_val, degrees)
+        return degrees[int(np.argmin(tr))]
+parsons:
+  distractors:
+    - line: "return degrees[int(np.argmin(train_errors))]"
+      replaces: "return degrees[int(np.argmin(val_errors))]"
+    - line: "_, val_errors = validation_curve(x_val, y_val, x_tr, y_tr, degrees)"
+      replaces: "_, val_errors = validation_curve(x_tr, y_tr, x_val, y_val, degrees)"
+hints:
+  - "`np.polyfit(x, y, d)` renvoie les coefficients ; `np.polyval(coefs, x)` évalue le polynôme."
+  - "Le modèle est **toujours** ajusté sur le train ; on l'évalue sur le train et sur la validation."
+  - "Choisir le degré sur l'erreur de train donnerait toujours le degré maximal."
+explanation: |
+  - **Sous-apprentissage** (degré 0-1) : erreurs de train et de validation élevées → biais.
+  - **Sur-apprentissage** (degré 12 avec 20 points) : train presque parfait, validation qui explose → variance.
+  - Le bon modèle est au **creux** de la courbe de validation. Les hyperparamètres se choisissent sur la validation, puis on mesure une seule fois sur un jeu de test.
+  - Voir le lab « Comparer les modèles » pour le même phénomène en 2D.

@@ -47,6 +47,14 @@ tests:
     check: |
       k = growth_exponent(longest_unique, lambda n: ("".join(chr(0x4E00 + i % 20_000) for i in range(n)),))
       assert k < 1.5, f"Ta solution semble en O(n^{k:.1f}) quand les sous-chaînes uniques sont longues. Une fenêtre glissante fait O(n)."
+  - name: Comparé à une recherche exhaustive
+    check: |
+      import random
+      rnd = random.Random(2)
+      for _ in range(400):
+          s = ''.join(rnd.choice('abcd') for _ in range(rnd.randint(0, 12)))
+          brute = max((j - i for i in range(len(s) + 1) for j in range(i, len(s) + 1) if len(set(s[i:j])) == j - i), default=0)
+          assert longest_unique(s) == brute, (s, longest_unique(s), brute)
 hints:
   - "Maintiens une fenêtre `[start, i]` sans doublon. Quand `s[i]` est déjà dans la fenêtre, avance `start`."
   - "Mémorise la **dernière position** de chaque caractère : `start = last[ch] + 1` (seulement si cette position est dans la fenêtre !)."

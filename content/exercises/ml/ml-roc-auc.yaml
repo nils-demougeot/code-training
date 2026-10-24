@@ -1,0 +1,130 @@
+id: ml-roc-auc
+title: Calculer l'AUC soi-même
+domain: ml
+difficulty: hard
+minutes: 12
+interview: true
+tags: [ROC, AUC, rangs, métriques, Mann-Whitney]
+statement: |
+  L'**AUC** (aire sous la courbe ROC) a une interprétation simple : c'est la probabilité qu'un exemple positif tiré au hasard ait un score **plus élevé** qu'un exemple négatif tiré au hasard (une égalité compte pour ½).
+
+  1. `auc_pairs(y, scores)` : l'AUC par comptage direct sur toutes les paires (positif, négatif). Vectorisé avec NumPy (broadcasting), sans boucle Python.
+  2. `roc_points(y, scores)` : les points de la courbe ROC `(fpr, tpr)` pour chaque seuil égal à un score distinct, du plus grand au plus petit, précédés du point `(0, 0)`. Renvoie deux tableaux `fpr, tpr`.
+  3. `auc_trapz(fpr, tpr)` : l'aire sous ces points par la méthode des trapèzes.
+setup: |
+  import numpy as np
+  Y = np.array([0, 0, 1, 1, 0, 1, 1, 0])
+  S = np.array([0.1, 0.4, 0.35, 0.8, 0.2, 0.9, 0.4, 0.05])
+starter: |
+  import numpy as np
+
+
+  def auc_pairs(y, scores):
+      pass
+
+
+  def roc_points(y, scores):
+      pass
+
+
+  def auc_trapz(fpr, tpr):
+      pass
+solution: |
+  import numpy as np
+
+
+  def auc_pairs(y, scores):
+      pos = scores[y == 1]
+      neg = scores[y == 0]
+      diff = pos[:, None] - neg[None, :]
+      return float(((diff > 0) + 0.5 * (diff == 0)).mean())
+
+
+  def roc_points(y, scores):
+      thresholds = np.unique(scores)[::-1]
+      n_pos, n_neg = (y == 1).sum(), (y == 0).sum()
+      tpr = [0.0] + [((scores >= t) & (y == 1)).sum() / n_pos for t in thresholds]
+      fpr = [0.0] + [((scores >= t) & (y == 0)).sum() / n_neg for t in thresholds]
+      return np.array(fpr), np.array(tpr)
+
+
+  def auc_trapz(fpr, tpr):
+      return float(np.sum(np.diff(fpr) * (tpr[1:] + tpr[:-1]) / 2))
+tests:
+  - call: auc_pairs(Y, S)
+    expected: "0.90625"
+  - call: roc_points(Y, S)
+  - call: auc_trapz(*roc_points(Y, S))
+    expected: "0.90625"
+  - name: Classifieur parfait et classifieur inversé
+    check: |
+      y = np.array([0, 0, 1, 1])
+      assert auc_pairs(y, np.array([0.1, 0.2, 0.8, 0.9])) == 1.0
+      assert auc_pairs(y, np.array([0.9, 0.8, 0.2, 0.1])) == 0.0
+      assert auc_pairs(y, np.array([0.5, 0.5, 0.5, 0.5])) == 0.5
+  - name: Comparé à scikit-learn
+    check: |
+      from sklearn.metrics import roc_auc_score, roc_curve
+      rng = np.random.default_rng(0)
+      for _ in range(30):
+          y = rng.integers(0, 2, 60)
+          if y.min() == y.max():
+              continue
+          s = np.round(rng.random(60) + 0.3 * y, 1)
+          assert abs(auc_pairs(y, s) - roc_auc_score(y, s)) < 1e-12
+          fpr, tpr = roc_points(y, s)
+          assert abs(auc_trapz(fpr, tpr) - roc_auc_score(y, s)) < 1e-12
+          rf, rt, _ = roc_curve(y, s, drop_intermediate=False)
+          assert np.allclose(fpr, rf) and np.allclose(tpr, rt)
+wrong:
+  - |
+    import numpy as np
+
+
+    def auc_pairs(y, scores):
+        pos, neg = scores[y == 1], scores[y == 0]
+        return float((pos[:, None] > neg[None, :]).mean())
+
+
+    def roc_points(y, scores):
+        thresholds = np.unique(scores)[::-1]
+        tpr = [0.0] + [((scores >= t) & (y == 1)).sum() / (y == 1).sum() for t in thresholds]
+        fpr = [0.0] + [((scores >= t) & (y == 0)).sum() / (y == 0).sum() for t in thresholds]
+        return np.array(fpr), np.array(tpr)
+
+
+    def auc_trapz(fpr, tpr):
+        return float(np.sum(np.diff(fpr) * tpr[1:]))
+  - |
+    import numpy as np
+
+
+    def auc_pairs(y, scores):
+        return float(((scores > 0.5) == y).mean())
+
+
+    def roc_points(y, scores):
+        thresholds = np.unique(scores)
+        tpr = [0.0] + [((scores >= t) & (y == 1)).sum() / (y == 1).sum() for t in thresholds]
+        fpr = [0.0] + [((scores >= t) & (y == 0)).sum() / (y == 0).sum() for t in thresholds]
+        return np.array(fpr), np.array(tpr)
+
+
+    def auc_trapz(fpr, tpr):
+        return float(np.sum(np.diff(fpr) * (tpr[1:] + tpr[:-1]) / 2))
+parsons:
+  distractors:
+    - line: "thresholds = np.unique(scores)"
+      replaces: "thresholds = np.unique(scores)[::-1]"
+    - line: "return float((diff > 0).mean())"
+      replaces: "return float(((diff > 0) + 0.5 * (diff == 0)).mean())"
+hints:
+  - "`pos[:, None] - neg[None, :]` donne la matrice de toutes les différences (positif − négatif)."
+  - "Une paire vaut 1 si la différence est > 0, ½ si elle est nulle, 0 sinon. L'AUC est la moyenne."
+  - "Pour chaque seuil `t` (du plus grand au plus petit), TPR = vrais positifs / positifs, FPR = faux positifs / négatifs, avec la prédiction `score >= t`."
+  - "Trapèzes : $\\sum (x_{i+1} - x_i) \\frac{y_{i+1} + y_i}{2}$."
+explanation: |
+  - L'AUC mesure la qualité du **classement** (ranking), indépendamment du seuil : 0,5 = hasard, 1 = parfait, < 0,5 = classement inversé.
+  - Elle est insensible au déséquilibre des classes pour le classement, mais peut être trompeuse quand seuls les tout premiers rangs comptent (fraude, recherche) : regarder alors la courbe precision-recall.
+  - L'interprétation par paires est la statistique U de **Mann-Whitney** normalisée.
+  - Les égalités de score comptent pour ½ : les ignorer sous-estime l'AUC.

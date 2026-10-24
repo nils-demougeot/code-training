@@ -1,0 +1,119 @@
+id: np-accuracy-argmax
+title: Des probabilités aux prédictions
+domain: numpy
+difficulty: easy
+minutes: 5
+tags: [argmax, axis, comparaison, mean]
+statement: |
+  Un classifieur renvoie une matrice `probs` de shape `(n_samples, n_classes)` : chaque ligne contient les probabilités des classes.
+
+  1. `predict(probs)` : la classe prédite pour chaque échantillon (vecteur d'entiers de shape `(n,)`).
+  2. `accuracy(probs, y)` : la proportion de bonnes prédictions (un `float`).
+  3. `top_k_accuracy(probs, y, k)` : la proportion d'échantillons dont la vraie classe est parmi les `k` classes les plus probables.
+
+  Sans boucle Python.
+setup: |
+  import numpy as np
+  PROBS = np.array([[0.1, 0.7, 0.2],
+                    [0.5, 0.3, 0.2],
+                    [0.2, 0.2, 0.6],
+                    [0.35, 0.4, 0.25]])
+  Y = np.array([1, 2, 2, 0])
+starter: |
+  import numpy as np
+
+
+  def predict(probs):
+      pass
+
+
+  def accuracy(probs, y):
+      pass
+
+
+  def top_k_accuracy(probs, y, k):
+      pass
+solution: |
+  import numpy as np
+
+
+  def predict(probs):
+      return probs.argmax(axis=1)
+
+
+  def accuracy(probs, y):
+      return float((predict(probs) == y).mean())
+
+
+  def top_k_accuracy(probs, y, k):
+      top_k = np.argsort(probs, axis=1)[:, -k:]
+      return float((top_k == y[:, None]).any(axis=1).mean())
+tests:
+  - call: predict(PROBS)
+    expected: np.array([1, 0, 2, 1])
+  - call: accuracy(PROBS, Y)
+    expected: "0.5"
+  - call: top_k_accuracy(PROBS, Y, 2)
+    expected: "0.75"
+  - call: top_k_accuracy(PROBS, Y, 3)
+    expected: "1.0"
+  - name: Grand jeu aléatoire, comparé à scikit-learn
+    check: |
+      from sklearn.metrics import top_k_accuracy_score
+      rng = np.random.default_rng(0)
+      p = rng.dirichlet(np.ones(5), size=300)
+      y = rng.integers(0, 5, 300)
+      assert abs(top_k_accuracy(p, y, 2) - top_k_accuracy_score(y, p, k=2)) < 1e-12
+      assert abs(accuracy(p, y) - (p.argmax(1) == y).mean()) < 1e-12
+wrong:
+  - |
+    import numpy as np
+
+
+    def predict(probs):
+        return probs.argmax(axis=0)
+
+
+    def accuracy(probs, y):
+        return float((predict(probs) == y).mean())
+
+
+    def top_k_accuracy(probs, y, k):
+        top_k = np.argsort(probs, axis=1)[:, :k]
+        return float((top_k == y[:, None]).any(axis=1).mean())
+  - |
+    import numpy as np
+
+
+    def predict(probs):
+        return probs.argmax(axis=1)
+
+
+    def accuracy(probs, y):
+        return float((predict(probs) == y).mean())
+
+
+    def top_k_accuracy(probs, y, k):
+        top_k = np.argsort(probs, axis=1)[:, -k:]
+        return float((top_k == y).any(axis=1).mean())
+parsons:
+  distractors:
+    - line: "return probs.argmax(axis=0)"
+      replaces: "return probs.argmax(axis=1)"
+    - line: "top_k = np.argsort(probs, axis=1)[:, :k]"
+      replaces: "top_k = np.argsort(probs, axis=1)[:, -k:]"
+hints:
+  - "`argmax(axis=1)` : l'indice du maximum **de chaque ligne**."
+  - "La moyenne d'un tableau de booléens est une proportion."
+  - "`np.argsort(..., axis=1)` trie chaque ligne par ordre croissant : les k plus grandes classes sont les k **dernières** colonnes."
+  - "Compare `(n, k)` avec `y[:, None]` de shape `(n, 1)` : le broadcasting fait le reste."
+explanation: |
+  ```python
+  pred = probs.argmax(axis=1)
+  acc = (pred == y).mean()
+  top_k = np.argsort(probs, axis=1)[:, -k:]
+  (top_k == y[:, None]).any(axis=1).mean()
+  ```
+  - `axis=1` agit **le long des colonnes**, donc ligne par ligne : un résultat par échantillon.
+  - `y[:, None]` transforme `(n,)` en `(n, 1)` pour comparer chaque ligne à sa propre étiquette.
+  - La top-k accuracy est classique en vision (ImageNet top-5).

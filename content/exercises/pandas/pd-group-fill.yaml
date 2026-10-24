@@ -1,0 +1,94 @@
+id: pd-group-fill
+title: Imputer par groupe avec transform
+domain: pandas
+difficulty: medium
+minutes: 7
+tags: [groupby, transform, fillna, médiane]
+statement: |
+  Des prix sont manquants dans un catalogue. Une moyenne globale serait absurde (une chaise et une souris n'ont pas le même prix) : on impute **par catégorie**.
+
+  1. `fill_by_group(df)` : renvoie une copie de `df` où chaque `price` manquant est remplacé par la **médiane des prix de sa catégorie**. Si toute une catégorie est manquante, utilise la **médiane globale**.
+  2. `price_vs_category(df)` : une Series (même index) : le prix divisé par la médiane de sa catégorie (calculée sur les prix connus). `NaN` si le prix est manquant.
+setup: |
+  import numpy as np
+  import pandas as pd
+  CATALOG = pd.DataFrame({
+      "product": ["souris", "clavier", "écran", "chaise", "lampe", "bureau", "câble", "tapis"],
+      "category": ["info", "info", "info", "maison", "maison", "maison", "info", "jardin"],
+      "price": [29.0, np.nan, 249.0, 299.0, 35.0, np.nan, 9.0, np.nan],
+  })
+starter: |
+  import pandas as pd
+
+
+  def fill_by_group(df):
+      pass
+
+
+  def price_vs_category(df):
+      pass
+solution: |
+  import pandas as pd
+
+
+  def fill_by_group(df):
+      out = df.copy()
+      group_median = out.groupby('category')['price'].transform('median')
+      out['price'] = out['price'].fillna(group_median).fillna(out['price'].median())
+      return out
+
+
+  def price_vs_category(df):
+      return df['price'] / df.groupby('category')['price'].transform('median')
+tests:
+  - call: fill_by_group(CATALOG)
+  - name: Valeurs imputées
+    call: fill_by_group(CATALOG)['price'].tolist()
+    expected: "[29.0, 29.0, 249.0, 299.0, 35.0, 167.0, 9.0, 35.0]"
+  - name: CATALOG n'est pas modifié
+    check: |
+      assert CATALOG['price'].isna().sum() == 3
+      fill_by_group(CATALOG)
+      assert CATALOG['price'].isna().sum() == 3
+  - call: price_vs_category(CATALOG)
+wrong:
+  - |
+    import pandas as pd
+
+
+    def fill_by_group(df):
+        out = df.copy()
+        out['price'] = out['price'].fillna(out['price'].median())
+        return out
+
+
+    def price_vs_category(df):
+        return df['price'] / df.groupby('category')['price'].transform('median')
+  - |
+    import pandas as pd
+
+
+    def fill_by_group(df):
+        out = df.copy()
+        group_median = out.groupby('category')['price'].transform('mean')
+        out['price'] = out['price'].fillna(group_median).fillna(0)
+        return out
+
+
+    def price_vs_category(df):
+        return df['price'] / df['price'].median()
+parsons:
+  distractors:
+    - line: "group_median = out.groupby('category')['price'].median()"
+      replaces: "group_median = out.groupby('category')['price'].transform('median')"
+hints:
+  - "`groupby('category')['price'].transform('median')` renvoie une Series alignée sur `df` : la médiane de la catégorie de chaque ligne."
+  - "`fillna` accepte une Series : chaque trou est rempli par la valeur au même index."
+  - "Enchaîne un deuxième `fillna` avec la médiane globale pour les catégories vides."
+explanation: |
+  ```python
+  df['price'].fillna(df.groupby('category')['price'].transform('median'))
+  ```
+  - `transform` garde la longueur de `df` ; `agg`/`median` réduisent à une ligne par groupe (il faudrait alors un `map` ou un `merge`).
+  - Médiane plutôt que moyenne : robuste aux prix extrêmes.
+  - En ML, ces statistiques se calculent sur le **train** puis s'appliquent au test, sinon fuite de données.

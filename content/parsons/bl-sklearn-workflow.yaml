@@ -1,0 +1,41 @@
+id: bl-sklearn-workflow
+title: Le workflow scikit-learn complet
+domain: ml
+difficulty: easy
+statement: |
+  Remets dans l'ordre le workflow standard : **découper** les données, construire un **pipeline** (standardisation + modèle), **entraîner** sur le train, **prédire** sur le test, **évaluer**.
+
+  `run(X, y)` renvoie l'accuracy sur le test (25 % des données, stratifié, `random_state=0`).
+setup: |
+  from sklearn.datasets import load_breast_cancer
+  X, y = load_breast_cancer(return_X_y=True)
+solution: |
+  from sklearn.linear_model import LogisticRegression
+  from sklearn.metrics import accuracy_score
+  from sklearn.model_selection import train_test_split
+  from sklearn.pipeline import make_pipeline
+  from sklearn.preprocessing import StandardScaler
+
+
+  def run(X, y):
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, stratify=y, random_state=0)
+      model = make_pipeline(StandardScaler(), LogisticRegression(max_iter=1000))
+      model.fit(X_train, y_train)
+      y_pred = model.predict(X_test)
+      return accuracy_score(y_test, y_pred)
+tests:
+  - call: run(X, y)
+  - name: Bonne accuracy
+    check: |
+      assert run(X, y) > 0.95
+distractors:
+  - line: "model.fit(X, y)"
+    replaces: "model.fit(X_train, y_train)"
+  - line: "y_pred = model.predict(X_train)"
+    replaces: "y_pred = model.predict(X_test)"
+  - line: "return accuracy_score(y_train, y_pred)"
+    replaces: "return accuracy_score(y_test, y_pred)"
+explanation: |
+  - `fit` uniquement sur le **train** ; `predict` et la métrique sur le **test**.
+  - Le pipeline ajuste le scaler sur le train puis l'applique au test : pas de fuite de données.
+  - Les imports en tête de fichier, puis le code : une bonne habitude que l'ordre des blocs fait travailler.

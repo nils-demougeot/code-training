@@ -1,0 +1,67 @@
+id: bl-backprop
+title: Forward et backward d'un réseau à 2 couches
+domain: dl
+difficulty: hard
+statement: |
+  Remets dans l'ordre le **forward** puis le **backward** d'un réseau `X → Linear → ReLU → Linear → softmax`, avec une cross-entropy moyenne.
+
+  `forward_backward(X, y, W1, b1, W2, b2)` renvoie `(loss, grads)` où `grads` est un dict `{'W1', 'b1', 'W2', 'b2'}`.
+
+  Le backward se lit **à l'envers** du forward : on part de la loss et on remonte couche par couche.
+setup: |
+  import numpy as np
+  _rng = np.random.default_rng(0)
+  X = _rng.normal(size=(8, 4))
+  y = _rng.integers(0, 3, 8)
+  W1, b1 = _rng.normal(size=(4, 5)) * 0.5, _rng.normal(size=5) * 0.1
+  W2, b2 = _rng.normal(size=(5, 3)) * 0.5, _rng.normal(size=3) * 0.1
+solution: |
+  import numpy as np
+
+
+  def forward_backward(X, y, W1, b1, W2, b2):
+      n = len(X)
+      Z1 = X @ W1 + b1
+      A1 = np.maximum(0, Z1)
+      Z2 = A1 @ W2 + b2
+      Z2 = Z2 - Z2.max(axis=1, keepdims=True)
+      P = np.exp(Z2) / np.exp(Z2).sum(axis=1, keepdims=True)
+      loss = float(-np.log(P[np.arange(n), y]).mean())
+      dZ2 = P.copy()
+      dZ2[np.arange(n), y] -= 1
+      dZ2 /= n
+      dW2 = A1.T @ dZ2
+      db2 = dZ2.sum(axis=0)
+      dA1 = dZ2 @ W2.T
+      dZ1 = dA1 * (Z1 > 0)
+      dW1 = X.T @ dZ1
+      db1 = dZ1.sum(axis=0)
+      return loss, {'W1': dW1, 'b1': db1, 'W2': dW2, 'b2': db2}
+tests:
+  - call: forward_backward(X, y, W1, b1, W2, b2)[0]
+  - name: Gradients comparés aux différences finies
+    check: |
+      loss, g = forward_backward(X, y, W1, b1, W2, b2)
+      params = {'W1': W1, 'b1': b1, 'W2': W2, 'b2': b2}
+      eps = 1e-6
+      for name, p in params.items():
+          num = np.zeros_like(p)
+          for idx in np.ndindex(p.shape):
+              old = p[idx]
+              p[idx] = old + eps; plus = forward_backward(X, y, **params)[0]
+              p[idx] = old - eps; minus = forward_backward(X, y, **params)[0]
+              p[idx] = old
+              num[idx] = (plus - minus) / (2 * eps)
+          err = np.linalg.norm(num - g[name]) / (np.linalg.norm(num) + np.linalg.norm(g[name]))
+          assert err < 1e-6, f"gradient de {name} faux (erreur relative {err:.1e})"
+distractors:
+  - line: "dZ1 = dA1 * (A1 < 0)"
+    replaces: "dZ1 = dA1 * (Z1 > 0)"
+  - line: "dW2 = dZ2 @ A1.T"
+    replaces: "dW2 = A1.T @ dZ2"
+  - line: "dA1 = dZ2 @ W2"
+    replaces: "dA1 = dZ2 @ W2.T"
+explanation: |
+  - Softmax + cross-entropy : le gradient par rapport aux logits est simplement `(P - one_hot(y)) / n`.
+  - Couche linéaire `Z = A @ W + b` : `dW = A.T @ dZ`, `db = dZ.sum(axis=0)`, `dA = dZ @ W.T`. Les shapes guident : `dW` doit avoir la shape de `W`.
+  - ReLU laisse passer le gradient là où l'entrée était positive : `dZ1 = dA1 * (Z1 > 0)`.

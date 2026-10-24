@@ -1,6 +1,6 @@
 import clsx from 'clsx'
 import {
-  BookMarked, BookOpen, Boxes, Code2, Cpu, Dices, Flame, FlaskConical, Globe, LayoutDashboard, Layers, Menu, Mic, Rocket, Search,
+  BookMarked, BookOpen, Boxes, Code2, Cpu, Dices, Flame, FlaskConical, Globe, LayoutDashboard, Layers, Menu, Mic, Puzzle, Rocket, Search,
   UserCircle2, X, Zap,
 } from 'lucide-react'
 import { useEffect, useId, useMemo, useState, type ReactNode } from 'react'
@@ -24,6 +24,7 @@ const NAV: { to: string; label: string; icon: typeof Code2; badge?: 'cards' }[] 
   { to: '/', label: 'Accueil', icon: LayoutDashboard },
   { to: '/exercices', label: 'Exercices', icon: Code2 },
   { to: '/memoire', label: 'Mémoire', icon: Layers, badge: 'cards' },
+  { to: '/blocs', label: 'Blocs de code', icon: Puzzle },
   { to: '/quiz', label: 'Quiz éclair', icon: Zap },
   { to: '/labs', label: 'Labs', icon: FlaskConical },
   { to: '/projets', label: 'Projets', icon: Rocket },

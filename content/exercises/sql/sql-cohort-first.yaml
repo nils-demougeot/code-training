@@ -1,0 +1,71 @@
+id: sql-cohort-first
+title: Première commande et nouveaux clients
+domain: sql
+difficulty: medium
+minutes: 8
+language: sql
+shared: sql_shop
+tags: [MIN, GROUP BY, CTE, cohorte, strftime]
+statement: |
+  Pour chaque mois (`'YYYY-MM'`), compte les **nouveaux clients** : ceux dont la **première commande non annulée** a lieu ce mois-là.
+
+  Colonnes : `month`, `new_customers`, `cumulative_customers` (cumul des nouveaux clients). Seuls les mois avec au moins un nouveau client apparaissent. Tri par `month`.
+starter: |
+  SELECT customer_id, MIN(order_date) AS first_order
+  FROM orders
+  GROUP BY customer_id
+solution: |
+  WITH first_orders AS (
+      SELECT customer_id, MIN(order_date) AS first_order
+      FROM orders
+      WHERE status <> 'annulée'
+      GROUP BY customer_id
+  ),
+  monthly AS (
+      SELECT strftime('%Y-%m', first_order) AS month, COUNT(*) AS new_customers
+      FROM first_orders
+      GROUP BY month
+  )
+  SELECT month, new_customers, SUM(new_customers) OVER (ORDER BY month) AS cumulative_customers
+  FROM monthly
+  ORDER BY month
+tests:
+  - name: Résultat de la requête
+    call: q(QUERY)
+wrong:
+  - |
+    WITH first_orders AS (
+        SELECT customer_id, MIN(order_date) AS first_order
+        FROM orders
+        GROUP BY customer_id
+    ),
+    monthly AS (
+        SELECT strftime('%Y-%m', first_order) AS month, COUNT(*) AS new_customers
+        FROM first_orders
+        GROUP BY month
+    )
+    SELECT month, new_customers, SUM(new_customers) OVER (ORDER BY month) AS cumulative_customers
+    FROM monthly
+    ORDER BY month
+  - |
+    WITH monthly AS (
+        SELECT strftime('%Y-%m', order_date) AS month, COUNT(DISTINCT customer_id) AS new_customers
+        FROM orders
+        WHERE status <> 'annulée'
+        GROUP BY month
+    )
+    SELECT month, new_customers, SUM(new_customers) OVER (ORDER BY month) AS cumulative_customers
+    FROM monthly
+    ORDER BY month
+parsons:
+  distractors:
+    - line: "SELECT customer_id, MAX(order_date) AS first_order"
+      replaces: "SELECT customer_id, MIN(order_date) AS first_order"
+hints:
+  - "Étape 1 (CTE) : la date de première commande non annulée de chaque client, `MIN(order_date)` groupé par client."
+  - "Étape 2 : compte ces premières commandes par mois."
+  - "Étape 3 : cumul avec `SUM(...) OVER (ORDER BY month)`."
+explanation: |
+  - Décomposer en CTE successives (`first_orders` → `monthly` → résultat) rend une requête complexe lisible et testable.
+  - Compter les clients **actifs** par mois (`COUNT(DISTINCT customer_id)`) ≠ compter les **nouveaux** clients : il faut d'abord trouver la première commande de chacun.
+  - Les dates ISO (`'YYYY-MM-DD'`) se comparent correctement comme des chaînes : `MIN` fonctionne.

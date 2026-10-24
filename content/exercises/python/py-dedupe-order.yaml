@@ -1,0 +1,74 @@
+id: py-dedupe-order
+title: Dédoublonner en gardant l'ordre
+domain: python
+difficulty: easy
+minutes: 4
+tags: [dict.fromkeys, set, ordre]
+statement: |
+  Écris `dedupe(items)` qui renvoie une **liste** des éléments de `items` sans doublons, **dans l'ordre de première apparition**.
+
+  ```python
+  dedupe([3, 1, 3, 2, 1])   # [3, 1, 2]
+  ```
+
+  Puis `dedupe_by(items, key)` : même chose, mais deux éléments sont considérés comme doublons si `key(element)` est identique (on garde le premier).
+starter: |
+  def dedupe(items):
+      pass
+
+
+  def dedupe_by(items, key):
+      pass
+solution: |
+  def dedupe(items):
+      return list(dict.fromkeys(items))
+
+
+  def dedupe_by(items, key):
+      seen = set()
+      out = []
+      for item in items:
+          k = key(item)
+          if k not in seen:
+              seen.add(k)
+              out.append(item)
+      return out
+tests:
+  - call: dedupe([3, 1, 3, 2, 1])
+    expected: "[3, 1, 2]"
+  - call: dedupe(['b', 'a', 'b', 'c', 'a'])
+  - call: dedupe([])
+  - call: "dedupe_by(['Paris', 'paris', 'Lyon', 'PARIS', 'lyon'], str.lower)"
+    expected: "['Paris', 'Lyon']"
+  - call: "dedupe_by([(1, 'a'), (2, 'b'), (1, 'c')], lambda t: t[0])"
+  - call: dedupe([5, 4, 3, 2, 1, 5, 4])
+    hidden: true
+wrong:
+  - |
+    def dedupe(items):
+        return list(set(items))
+
+
+    def dedupe_by(items, key):
+        return list({key(i): i for i in items}.values())
+  - |
+    def dedupe(items):
+        return sorted(set(items), key=items.index)
+
+
+    def dedupe_by(items, key):
+        return list({key(i): i for i in items}.values())
+parsons:
+  distractors:
+    - line: "seen.add(item)"
+      replaces: "seen.add(k)"
+    - line: "if k in seen:"
+      replaces: "if k not in seen:"
+hints:
+  - "`set` perd l'ordre. Mais les clés d'un `dict` gardent l'ordre d'insertion depuis Python 3.7."
+  - "`dedupe_by` : mémorise les clés déjà vues dans un `set`, et ajoute l'élément seulement si sa clé est nouvelle."
+explanation: |
+  - `list(dict.fromkeys(items))` : l'idiome le plus court pour dédoublonner en gardant l'ordre, en O(n).
+  - `list(set(items))` perd l'ordre ; `sorted(set(items), key=items.index)` le garde mais en O(n²).
+  - Le pattern « `seen` + liste de sortie » marche avec n'importe quelle clé, et s'écrit pareil en entretien quel que soit le langage.
+  - ⚠️ `{key(i): i for i in items}` garde le **dernier** élément de chaque clé, pas le premier.

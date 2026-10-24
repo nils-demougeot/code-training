@@ -1,0 +1,53 @@
+id: sql-subquery
+title: Sous-requêtes et comparaison à la moyenne
+domain: sql
+difficulty: medium
+minutes: 7
+language: sql
+shared: sql_shop
+tags: [sous-requête, AVG, sous-requête corrélée]
+statement: |
+  Liste les produits **plus chers que la moyenne de leur propre catégorie**.
+
+  Colonnes : `name`, `category`, `price`, `category_avg` (la moyenne de la catégorie, arrondie à 2 décimales). Tri par `category`, puis `price` décroissant.
+starter: |
+  SELECT name, category, price
+  FROM products
+  WHERE price > (SELECT AVG(price) FROM products)
+solution: |
+  SELECT p.name, p.category, p.price, ROUND(c.avg_price, 2) AS category_avg
+  FROM products p
+  JOIN (
+      SELECT category, AVG(price) AS avg_price
+      FROM products
+      GROUP BY category
+  ) c ON c.category = p.category
+  WHERE p.price > c.avg_price
+  ORDER BY p.category, p.price DESC
+tests:
+  - name: Résultat de la requête
+    call: q(QUERY)
+wrong:
+  - |
+    SELECT name, category, price, ROUND((SELECT AVG(price) FROM products), 2) AS category_avg
+    FROM products
+    WHERE price > (SELECT AVG(price) FROM products)
+    ORDER BY category, price DESC
+  - |
+    SELECT name, category, price, ROUND(AVG(price), 2) AS category_avg
+    FROM products
+    GROUP BY category
+    HAVING price > AVG(price)
+    ORDER BY category, price DESC
+parsons:
+  distractors:
+    - line: "WHERE p.price > AVG(p.price)"
+      replaces: "WHERE p.price > c.avg_price"
+hints:
+  - "Calcule d'abord la moyenne par catégorie dans une sous-requête (`GROUP BY category`), puis joins-la aux produits."
+  - "On ne peut pas écrire `WHERE price > AVG(price)` : une agrégation n'est pas permise dans le `WHERE`."
+  - "Alternative : une sous-requête **corrélée** `WHERE price > (SELECT AVG(price) FROM products p2 WHERE p2.category = p.category)`."
+explanation: |
+  - Une sous-requête dans le `FROM` (ou une CTE) crée une table temporaire réutilisable.
+  - La sous-requête **corrélée** (qui référence la ligne courante) marche aussi, mais elle est réévaluée pour chaque ligne.
+  - Version window function : `AVG(price) OVER (PARTITION BY category)` dans une CTE, puis un filtre.

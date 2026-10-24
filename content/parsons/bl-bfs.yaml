@@ -1,0 +1,57 @@
+id: bl-bfs
+title: Parcours en largeur (BFS)
+domain: algo
+difficulty: easy
+statement: |
+  Remets dans l'ordre `bfs_distances(graph, start)` : les distances (en nombre d'arêtes) depuis `start` vers tous les nœuds atteignables d'un graphe donné en liste d'adjacence `{noeud: [voisins]}`.
+setup: |
+  GRAPH = {"a": ["b", "c"], "b": ["d"], "c": ["d", "e"], "d": ["f"], "e": ["f"], "f": [], "z": ["a"]}
+solution: |
+  from collections import deque
+
+
+  def bfs_distances(graph, start):
+      dist = {start: 0}
+      queue = deque([start])
+      while queue:
+          node = queue.popleft()
+          for neighbor in graph.get(node, []):
+              if neighbor not in dist:
+                  dist[neighbor] = dist[node] + 1
+                  queue.append(neighbor)
+      return dist
+tests:
+  - call: bfs_distances(GRAPH, "a")
+    expected: "{'a': 0, 'b': 1, 'c': 1, 'd': 2, 'e': 2, 'f': 3}"
+  - call: bfs_distances(GRAPH, "f")
+    expected: "{'f': 0}"
+  - call: bfs_distances(GRAPH, "z")
+  - name: Un chemin long découvert en premier ne doit pas gagner
+    call: "bfs_distances({'s': ['a', 'b'], 'a': ['c'], 'b': ['d'], 'd': ['c'], 'c': []}, 's')"
+    expected: "{'s': 0, 'a': 1, 'b': 1, 'c': 2, 'd': 2}"
+  - name: Graphes aléatoires
+    check: |
+      import random
+      rnd = random.Random(0)
+      for _ in range(200):
+          n = rnd.randint(1, 9)
+          g = {i: rnd.sample(range(n), rnd.randint(0, min(3, n))) for i in range(n)}
+          ref, frontier, d = {0: 0}, [0], 0
+          while frontier:
+              d += 1
+              nxt = []
+              for u in frontier:
+                  for v in g[u]:
+                      if v not in ref:
+                          ref[v] = d
+                          nxt.append(v)
+              frontier = nxt
+          assert bfs_distances(g, 0) == ref, (g, bfs_distances(g, 0), ref)
+distractors:
+  - line: "node = queue.pop()"
+    replaces: "node = queue.popleft()"
+  - line: "dist[neighbor] = dist[node]"
+    replaces: "dist[neighbor] = dist[node] + 1"
+explanation: |
+  - BFS = une **file** (FIFO) : les nœuds sortent par distance croissante. Avec une pile (`pop()`), on obtient un DFS et les distances ne sont plus minimales.
+  - Marquer un nœud **quand on l'ajoute** à la file (ici via `dist`) évite de l'ajouter plusieurs fois.

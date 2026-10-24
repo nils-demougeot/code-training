@@ -61,6 +61,9 @@ tests:
       a, b = rng.integers(0, 2, 200), rng.integers(0, 2, 200)
       p, r, f = precision_recall_f1(a, b)
       assert np.allclose([p, r, f], [precision_score(a, b), recall_score(a, b), f1_score(a, b)])
+  - name: Autant de faux positifs que de vrais positifs
+    call: precision_recall_f1(np.array([1, 0, 1, 0]), np.array([1, 1, 0, 0]))
+    expected: (0.5, 0.5, 0.5)
 hints:
   - "`(y_true == 1) & (y_pred == 1)` est un masque des vrais positifs ; `.sum()` les compte."
   - "Convertis en `int(...)` pour renvoyer des entiers Python."

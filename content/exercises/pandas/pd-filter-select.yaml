@@ -44,6 +44,8 @@ tests:
       assert list(orders.columns) == cols, "orders a été modifié : utilise df.assign(...) ou df.copy()"
   - call: big_paris_orders(make_orders(200, seed=5))
     hidden: true
+  - name: Un total de 150 exactement est exclu
+    call: "big_paris_orders(pd.DataFrame({'order_id': [1, 2, 3], 'date': pd.to_datetime(['2024-01-01'] * 3), 'customer': ['a', 'b', 'c'], 'city': ['Paris'] * 3, 'product': ['x'] * 3, 'category': ['y'] * 3, 'qty': [1, 2, 3], 'price': [150.0, 75.5, 40.0]}))"
 hints:
   - "`df.assign(total=df['qty'] * df['price'])` renvoie une copie avec la nouvelle colonne."
   - "Deux conditions : `(cond1) & (cond2)`, avec les parenthèses."

@@ -107,3 +107,111 @@ questions:
     choices: ["Il modifie le DataFrame en place", "Il appelle une fonction Python pour chaque ligne : 10 à 100× plus lent que les opérations vectorisées", "Il ne gère pas les NaN", "Il renvoie toujours une liste"]
     answer: 1
     explain: "`apply(axis=1)` est une boucle Python déguisée. Préfère les opérations de colonnes (`df.a * df.b`), `np.where`, `np.select`, `.map`, `.str`, `.dt`."
+  - id: q-pd-chained-assignment
+    topic: Copies
+    question: "`df[df.age > 30]['segment'] = 'senior'` : que se passe-t-il ?"
+    choices:
+      - "La colonne de df est modifiée pour les lignes filtrées"
+      - "Rien n'est modifié dans df (on modifie une copie) et pandas émet un avertissement"
+      - "Une erreur KeyError est levée"
+      - "Toute la colonne segment vaut 'senior'"
+    answer: 1
+    explain: "C'est une **affectation en chaîne** : le filtre crée une copie temporaire. La bonne syntaxe : `df.loc[df.age > 30, 'segment'] = 'senior'`."
+  - id: q-pd-groupby-size-count
+    topic: groupby
+    verify: true
+    question: Qu'affiche ce code ?
+    code: |
+      import pandas as pd
+      import numpy as np
+      df = pd.DataFrame({"g": ["a", "a", "b"], "x": [1, np.nan, 3]})
+      print(df.groupby("g").size().tolist(), df.groupby("g")["x"].count().tolist())
+    choices: ["[2, 1] [1, 1]", "[2, 1] [2, 1]", "[1, 1] [2, 1]", "[2, 1] [1.0, 3.0]"]
+    answer: 0
+    explain: "`size` compte les lignes du groupe, `count` les valeurs **non manquantes** de la colonne."
+  - id: q-pd-merge-how
+    topic: merge
+    verify: true
+    question: Qu'affiche ce code ?
+    code: |
+      import pandas as pd
+      a = pd.DataFrame({"k": [1, 2, 3]})
+      b = pd.DataFrame({"k": [2, 3, 4]})
+      print(len(a.merge(b)), len(a.merge(b, how="left")), len(a.merge(b, how="outer")))
+    choices: ["2 3 4", "3 3 4", "2 3 6", "2 2 4"]
+    answer: 0
+    explain: "Par défaut `merge` fait une jointure **interne** (`how='inner'`) sur les colonnes communes."
+  - id: q-pd-sort-values-inplace
+    topic: Méthodes
+    verify: true
+    question: Qu'affiche ce code ?
+    code: |
+      import pandas as pd
+      df = pd.DataFrame({"x": [3, 1, 2]})
+      df.sort_values("x")
+      print(df["x"].tolist())
+    choices: ["[3, 1, 2]", "[1, 2, 3]", "[3, 2, 1]", "None"]
+    answer: 0
+    explain: "Presque toutes les méthodes pandas renvoient un **nouvel** objet : il faut réaffecter `df = df.sort_values('x')`."
+  - id: q-pd-iloc-vs-loc
+    topic: loc / iloc
+    verify: true
+    question: Qu'affiche ce code ?
+    code: |
+      import pandas as pd
+      s = pd.Series([10, 20, 30], index=[2, 0, 1])
+      print(s.loc[0], s.iloc[0])
+    choices: ["20 10", "10 20", "10 10", "20 20"]
+    answer: 0
+    explain: "`loc` sélectionne par **étiquette** d'index, `iloc` par **position**. Avec un index d'entiers non ordonné, la différence est piégeuse."
+  - id: q-pd-isin
+    topic: Filtres
+    verify: true
+    question: Qu'affiche ce code ?
+    code: |
+      import pandas as pd
+      s = pd.Series(["Paris", "Lyon", "Nice", "Lille"])
+      print(s[s.isin(["Lyon", "Lille"])].index.tolist(), s.str.startswith("L").sum())
+    choices: ["[1, 3] 2", "[0, 1] 2", "['Lyon', 'Lille'] 2", "[1, 3] 1"]
+    answer: 0
+    explain: "`isin` teste l'appartenance à une liste ; le filtre garde l'**index d'origine**."
+  - id: q-pd-concat-index
+    topic: concat
+    verify: true
+    question: Qu'affiche ce code ?
+    code: |
+      import pandas as pd
+      a = pd.DataFrame({"x": [1, 2]})
+      b = pd.DataFrame({"x": [3]})
+      print(pd.concat([a, b]).index.tolist(), pd.concat([a, b], ignore_index=True).index.tolist())
+    choices: ["[0, 1, 0] [0, 1, 2]", "[0, 1, 2] [0, 1, 2]", "[0, 1, 0] [0, 1, 0]", "[0, 1] [0, 1, 2]"]
+    answer: 0
+    explain: "`concat` garde les index d'origine (doublons possibles) ; `ignore_index=True` renumérote."
+  - id: q-pd-dropna-how
+    topic: NaN
+    verify: true
+    question: Qu'affiche ce code ?
+    code: |
+      import pandas as pd
+      import numpy as np
+      df = pd.DataFrame({"a": [1, np.nan, np.nan], "b": [1, 2, np.nan]})
+      print(len(df.dropna()), len(df.dropna(how="all")), len(df.dropna(subset=["b"])))
+    choices: ["1 2 2", "1 1 2", "2 2 2", "1 2 1"]
+    answer: 0
+    explain: "Par défaut, `dropna` supprime une ligne dès qu'**une** valeur manque ; `how='all'` seulement si toutes manquent ; `subset` restreint les colonnes examinées."
+  - id: q-pd-agg-multiindex
+    topic: groupby
+    question: "`df.groupby('city')['price'].agg(['mean', 'max'])` renvoie…"
+    choices:
+      - "une Series indexée par ville"
+      - "un DataFrame indexé par ville avec les colonnes mean et max"
+      - "un DataFrame avec un MultiIndex de colonnes (price, mean), (price, max)"
+      - "une liste de deux Series"
+    answer: 1
+    explain: "Une liste de fonctions sur **une** colonne donne une colonne par fonction. Sur plusieurs colonnes (`df.groupby('city').agg(['mean', 'max'])`), on obtient un MultiIndex de colonnes : préfère alors les agrégations nommées."
+  - id: q-pd-categorical-memory
+    topic: Performance
+    question: "Une colonne `country` de 10 millions de lignes ne contient que 50 pays différents. Quel dtype réduit le plus sa mémoire ?"
+    choices: ["object", "string", "category", "int64"]
+    answer: 2
+    explain: "`category` stocke chaque valeur distincte une fois et des codes entiers pour les lignes : idéal pour une faible cardinalité. Accélère aussi les `groupby`."

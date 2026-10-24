@@ -1,0 +1,135 @@
+id: py-parse-logs
+title: Analyser des logs
+domain: python
+difficulty: medium
+minutes: 10
+interview: true
+tags: [str.split, Counter, defaultdict, regex, parsing]
+statement: |
+  Chaque ligne de log a le format :
+
+  ```
+  2024-03-01 12:00:05 ERROR payments: card declined
+  ```
+
+  date, heure, **niveau**, **service** suivi de `:`, puis le message (qui peut contenir des espaces et des `:`). Une ligne valide a **5 morceaux** (date, heure, niveau, service, message non vide). Les lignes vides ou mal formées (moins de 5 morceaux, ou service sans `:`) sont ignorées.
+
+  1. `parse(line)` : un dict `{"date", "time", "level", "service", "message"}`, ou `None` si la ligne est invalide.
+  2. `level_counts(lines)` : `{niveau: nombre}`.
+  3. `top_error_services(lines, k)` : les `k` services avec le plus d'`ERROR`, en liste de tuples `(service, n)` triée par `n` décroissant puis nom.
+setup: |
+  LOGS = """2024-03-01 12:00:05 ERROR payments: card declined: insufficient funds
+  2024-03-01 12:00:07 INFO api: GET /orders 200
+  2024-03-01 12:01:00 ERROR payments: timeout
+  2024-03-01 12:01:30 WARNING auth: slow login
+  garbage line
+
+  2024-03-01 12:02:00 ERROR search: index unavailable
+  2024-03-01 12:02:10 INFO api: GET /health 200
+  2024-03-01 12:03:00 ERROR auth: token expired
+  2024-03-01 12:03:05 ERROR payments: card declined
+  2024-03-01 12:03:30 DEBUG worker no colon here""".splitlines()
+starter: |
+  from collections import Counter
+
+
+  def parse(line):
+      pass
+
+
+  def level_counts(lines):
+      pass
+
+
+  def top_error_services(lines, k):
+      pass
+solution: |
+  from collections import Counter
+
+
+  def parse(line):
+      parts = line.split(maxsplit=4)
+      if len(parts) < 5 or not parts[3].endswith(':'):
+          return None
+      date, time, level, service, message = parts
+      return {"date": date, "time": time, "level": level, "service": service[:-1], "message": message}
+
+
+  def level_counts(lines):
+      records = (parse(line) for line in lines)
+      return dict(Counter(r["level"] for r in records if r))
+
+
+  def top_error_services(lines, k):
+      counts = Counter(r["service"] for r in map(parse, lines) if r and r["level"] == "ERROR")
+      return sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))[:k]
+tests:
+  - call: parse(LOGS[0])
+    expected: "{'date': '2024-03-01', 'time': '12:00:05', 'level': 'ERROR', 'service': 'payments', 'message': 'card declined: insufficient funds'}"
+  - call: parse("garbage line")
+    expected: None
+  - call: parse("")
+    expected: None
+  - call: parse(LOGS[-1])
+    expected: None
+  - call: level_counts(LOGS)
+    expected: "{'ERROR': 5, 'INFO': 2, 'WARNING': 1}"
+  - call: top_error_services(LOGS, 2)
+    expected: "[('payments', 3), ('auth', 1)]"
+  - call: "top_error_services(LOGS + ['2024-03-02 08:00:00 ERROR search: down'], 3)"
+    hidden: true
+  - name: Message manquant → ligne invalide
+    call: parse("2024-03-01 12:00:05 ERROR payments:")
+    expected: None
+wrong:
+  - |
+    from collections import Counter
+
+
+    def parse(line):
+        parts = line.split()
+        if len(parts) < 5 or not parts[3].endswith(':'):
+            return None
+        return {"date": parts[0], "time": parts[1], "level": parts[2], "service": parts[3][:-1], "message": parts[4]}
+
+
+    def level_counts(lines):
+        return dict(Counter(r["level"] for r in map(parse, lines) if r))
+
+
+    def top_error_services(lines, k):
+        counts = Counter(r["service"] for r in map(parse, lines) if r and r["level"] == "ERROR")
+        return sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))[:k]
+  - |
+    from collections import Counter
+
+
+    def parse(line):
+        parts = line.split(maxsplit=4)
+        if len(parts) < 5:
+            return None
+        date, time, level, service, message = parts
+        return {"date": date, "time": time, "level": level, "service": service.rstrip(':'), "message": message}
+
+
+    def level_counts(lines):
+        return dict(Counter(r["level"] for r in map(parse, lines) if r))
+
+
+    def top_error_services(lines, k):
+        counts = Counter(r["service"] for r in map(parse, lines) if r and r["level"] == "ERROR")
+        return counts.most_common(k)
+parsons:
+  distractors:
+    - line: "parts = line.split(':')"
+      replaces: "parts = line.split(maxsplit=4)"
+    - line: "if len(parts) < 5 and not parts[3].endswith(':'):"
+      replaces: "if len(parts) < 5 or not parts[3].endswith(':'):"
+hints:
+  - "`line.split(maxsplit=4)` coupe sur les espaces au plus 4 fois : le message reste entier."
+  - "Le service se termine par `:` → vérifie-le avec `.endswith(':')` puis retire-le avec `[:-1]`."
+  - "`Counter` sur une expression génératrice qui filtre les `None`."
+explanation: |
+  - `split(maxsplit=n)` est l'outil clé pour parser des formats « champs fixes + texte libre ».
+  - Valider avant d'indexer : une ligne vide ou tronquée ne doit pas faire planter tout le traitement.
+  - Pour des formats plus complexes : une regex avec groupes nommés, `re.match(r'(?P<date>\S+) (?P<time>\S+) (?P<level>\w+) (?P<service>\w+): (?P<msg>.*)', line)`.

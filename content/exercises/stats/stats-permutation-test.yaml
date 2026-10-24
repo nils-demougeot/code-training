@@ -1,0 +1,123 @@
+id: stats-permutation-test
+title: Test de permutation
+domain: stats
+difficulty: medium
+minutes: 10
+interview: true
+tags: [test de permutation, p-value, simulation, hypothèse nulle]
+statement: |
+  Deux groupes `a` et `b` (temps passé sur une page avec l'ancienne et la nouvelle version). La différence de moyennes est-elle due au hasard ?
+
+  **Test de permutation** : si les versions n'ont aucun effet (H0), les étiquettes « a » et « b » sont interchangeables. On mélange les étiquettes de nombreuses fois et on regarde à quelle fréquence on obtient un écart au moins aussi grand.
+
+  1. `observed_diff(a, b)` : `mean(b) - mean(a)`.
+  2. `permutation_pvalue(a, b, n_perm=5000, seed=0)` : la p-value **bilatérale** : la proportion de permutations dont la différence de moyennes, en valeur absolue, est **supérieure ou égale** à celle observée. Utilise `rng = np.random.default_rng(seed)` et `rng.permutation`.
+setup: |
+  import numpy as np
+  _rng = np.random.default_rng(12)
+  OLD = _rng.normal(60, 15, 40)
+  NEW = _rng.normal(68, 15, 40)
+  SAME_A = _rng.normal(50, 10, 30)
+  SAME_B = _rng.normal(50, 10, 30)
+starter: |
+  import numpy as np
+
+
+  def observed_diff(a, b):
+      pass
+
+
+  def permutation_pvalue(a, b, n_perm=5000, seed=0):
+      pass
+solution: |
+  import numpy as np
+
+
+  def observed_diff(a, b):
+      return float(np.mean(b) - np.mean(a))
+
+
+  def permutation_pvalue(a, b, n_perm=5000, seed=0):
+      rng = np.random.default_rng(seed)
+      pooled = np.concatenate([a, b])
+      observed = abs(observed_diff(a, b))
+      count = 0
+      for _ in range(n_perm):
+          shuffled = rng.permutation(pooled)
+          diff = shuffled[len(a):].mean() - shuffled[:len(a)].mean()
+          count += abs(diff) >= observed
+      return count / n_perm
+tests:
+  - call: observed_diff(np.array([1.0, 2.0, 3.0]), np.array([4.0, 5.0]))
+    expected: "2.5"
+  - name: Vrai effet → petite p-value
+    check: |
+      p = permutation_pvalue(OLD, NEW)
+      assert p < 0.05, f"p-value {p:.3f}"
+  - name: Pas d'effet → p-value non significative
+    check: |
+      p = permutation_pvalue(SAME_A, SAME_B)
+      assert p > 0.2, f"p-value {p:.3f}"
+  - name: Proche du test t de Welch
+    check: |
+      from scipy import stats
+      p = permutation_pvalue(OLD, NEW, n_perm=8000)
+      pt = stats.ttest_ind(OLD, NEW, equal_var=False).pvalue
+      assert abs(p - pt) < 0.02, f"permutation {p:.4f} contre t-test {pt:.4f}"
+  - name: Bilatérale (symétrique)
+    check: |
+      p1 = permutation_pvalue(OLD, NEW, n_perm=3000, seed=1)
+      p2 = permutation_pvalue(NEW, OLD, n_perm=3000, seed=1)
+      assert abs(p1 - p2) < 0.02, (p1, p2)
+  - name: Reproductible
+    check: |
+      assert permutation_pvalue(OLD, NEW, 500, seed=3) == permutation_pvalue(OLD, NEW, 500, seed=3)
+wrong:
+  - |
+    import numpy as np
+
+
+    def observed_diff(a, b):
+        return float(np.mean(b) - np.mean(a))
+
+
+    def permutation_pvalue(a, b, n_perm=5000, seed=0):
+        rng = np.random.default_rng(seed)
+        pooled = np.concatenate([a, b])
+        observed = observed_diff(a, b)
+        count = 0
+        for _ in range(n_perm):
+            s = rng.permutation(pooled)
+            count += s[len(a):].mean() - s[:len(a)].mean() >= observed
+        return count / n_perm
+  - |
+    import numpy as np
+
+
+    def observed_diff(a, b):
+        return float(np.mean(b) - np.mean(a))
+
+
+    def permutation_pvalue(a, b, n_perm=5000, seed=0):
+        rng = np.random.default_rng(seed)
+        observed = abs(observed_diff(a, b))
+        count = 0
+        for _ in range(n_perm):
+            diff = rng.permutation(b).mean() - rng.permutation(a).mean()
+            count += abs(diff) >= observed
+        return count / n_perm
+parsons:
+  distractors:
+    - line: "shuffled = rng.permutation(b)"
+      replaces: "shuffled = rng.permutation(pooled)"
+    - line: "observed = observed_diff(a, b)"
+      replaces: "observed = abs(observed_diff(a, b))"
+hints:
+  - "Concatène les deux groupes, puis à chaque itération `rng.permutation(pooled)` : les `len(a)` premiers forment un faux groupe A, le reste un faux groupe B."
+  - "Bilatéral : compare les **valeurs absolues** des différences."
+  - "p-value = proportion des permutations au moins aussi extrêmes que l'observation."
+explanation: |
+  - Le test de permutation construit la distribution de la statistique **sous H0** par simulation, sans hypothèse de normalité.
+  - Il marche pour n'importe quelle statistique : différence de médianes, de taux, d'AUC…
+  - Permuter chaque groupe séparément ne change rien aux moyennes : il faut **mélanger les étiquettes** entre groupes.
+  - Avec assez de permutations, on retrouve la p-value du test t quand ses hypothèses sont vérifiées.

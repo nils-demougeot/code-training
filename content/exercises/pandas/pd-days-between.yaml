@@ -1,0 +1,84 @@
+id: pd-days-between
+title: Temps entre deux commandes
+domain: pandas
+difficulty: medium
+minutes: 8
+shared: shop_df
+tags: [groupby, diff, shift, dt.days, rétention]
+statement: |
+  1. `add_gap(df)` : renvoie une copie de `df` **triée par `customer`, `date`, `order_id`** (index `0..n-1`) avec une colonne `days_since_prev` : le nombre de jours depuis la commande précédente **du même client** (`NaN` pour sa première commande).
+  2. `median_gap(df)` : la médiane des écarts par client, une Series indexée par `customer` (les clients avec une seule commande sont exclus), triée par index.
+starter: |
+  import pandas as pd
+
+
+  def add_gap(df):
+      pass
+
+
+  def median_gap(df):
+      pass
+solution: |
+  import pandas as pd
+
+
+  def add_gap(df):
+      out = df.sort_values(['customer', 'date', 'order_id']).reset_index(drop=True)
+      out['days_since_prev'] = out.groupby('customer')['date'].diff().dt.days
+      return out
+
+
+  def median_gap(df):
+      return add_gap(df).groupby('customer')['days_since_prev'].median().dropna().sort_index()
+tests:
+  - call: add_gap(orders)[['customer', 'date', 'days_since_prev']]
+  - name: NaN uniquement pour la première commande de chaque client
+    check: |
+      out = add_gap(orders)
+      assert out['days_since_prev'].isna().sum() == orders['customer'].nunique()
+      assert (out['days_since_prev'].dropna() >= 0).all()
+  - call: median_gap(orders)
+  - call: median_gap(make_orders(25, seed=3))
+    hidden: true
+  - name: Colonnes et index
+    check: |
+      out = add_gap(orders)
+      assert list(out.columns) == list(orders.columns) + ['days_since_prev'], list(out.columns)
+      assert list(out.index) == list(range(len(out)))
+wrong:
+  - |
+    import pandas as pd
+
+
+    def add_gap(df):
+        out = df.sort_values(['customer', 'date', 'order_id']).reset_index(drop=True)
+        out['days_since_prev'] = out['date'].diff().dt.days
+        return out
+
+
+    def median_gap(df):
+        return add_gap(df).groupby('customer')['days_since_prev'].median().dropna().sort_index()
+  - |
+    import pandas as pd
+
+
+    def add_gap(df):
+        out = df.sort_values(['customer', 'date', 'order_id']).reset_index(drop=True)
+        out['days_since_prev'] = out.groupby('customer')['date'].diff(-1).dt.days.abs()
+        return out
+
+
+    def median_gap(df):
+        return add_gap(df).groupby('customer')['days_since_prev'].mean().dropna().sort_index()
+parsons:
+  distractors:
+    - line: "out['days_since_prev'] = out['date'].diff().dt.days"
+      replaces: "out['days_since_prev'] = out.groupby('customer')['date'].diff().dt.days"
+hints:
+  - "Trie d'abord : `diff` compare chaque ligne à la **précédente dans l'ordre actuel**."
+  - "`groupby('customer')['date'].diff()` repart de zéro pour chaque client (NaN sur sa première ligne)."
+  - "Une différence de dates est un `Timedelta` : `.dt.days` donne le nombre de jours."
+explanation: |
+  - `groupby().diff()` / `groupby().shift()` : l'équivalent pandas de `LAG()` en SQL.
+  - Sans le `groupby`, la première commande d'un client serait comparée à la dernière du client précédent : un bug silencieux classique.
+  - Feature très utile en churn : un client dont l'écart actuel dépasse largement son écart médian est à risque.

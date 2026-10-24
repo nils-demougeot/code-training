@@ -37,6 +37,8 @@ tests:
   - call: best_category_per_city(orders)
   - call: best_category_per_city(make_orders(300, seed=2))
     hidden: true
+  - name: Combinaisons absentes → 0
+    call: city_category_revenue(orders[orders['qty'] == 1].head(12))
 hints:
   - "`pd.pivot_table(df, index='city', columns='category', values='revenue', aggfunc='sum', fill_value=0)`."
   - "Alternative : `df.groupby(['city', 'category'])['revenue'].sum().unstack(fill_value=0)`."

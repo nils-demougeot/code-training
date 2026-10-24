@@ -1,0 +1,70 @@
+id: sql-self-join
+title: Auto-jointure et paires
+domain: sql
+difficulty: medium
+minutes: 8
+language: sql
+shared: sql_shop
+tags: [self join, paires, co-occurrence, panier]
+statement: |
+  **Analyse de panier** : quels produits sont achetés **ensemble** dans la même commande ?
+
+  Pour chaque paire de produits apparaissant dans au moins **2 commandes** communes (toutes commandes confondues), donne `product_a`, `product_b` (avec `product_a < product_b` alphabétiquement, chaque paire une seule fois) et `n_orders`.
+
+  Tri par `n_orders` décroissant, puis `product_a`, puis `product_b`.
+starter: |
+  SELECT a.order_id, a.product_id, b.product_id
+  FROM order_items a
+  JOIN order_items b ON a.order_id = b.order_id
+solution: |
+  SELECT pa.name AS product_a, pb.name AS product_b, COUNT(DISTINCT a.order_id) AS n_orders
+  FROM order_items a
+  JOIN order_items b ON a.order_id = b.order_id
+  JOIN products pa ON pa.id = a.product_id
+  JOIN products pb ON pb.id = b.product_id
+  WHERE pa.name < pb.name
+  GROUP BY pa.name, pb.name
+  HAVING COUNT(DISTINCT a.order_id) >= 2
+  ORDER BY n_orders DESC, product_a, product_b
+tests:
+  - name: Résultat de la requête
+    call: q(QUERY)
+  - name: Chaque paire une seule fois
+    check: |
+      rows = q(QUERY)
+      assert rows, "aucune paire trouvée"
+      assert all(a < b for a, b, _ in rows)
+wrong:
+  - |
+    SELECT pa.name AS product_a, pb.name AS product_b, COUNT(DISTINCT a.order_id) AS n_orders
+    FROM order_items a
+    JOIN order_items b ON a.order_id = b.order_id
+    JOIN products pa ON pa.id = a.product_id
+    JOIN products pb ON pb.id = b.product_id
+    WHERE pa.name <> pb.name
+    GROUP BY pa.name, pb.name
+    HAVING COUNT(DISTINCT a.order_id) >= 2
+    ORDER BY n_orders DESC, product_a, product_b
+  - |
+    SELECT pa.name AS product_a, pb.name AS product_b, COUNT(DISTINCT a.order_id) AS n_orders
+    FROM order_items a
+    JOIN order_items b ON a.order_id = b.order_id
+    JOIN products pa ON pa.id = a.product_id
+    JOIN products pb ON pb.id = b.product_id
+    WHERE pa.name < pb.name
+    GROUP BY pa.name, pb.name
+    ORDER BY n_orders DESC, product_a, product_b
+parsons:
+  distractors:
+    - line: "WHERE pa.name <> pb.name"
+      replaces: "WHERE pa.name < pb.name"
+    - line: "WHERE COUNT(DISTINCT a.order_id) >= 2"
+      replaces: "HAVING COUNT(DISTINCT a.order_id) >= 2"
+hints:
+  - "Joins `order_items` **avec elle-même** sur `order_id` : chaque ligne est un couple de produits de la même commande."
+  - "`<>` garderait (A, B) **et** (B, A) ; `<` ne garde qu'un sens et élimine (A, A)."
+  - "Le filtre sur le nombre de commandes porte sur les groupes : `HAVING`."
+explanation: |
+  - L'**auto-jointure** compare les lignes d'une table entre elles : paires de produits, employés et managers, sessions consécutives…
+  - `a.x < b.x` est l'astuce pour énumérer les paires non ordonnées sans doublon.
+  - C'est la base des règles d'association (« les clients qui achètent X achètent aussi Y ») et du *support* d'une paire.

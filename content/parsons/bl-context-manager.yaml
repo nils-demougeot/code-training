@@ -1,0 +1,61 @@
+id: bl-context-manager
+title: Un context manager maison
+domain: python
+difficulty: medium
+statement: |
+  Remets dans l'ordre la classe `Timer`, utilisable avec `with` :
+
+  ```python
+  with Timer("chargement") as t:
+      ...
+  t.elapsed   # durée en secondes
+  ```
+
+  `__enter__` démarre le chrono et renvoie l'objet ; `__exit__` calcule `elapsed`, ajoute `(name, elapsed)` à la liste de classe `Timer.log`, et ne **supprime pas** les exceptions (renvoie `False`).
+solution: |
+  import time
+
+
+  class Timer:
+      log = []
+
+      def __init__(self, name):
+          self.name = name
+          self.elapsed = None
+
+      def __enter__(self):
+          self.start = time.perf_counter()
+          return self
+
+      def __exit__(self, exc_type, exc, tb):
+          self.elapsed = time.perf_counter() - self.start
+          Timer.log.append((self.name, self.elapsed))
+          return False
+tests:
+  - name: Mesure une durée
+    check: |
+      Timer.log.clear()
+      with Timer("calc") as t:
+          sum(range(100_000))
+      assert t.elapsed is not None and 0 <= t.elapsed < 5
+      assert Timer.log == [("calc", t.elapsed)]
+  - name: Les exceptions remontent, la durée est quand même enregistrée
+    check: |
+      Timer.log.clear()
+      try:
+          with Timer("boom") as t:
+              raise KeyError("x")
+      except KeyError:
+          pass
+      else:
+          raise AssertionError("l'exception a été avalée")
+      assert t.elapsed is not None and Timer.log[0][0] == "boom"
+distractors:
+  - line: "return True"
+    replaces: "return False"
+  - line: "return self.start"
+    replaces: "return self"
+explanation: |
+  - `with` appelle `__enter__` (sa valeur de retour va dans `as`) puis **toujours** `__exit__`, même en cas d'exception : idéal pour fermer un fichier, libérer un verrou, mesurer un temps.
+  - Si `__exit__` renvoie `True`, l'exception est **supprimée** : rarement souhaitable.
+  - Version courte : `@contextlib.contextmanager` avec un `yield` dans un `try/finally`.

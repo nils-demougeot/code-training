@@ -1,0 +1,103 @@
+id: np-histogram
+title: Histogramme et quantiles à la main
+domain: numpy
+difficulty: medium
+minutes: 8
+tags: [digitize, bincount, histogram, percentile]
+statement: |
+  1. `bin_counts(x, edges)` : `edges` est un tableau croissant de bornes `[e0, e1, …, ek]`. Renvoie le nombre de valeurs dans chaque intervalle `[e_i, e_{i+1})`, sauf le dernier qui est **fermé** `[e_{k-1}, e_k]`, comme `np.histogram`. Les valeurs hors de `[e0, ek]` sont ignorées.
+  2. `quantile_bins(x, n)` : les bornes qui découpent `x` en `n` groupes **de même effectif** (quantiles), un tableau de `n + 1` valeurs du minimum au maximum.
+
+  Sans boucle Python, et sans appeler `np.histogram` dans `bin_counts`.
+setup: |
+  import numpy as np
+  AGES = np.array([18, 22, 25, 25, 31, 40, 41, 52, 60, 60, 75])
+starter: |
+  import numpy as np
+
+
+  def bin_counts(x, edges):
+      pass
+
+
+  def quantile_bins(x, n):
+      pass
+solution: |
+  import numpy as np
+
+
+  def bin_counts(x, edges):
+      x = np.asarray(x)
+      k = len(edges) - 1
+      inside = (x >= edges[0]) & (x <= edges[-1])
+      idx = np.searchsorted(edges, x[inside], side='right') - 1
+      idx = np.minimum(idx, k - 1)
+      return np.bincount(idx, minlength=k)
+
+
+  def quantile_bins(x, n):
+      return np.quantile(x, np.linspace(0, 1, n + 1))
+tests:
+  - call: bin_counts(AGES, np.array([18, 30, 50, 75]))
+    expected: np.array([4, 3, 4])
+  - name: Valeurs hors bornes ignorées
+    call: bin_counts(np.array([-5, 0, 1, 2, 9]), np.array([0, 1, 2]))
+    expected: np.array([1, 2])
+  - name: Identique à np.histogram
+    check: |
+      rng = np.random.default_rng(0)
+      x = rng.normal(size=2000)
+      edges = np.array([-2.0, -1.0, -0.2, 0.0, 0.5, 2.0])
+      assert np.array_equal(bin_counts(x, edges), np.histogram(x, edges)[0])
+      x = rng.integers(0, 10, 500)
+      edges = np.array([0, 2, 5, 9])
+      assert np.array_equal(bin_counts(x, edges), np.histogram(x, edges)[0])
+  - call: quantile_bins(np.arange(101), 4)
+    expected: np.array([0.0, 25.0, 50.0, 75.0, 100.0])
+  - name: Effectifs équilibrés
+    check: |
+      x = np.random.default_rng(3).exponential(size=10_000)
+      counts = bin_counts(x, quantile_bins(x, 5))
+      assert counts.sum() == 10_000 and counts.max() - counts.min() <= 2, counts
+wrong:
+  - |
+    import numpy as np
+
+
+    def bin_counts(x, edges):
+        idx = np.searchsorted(edges, x, side='right') - 1
+        return np.bincount(idx[(idx >= 0) & (idx < len(edges) - 1)], minlength=len(edges) - 1)
+
+
+    def quantile_bins(x, n):
+        return np.quantile(x, np.linspace(0, 1, n + 1))
+  - |
+    import numpy as np
+
+
+    def bin_counts(x, edges):
+        x = np.asarray(x)
+        k = len(edges) - 1
+        inside = (x >= edges[0]) & (x <= edges[-1])
+        idx = np.searchsorted(edges, x[inside], side='left') - 1
+        idx = np.clip(idx, 0, k - 1)
+        return np.bincount(idx, minlength=k)
+
+
+    def quantile_bins(x, n):
+        return np.linspace(x.min(), x.max(), n + 1)
+parsons:
+  distractors:
+    - line: "idx = np.searchsorted(edges, x[inside], side='left') - 1"
+      replaces: "idx = np.searchsorted(edges, x[inside], side='right') - 1"
+    - line: "return np.quantile(x, np.linspace(0, 1, n))"
+      replaces: "return np.quantile(x, np.linspace(0, 1, n + 1))"
+hints:
+  - "`np.searchsorted(edges, v, side='right') - 1` donne l'indice de l'intervalle `[e_i, e_{i+1})` qui contient `v`."
+  - "La valeur égale à la dernière borne tombe dans un intervalle « k » qui n'existe pas : ramène-la dans le dernier avec `np.minimum`."
+  - "`np.bincount(idx, minlength=k)` compte les occurrences de chaque indice."
+  - "Bornes de quantiles : `np.quantile(x, np.linspace(0, 1, n + 1))`."
+explanation: |
+  - `searchsorted` fait une recherche dichotomique vectorisée : la brique de base de `np.digitize`, `pd.cut` et `np.histogram`.
+  - Attention aux bords : `[e_i, e_{i+1})` sauf le dernier intervalle, fermé. C'est la convention de `np.histogram`.
+  - Bins égaux (`linspace`) contre quantiles (`pd.qcut`) : sur des données asymétriques (revenus, durées), les bins égaux mettent presque tout dans le premier bin.

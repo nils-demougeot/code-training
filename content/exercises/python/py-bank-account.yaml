@@ -84,6 +84,20 @@ tests:
           pass
       else:
           raise AssertionError("acc.balance = ... devrait lever AttributeError (utilise @property)")
+  - name: Cas limites autorisés
+    check: |
+      acc = BankAccount('Dan')
+      acc.deposit(0.5)
+      acc.deposit(9.5)
+      acc.withdraw(10)
+      assert acc.balance == 0, "retirer exactement le solde doit être possible"
+      assert all(isinstance(amount, float) for _, amount in acc.history), f"montants en float : {acc.history}"
+      try:
+          acc.withdraw(0)
+      except ValueError:
+          pass
+      else:
+          raise AssertionError("withdraw(0) devrait lever ValueError")
 hints:
   - "Stocke le solde dans un attribut « privé » `self._balance`, et expose-le avec `@property`."
   - "Une propriété sans `@balance.setter` est en lecture seule : l'affectation lève `AttributeError`."

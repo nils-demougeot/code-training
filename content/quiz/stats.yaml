@@ -103,3 +103,56 @@ questions:
     choices: ["impossible", "une erreur de calcul", "le paradoxe de Simpson", "la loi des grands nombres"]
     answer: 2
     explain: "Une variable confondante (ex. gravité des cas, répartie différemment entre les groupes) peut inverser une tendance une fois les groupes agrégés."
+  - id: q-st-regression-mean
+    topic: Pièges
+    question: "Les 10 % de commerciaux les moins bons au T1 progressent nettement au T2 après une formation. Que faut-il vérifier d'abord ?"
+    choices:
+      - "Rien, la formation fonctionne"
+      - "La régression vers la moyenne : les plus mauvais d'une période sont souvent moins mauvais la suivante, même sans formation"
+      - "Le paradoxe des anniversaires"
+      - "La loi des grands nombres"
+    answer: 1
+    explain: "Une performance mesurée contient du hasard : sélectionner les extrêmes sélectionne aussi de la malchance, qui ne se répète pas. Il faut un groupe de contrôle (randomisé) pour mesurer l'effet de la formation."
+  - id: q-st-survivorship
+    topic: Pièges
+    question: "« Les avions qui reviennent ont des impacts surtout sur les ailes : renforçons les ailes. » Le problème ?"
+    choices:
+      - "Aucun"
+      - "Biais du survivant : on n'observe pas les avions touchés ailleurs, justement parce qu'ils ne sont pas revenus"
+      - "Échantillon trop petit"
+      - "Corrélation n'est pas causalité"
+    answer: 1
+    explain: "Abraham Wald a recommandé de renforcer là où les avions revenus n'avaient **pas** d'impacts. En data : analyser uniquement les clients restés, les startups qui ont réussi, etc."
+  - id: q-st-mean-variance-sum
+    topic: Calculs
+    question: "X et Y indépendantes, Var(X) = 4 et Var(Y) = 9. Var(X − Y) ?"
+    choices: ["13", "5", "−5", "√13"]
+    answer: 0
+    explain: "$Var(X - Y) = Var(X) + Var(Y) - 2Cov(X, Y) = 4 + 9 = 13$. Les variances s'additionnent même pour une différence."
+  - id: q-st-p-hacking
+    topic: Tests d'hypothèse
+    question: "Un analyste teste 30 segments et rapporte celui où p = 0,03. Que penser ?"
+    choices:
+      - "Résultat solide"
+      - "Avec 30 tests à 5 %, on attend ~1,5 faux positif : il faut corriger (Bonferroni) ou confirmer sur de nouvelles données"
+      - "Il faut un seuil de 10 %"
+      - "Le résultat est significatif à 97 %"
+    answer: 1
+    explain: "C'est du **p-hacking** : chercher jusqu'à trouver un p < 0,05. Pré-enregistrer l'hypothèse ou valider sur un échantillon indépendant."
+  - id: q-st-median-mean-skew
+    topic: Statistiques descriptives
+    verify: true
+    question: Qu'affiche ce code ?
+    code: |
+      import numpy as np
+      x = np.random.default_rng(0).exponential(1.0, 100_000)
+      print(np.mean(x) > np.median(x))
+    choices: ["True", "False"]
+    answer: 0
+    explain: "Distribution asymétrique à droite (longue queue) : la moyenne est tirée vers le haut, au-dessus de la médiane. Ici moyenne ≈ 1 et médiane ≈ ln 2 ≈ 0,69."
+  - id: q-st-sample-size-ci
+    topic: Intervalles de confiance
+    question: "Un sondage sur 1 000 personnes a une marge d'erreur de ±3 points. Avec 4 000 personnes ?"
+    choices: ["±0,75 point", "±1,5 point", "±3 points", "±6 points"]
+    answer: 1
+    explain: "La marge varie en $1/\\sqrt n$ : 4 fois plus de répondants divisent la marge par 2."

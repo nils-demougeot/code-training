@@ -85,6 +85,12 @@ tests:
       w, b = fit_logistic(X, y)
       acc = (predict(X, w, b) == y).mean()
       assert acc > 0.85, f"accuracy {acc:.2f}"
+  - name: predict_proba et predict avec un biais non nul
+    check: |
+      w, b = np.array([1.0, -2.0, 0.5, 0.0]), 1.5
+      z = X[:20] @ w + b
+      assert np.allclose(predict_proba(X[:20], w, b), 1 / (1 + np.exp(-z)))
+      assert np.array_equal(predict(X[:20], w, b), (z >= 0).astype(int))
 hints:
   - "`np.clip(p, 1e-12, 1 - 1e-12)` avant les `np.log`."
   - "À chaque itération : `p = sigmoid(X @ w + b)`, puis `w -= lr * X.T @ (p - y) / n`."

@@ -56,6 +56,9 @@ tests:
       a = np.array([-5, 20])
       clip_outliers(a, 0, 10)
       assert a.tolist() == [-5, 20], "l'entrée a été modifiée"
+  - name: Les valeurs entre 0 et 1 sont positives
+    call: positive_mean(np.array([0.5, 1.0, -2.0, 0.0]))
+    expected: "0.75"
 hints:
   - "`a > 0` donne un tableau de booléens ; `a[a > 0]` garde les valeurs où c'est True."
   - "Combiner deux conditions : `(a >= low) & (a <= high)` avec **les parenthèses** (pas `and`)."

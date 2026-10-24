@@ -29,5 +29,11 @@ jobs:
           cache: pip
           cache-dependency-path: scripts/requirements-content.txt
       - run: pip install -r scripts/requirements-content.txt
+      # Node splits solutions into Parsons blocks exactly like the app does.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
       # PyTorch exercises are validated locally (`--skip-local` keeps CI light).
       - run: python scripts/validate_content.py --skip-local

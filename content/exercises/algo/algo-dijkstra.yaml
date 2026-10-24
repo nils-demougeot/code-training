@@ -1,0 +1,149 @@
+id: algo-dijkstra
+title: Plus courts chemins (Dijkstra)
+domain: algo
+difficulty: hard
+minutes: 15
+interview: true
+tags: [graphe, heapq, Dijkstra, plus court chemin]
+statement: |
+  `graph` est un dict `{noeud: [(voisin, poids), ...]}` (graphe **orienté**, poids **positifs ou nuls**).
+
+  1. `dijkstra(graph, source)` : un dict `{noeud: distance minimale depuis source}` contenant **uniquement les nœuds atteignables** (dont `source` à distance 0).
+  2. `shortest_path(graph, source, target)` : la liste des nœuds d'un plus court chemin de `source` à `target` (inclus), ou `None` si `target` est inatteignable.
+
+  Utilise une file de priorité (`heapq`).
+setup: |
+  ROADS = {
+      "A": [("B", 4), ("C", 1)],
+      "C": [("B", 2), ("D", 7)],
+      "B": [("D", 1), ("E", 6)],
+      "D": [("E", 2)],
+      "E": [],
+      "F": [("A", 1)],
+  }
+starter: |
+  import heapq
+
+
+  def dijkstra(graph, source):
+      pass
+
+
+  def shortest_path(graph, source, target):
+      pass
+solution: |
+  import heapq
+
+
+  def dijkstra(graph, source):
+      return _search(graph, source)[0]
+
+
+  def shortest_path(graph, source, target):
+      dist, parent = _search(graph, source)
+      if target not in dist:
+          return None
+      path = [target]
+      while path[-1] != source:
+          path.append(parent[path[-1]])
+      return path[::-1]
+
+
+  def _search(graph, source):
+      dist = {source: 0}
+      parent = {}
+      heap = [(0, source)]
+      done = set()
+      while heap:
+          d, node = heapq.heappop(heap)
+          if node in done:
+              continue
+          done.add(node)
+          for neighbor, weight in graph.get(node, []):
+              nd = d + weight
+              if neighbor not in dist or nd < dist[neighbor]:
+                  dist[neighbor] = nd
+                  parent[neighbor] = node
+                  heapq.heappush(heap, (nd, neighbor))
+      return dist, parent
+tests:
+  - call: dijkstra(ROADS, "A")
+    expected: "{'A': 0, 'C': 1, 'B': 3, 'D': 4, 'E': 6}"
+  - call: dijkstra(ROADS, "E")
+    expected: "{'E': 0}"
+  - call: shortest_path(ROADS, "A", "E")
+    expected: "['A', 'C', 'B', 'D', 'E']"
+  - call: shortest_path(ROADS, "A", "F")
+    expected: None
+  - call: shortest_path(ROADS, "F", "F")
+    expected: "['F']"
+  - name: Comparé à Bellman-Ford sur des graphes aléatoires
+    check: |
+      import random
+      rnd = random.Random(3)
+      for _ in range(100):
+          n = rnd.randint(1, 8)
+          g = {i: [(rnd.randrange(n), rnd.randint(0, 9)) for _ in range(rnd.randint(0, 3))] for i in range(n)}
+          ref = {0: 0}
+          for _ in range(n):
+              for u, edges in g.items():
+                  for v, w in edges:
+                      if u in ref and (v not in ref or ref[u] + w < ref[v]):
+                          ref[v] = ref[u] + w
+          assert dijkstra(g, 0) == ref, (g, dijkstra(g, 0), ref)
+          for t in ref:
+              p = shortest_path(g, 0, t)
+              cost = sum(min(w for v, w in g[a] if v == b) for a, b in zip(p, p[1:]))
+              assert p[0] == 0 and p[-1] == t and cost == ref[t], (g, t, p)
+wrong:
+  - |
+    from collections import deque
+
+
+    def dijkstra(graph, source):
+        dist = {source: 0}
+        queue = deque([source])
+        while queue:
+            node = queue.popleft()
+            for neighbor, weight in graph.get(node, []):
+                if neighbor not in dist:
+                    dist[neighbor] = dist[node] + weight
+                    queue.append(neighbor)
+        return dist
+
+
+    def shortest_path(graph, source, target):
+        return None
+  - |
+    import heapq
+
+
+    def dijkstra(graph, source):
+        dist = {source: 0}
+        heap = [(0, source)]
+        while heap:
+            d, node = heapq.heappop(heap)
+            for neighbor, weight in graph.get(node, []):
+                if neighbor not in dist:
+                    dist[neighbor] = d + weight
+                    heapq.heappush(heap, (d + weight, neighbor))
+        return dist
+
+
+    def shortest_path(graph, source, target):
+        return None
+parsons:
+  distractors:
+    - line: "if neighbor not in dist:"
+      replaces: "if neighbor not in dist or nd < dist[neighbor]:"
+    - line: "d, node = heap.pop(0)"
+      replaces: "d, node = heapq.heappop(heap)"
+hints:
+  - "Le tas contient des couples `(distance, noeud)` : `heappop` sort toujours le nœud non traité le plus proche."
+  - "Quand on trouve un chemin plus court vers un voisin, on met à jour sa distance et on le repousse dans le tas (les anciennes entrées seront ignorées)."
+  - "Pour reconstruire le chemin, mémorise le `parent` de chaque nœud, puis remonte depuis la cible."
+explanation: |
+  - Dijkstra = BFS où la file est une **file de priorité** sur la distance. Complexité O((V + E) log V).
+  - Un nœud sorti du tas a sa distance **définitive** (poids positifs) : on ignore les entrées périmées avec un ensemble `done`.
+  - BFS ne marche que si tous les poids sont égaux. Avec des poids négatifs : Bellman-Ford.
+  - Le tableau `parent` permet de reconstruire le chemin, comme dans tout parcours de graphe.

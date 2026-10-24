@@ -1,0 +1,133 @@
+id: ml-kfold-scratch
+title: Validation croisée à la main
+domain: ml
+difficulty: medium
+minutes: 10
+interview: true
+tags: [K-fold, validation croisée, générateur, indices]
+statement: |
+  1. `kfold_indices(n, k)` : un **générateur** qui produit `k` couples `(train_idx, val_idx)` (tableaux NumPy d'indices) comme `KFold(k)` sans mélange : les données `0..n-1` sont découpées en `k` blocs **consécutifs** ; les `n % k` premiers blocs ont un élément de plus. Chaque bloc sert une fois de validation.
+  2. `cross_val(model_factory, X, y, k)` : pour chaque fold, crée un **nouveau** modèle avec `model_factory()`, l'entraîne sur le train, calcule l'accuracy sur la validation. Renvoie la liste des `k` scores.
+setup: |
+  import numpy as np
+  from sklearn.datasets import make_classification
+  from sklearn.linear_model import LogisticRegression
+  X, y = make_classification(n_samples=203, n_features=6, random_state=0)
+starter: |
+  import numpy as np
+
+
+  def kfold_indices(n, k):
+      pass
+
+
+  def cross_val(model_factory, X, y, k):
+      pass
+solution: |
+  import numpy as np
+
+
+  def kfold_indices(n, k):
+      sizes = [n // k + (1 if i < n % k else 0) for i in range(k)]
+      start = 0
+      for size in sizes:
+          val = np.arange(start, start + size)
+          train = np.concatenate([np.arange(0, start), np.arange(start + size, n)])
+          yield train, val
+          start += size
+
+
+  def cross_val(model_factory, X, y, k):
+      scores = []
+      for train, val in kfold_indices(len(X), k):
+          model = model_factory()
+          model.fit(X[train], y[train])
+          scores.append(float((model.predict(X[val]) == y[val]).mean()))
+      return scores
+tests:
+  - name: Tailles des folds (10 éléments, 3 folds)
+    call: "[len(v) for _, v in kfold_indices(10, 3)]"
+    expected: "[4, 3, 3]"
+  - name: Identique à sklearn.KFold
+    check: |
+      from sklearn.model_selection import KFold
+      for n, k in [(10, 3), (203, 5), (7, 7), (50, 4)]:
+          mine = list(kfold_indices(n, k))
+          ref_folds = list(KFold(k).split(np.zeros(n)))
+          assert len(mine) == k
+          for (tr, va), (rtr, rva) in zip(mine, ref_folds):
+              assert np.array_equal(tr, rtr) and np.array_equal(va, rva), (n, k)
+  - name: C'est un générateur
+    check: |
+      import types
+      assert isinstance(kfold_indices(10, 2), types.GeneratorType)
+  - name: Identique à cross_val_score
+    check: |
+      from sklearn.model_selection import KFold, cross_val_score
+      mine = cross_val(lambda: LogisticRegression(max_iter=1000), X, y, 5)
+      ref_scores = cross_val_score(LogisticRegression(max_iter=1000), X, y, cv=KFold(5))
+      assert np.allclose(mine, ref_scores), (mine, ref_scores)
+  - name: Un nouveau modèle par fold
+    check: |
+      created = []
+      def factory():
+          m = LogisticRegression(max_iter=1000)
+          created.append(m)
+          return m
+      cross_val(factory, X, y, 4)
+      assert len(created) == 4 and len({id(m) for m in created}) == 4
+wrong:
+  - |
+    import numpy as np
+
+
+    def kfold_indices(n, k):
+        size = n // k
+        for i in range(k):
+            val = np.arange(i * size, (i + 1) * size)
+            train = np.setdiff1d(np.arange(n), val)
+            yield train, val
+
+
+    def cross_val(model_factory, X, y, k):
+        model = model_factory()
+        scores = []
+        for train, val in kfold_indices(len(X), k):
+            model.fit(X[train], y[train])
+            scores.append(float((model.predict(X[val]) == y[val]).mean()))
+        return scores
+  - |
+    import numpy as np
+
+
+    def kfold_indices(n, k):
+        sizes = [n // k + (1 if i < n % k else 0) for i in range(k)]
+        start = 0
+        for size in sizes:
+            val = np.arange(start, start + size)
+            train = np.concatenate([np.arange(0, start), np.arange(start + size, n)])
+            yield train, val
+            start += size
+
+
+    def cross_val(model_factory, X, y, k):
+        scores = []
+        for train, val in kfold_indices(len(X), k):
+            model = model_factory()
+            model.fit(X, y)
+            scores.append(float((model.predict(X[val]) == y[val]).mean()))
+        return scores
+parsons:
+  distractors:
+    - line: "model.fit(X, y)"
+      replaces: "model.fit(X[train], y[train])"
+    - line: "start = size"
+      replaces: "start += size"
+hints:
+  - "Tailles des blocs : `n // k`, plus 1 pour les `n % k` premiers."
+  - "Validation = `np.arange(start, start + size)` ; train = tout le reste (`np.concatenate` des deux morceaux)."
+  - "Entraîner sur `X` entier, validation comprise, donne un score optimiste : c'est une fuite."
+explanation: |
+  - La validation croisée estime la performance **et sa variabilité** (écart-type des scores entre folds).
+  - Chaque fold a son propre modèle : réentraîner le même objet est correct avec scikit-learn (`fit` repart de zéro), mais un nouveau modèle évite tout état partagé.
+  - Sans mélange, des données triées (par date, par classe) donnent des folds déséquilibrés : `KFold(shuffle=True, random_state=0)` ou `StratifiedKFold` pour la classification, `TimeSeriesSplit` pour des séries temporelles.

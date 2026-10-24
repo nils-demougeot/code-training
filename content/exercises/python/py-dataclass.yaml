@@ -1,0 +1,121 @@
+id: py-dataclass
+title: Modéliser avec une dataclass
+domain: python
+difficulty: medium
+minutes: 8
+tags: [dataclass, order, field, property]
+statement: |
+  Crée une dataclass `Candidate` avec les champs `name` (str), `score` (float) et `skills` (liste de str, **vide par défaut**).
+
+  - Deux candidats se comparent par `score` uniquement : `sorted(candidats)` les range du plus petit au plus grand score. Le nom et les compétences ne participent pas à la comparaison.
+  - Méthode `has(skill)` : `True` si la compétence est dans `skills` (sans tenir compte de la casse).
+  - Fonction `shortlist(candidates, skill, k)` : les noms des `k` meilleurs candidats qui ont la compétence, par score décroissant.
+setup: |
+  def make_pool(Candidate):
+      return [
+          Candidate("Ana", 82.0, ["Python", "SQL"]),
+          Candidate("Ben", 91.5, ["python", "Spark"]),
+          Candidate("Chloé", 77.0, ["SQL"]),
+          Candidate("Dan", 88.0, ["Python"]),
+      ]
+starter: |
+  from dataclasses import dataclass, field
+
+
+  @dataclass
+  class Candidate:
+      pass
+
+
+  def shortlist(candidates, skill, k):
+      pass
+solution: |
+  from dataclasses import dataclass, field
+
+
+  @dataclass(order=True)
+  class Candidate:
+      name: str = field(compare=False)
+      score: float
+      skills: list[str] = field(default_factory=list, compare=False)
+
+      def has(self, skill):
+          return skill.lower() in (s.lower() for s in self.skills)
+
+
+  def shortlist(candidates, skill, k):
+      matching = [c for c in candidates if c.has(skill)]
+      return [c.name for c in sorted(matching, reverse=True)[:k]]
+tests:
+  - call: "repr(Candidate('Ana', 82.0))"
+    expected: "\"Candidate(name='Ana', score=82.0, skills=[])\""
+  - name: skills vide par défaut, et pas partagé
+    check: |
+      a, b = Candidate("A", 1.0), Candidate("B", 2.0)
+      assert a.skills == []
+      a.skills.append("x")
+      assert b.skills == [], "les candidats partagent la même liste : utilise field(default_factory=list)"
+  - name: Tri par score
+    call: "[c.name for c in sorted(make_pool(Candidate))]"
+    expected: "['Chloé', 'Ana', 'Dan', 'Ben']"
+  - name: Comparaison sur le score seulement
+    call: "Candidate('Zoé', 50.0) < Candidate('Abel', 60.0)"
+    expected: "True"
+  - call: "Candidate('A', 1.0, ['Python']).has('PYTHON')"
+    expected: "True"
+  - call: "shortlist(make_pool(Candidate), 'python', 2)"
+    expected: "['Ben', 'Dan']"
+  - call: "shortlist(make_pool(Candidate), 'rust', 3)"
+    expected: "[]"
+wrong:
+  - |
+    from dataclasses import dataclass, field
+
+
+    @dataclass(order=True)
+    class Candidate:
+        name: str
+        score: float
+        skills: list[str] = field(default_factory=list)
+
+        def has(self, skill):
+            return skill.lower() in (s.lower() for s in self.skills)
+
+
+    def shortlist(candidates, skill, k):
+        matching = [c for c in candidates if c.has(skill)]
+        return [c.name for c in sorted(matching, reverse=True)[:k]]
+  - |
+    from dataclasses import dataclass, field
+
+
+    @dataclass(order=True)
+    class Candidate:
+        name: str = field(compare=False)
+        score: float
+        skills: list[str] = field(default_factory=list, compare=False)
+
+        def has(self, skill):
+            return skill in self.skills
+
+
+    def shortlist(candidates, skill, k):
+        matching = [c for c in candidates if c.has(skill)]
+        return [c.name for c in sorted(matching)[:k]]
+parsons:
+  skip: true
+hints:
+  - "`@dataclass(order=True)` génère `<`, `<=`… en comparant les champs **dans l'ordre**, sauf ceux marqués `field(compare=False)`."
+  - "Une valeur par défaut mutable (`[]`) est interdite : `field(default_factory=list)`."
+  - "Un champ avec défaut doit venir après les champs sans défaut, mais `field(compare=False)` sans défaut est autorisé en premier."
+explanation: |
+  ```python
+  @dataclass(order=True)
+  class Candidate:
+      name: str = field(compare=False)
+      score: float
+      skills: list[str] = field(default_factory=list, compare=False)
+  ```
+  - La dataclass génère `__init__`, `__repr__`, `__eq__` (et les comparaisons avec `order=True`).
+  - `field(default_factory=list)` : chaque instance reçoit **sa propre** liste.
+  - Avec `order=True` sans `compare=False`, les objets seraient d'abord comparés par **nom**.

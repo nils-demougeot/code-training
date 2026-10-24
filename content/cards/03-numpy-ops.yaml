@@ -132,3 +132,81 @@ cards:
       v = np.array([10., 20.])
     answer: |-
       u[:, None] - v[None, :]
+  - id: np-einsum-batch
+    prompt: "Produit matriciel par lot de A (B, n, m) et C (B, m, p) avec np.einsum."
+    setup: |-
+      import numpy as np
+      A = np.arange(12.0).reshape(2, 2, 3)
+      C = np.ones((2, 3, 2))
+    answer: |-
+      np.einsum('bnm,bmp->bnp', A, C)
+    note: "Identique à `A @ C` : `@` gère les dimensions de lot. `einsum` brille pour les contractions moins standard."
+  - id: np-searchsorted
+    prompt: "Indice où insérer chaque valeur de v dans le tableau trié edges pour garder l'ordre (à droite des égalités)."
+    setup: |-
+      import numpy as np
+      edges = np.array([0, 10, 20, 30])
+      v = np.array([5, 10, 25])
+    answer: |-
+      np.searchsorted(edges, v, side='right')
+  - id: np-tril
+    prompt: "Masque booléen (4, 4) triangulaire inférieur (diagonale comprise), comme un masque causal."
+    setup: |-
+      import numpy as np
+    answer: |-
+      np.tril(np.ones((4, 4), dtype=bool))
+  - id: np-pad
+    prompt: "Ajouter une bordure de zéros de largeur 1 tout autour de img."
+    setup: |-
+      import numpy as np
+      img = np.arange(4).reshape(2, 2)
+    answer: |-
+      np.pad(img, 1)
+  - id: np-repeat-tile
+    prompt: "À partir de a = [1, 2], obtenir [1, 1, 2, 2] puis [1, 2, 1, 2] (un tuple des deux)."
+    setup: |-
+      import numpy as np
+      a = np.array([1, 2])
+    answer: |-
+      (np.repeat(a, 2), np.tile(a, 2))
+  - id: np-diff
+    prompt: "Différences successives de prices (tableau de longueur n - 1)."
+    setup: |-
+      import numpy as np
+      prices = np.array([10.0, 12.0, 11.0, 15.0])
+    answer: |-
+      np.diff(prices)
+    note: "Rendement relatif : `np.diff(prices) / prices[:-1]`."
+  - id: np-unravel
+    prompt: "Coordonnées (ligne, colonne) du maximum de la matrice M."
+    setup: |-
+      import numpy as np
+      M = np.array([[3, 9, 2], [7, 1, 8]])
+    answer: |-
+      np.unravel_index(M.argmax(), M.shape)
+  - id: np-add-at
+    prompt: "Ajouter 1 dans counts à chaque indice de idx, doublons compris (sans boucle). Stocke le résultat dans counts."
+    kind: stmt
+    var: counts
+    setup: |-
+      import numpy as np
+      counts = np.zeros(4, dtype=int)
+      idx = np.array([0, 2, 2, 3, 2])
+    answer: |-
+      np.add.at(counts, idx, 1)
+    note: "`counts[idx] += 1` n'incrémente qu'une fois chaque indice répété. `np.bincount(idx, minlength=4)` est l'alternative."
+  - id: np-percentile
+    prompt: "Les percentiles 5 et 95 de x."
+    setup: |-
+      import numpy as np
+      x = np.arange(101)
+    answer: |-
+      np.percentile(x, [5, 95])
+  - id: np-sliding-window
+    prompt: "Toutes les fenêtres glissantes de taille 3 de x, sous forme de tableau (n - 2, 3)."
+    setup: |-
+      import numpy as np
+      x = np.arange(6)
+    answer: |-
+      np.lib.stride_tricks.sliding_window_view(x, 3)
+    note: "Puis `.mean(axis=1)` donne une moyenne mobile, sans copie mémoire."

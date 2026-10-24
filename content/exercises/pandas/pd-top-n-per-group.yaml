@@ -1,0 +1,89 @@
+id: pd-top-n-per-group
+title: Top N par groupe
+domain: pandas
+difficulty: medium
+minutes: 8
+interview: true
+shared: shop_df
+tags: [groupby, head, nlargest, sort_values]
+statement: |
+  Question d'entretien classique : « les 2 meilleurs produits de chaque catégorie ».
+
+  Écris `top_products(df, n)` qui renvoie un DataFrame avec les colonnes `category`, `product`, `revenue` (somme de `qty * price`) contenant, **pour chaque catégorie**, les `n` produits au plus gros CA.
+
+  Tri : `category` croissante, puis `revenue` décroissante, puis `product` croissant (pour départager). Index `0..k-1`.
+starter: |
+  import pandas as pd
+
+
+  def top_products(df, n):
+      pass
+solution: |
+  import pandas as pd
+
+
+  def top_products(df, n):
+      revenue = (
+          df.assign(revenue=df['qty'] * df['price'])
+          .groupby(['category', 'product'], as_index=False)['revenue'].sum()
+      )
+      return (
+          revenue.sort_values(['category', 'revenue', 'product'], ascending=[True, False, True])
+          .groupby('category')
+          .head(n)
+          .reset_index(drop=True)
+      )
+tests:
+  - call: top_products(orders, 2)
+  - call: top_products(orders, 1)
+  - name: Au plus n lignes par catégorie
+    check: |
+      out = top_products(orders, 2)
+      assert list(out.columns) == ['category', 'product', 'revenue'], list(out.columns)
+      assert out.groupby('category').size().max() <= 2
+  - call: top_products(make_orders(300, seed=4), 3)
+    hidden: true
+  - name: Égalité de CA départagée par le nom
+    call: "top_products(pd.DataFrame({'category': ['A', 'A', 'A'], 'product': ['zeta', 'beta', 'alpha'], 'qty': [1, 2, 1], 'price': [10.0, 5.0, 3.0]}), 2)"
+wrong:
+  - |
+    import pandas as pd
+
+
+    def top_products(df, n):
+        revenue = (
+            df.assign(revenue=df['qty'] * df['price'])
+            .groupby(['category', 'product'], as_index=False)['revenue'].sum()
+        )
+        return revenue.nlargest(n * revenue['category'].nunique(), 'revenue').reset_index(drop=True)
+  - |
+    import pandas as pd
+
+
+    def top_products(df, n):
+        revenue = (
+            df.assign(revenue=df['qty'] * df['price'])
+            .groupby(['category', 'product'], as_index=False)['revenue'].sum()
+        )
+        return (
+            revenue.sort_values(['category', 'revenue'])
+            .groupby('category')
+            .head(n)
+            .reset_index(drop=True)
+        )
+parsons:
+  distractors:
+    - line: "return revenue.nlargest(n, 'revenue').reset_index(drop=True)"
+      replaces: "return ("
+hints:
+  - "D'abord agréger le CA par `(category, product)`."
+  - "Trie **tout** le tableau dans l'ordre voulu, puis `groupby('category').head(n)` garde les n premières lignes de chaque groupe."
+  - "`ascending` accepte une liste : `[True, False, True]`."
+explanation: |
+  ```python
+  (rev.sort_values(['category', 'revenue'], ascending=[True, False])
+      .groupby('category').head(n))
+  ```
+  - Le pattern **trier puis `groupby().head(n)`** est la façon la plus simple de faire un « top N par groupe ».
+  - Équivalent SQL : `ROW_NUMBER() OVER (PARTITION BY category ORDER BY revenue DESC) <= n`.
+  - Alternative : `groupby('category', group_keys=False).apply(lambda g: g.nlargest(n, 'revenue'))`, plus lente.

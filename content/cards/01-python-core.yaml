@@ -189,3 +189,92 @@ cards:
           acc.append(x)
           return acc
     note: "Les valeurs par défaut sont évaluées **une seule fois**, à la définition : la même liste est partagée entre les appels."
+  - id: py-groupby-consecutive
+    prompt: "Liste des (caractère, longueur) des suites consécutives de s, avec itertools.groupby."
+    setup: |-
+      from itertools import groupby
+      s = 'aaabccdddd'
+    answer: |-
+      [(ch, len(list(g))) for ch, g in groupby(s)]
+    note: "`groupby` ne regroupe que les éléments **consécutifs** : triez d'abord pour regrouper toutes les occurrences."
+  - id: py-product
+    prompt: "Toutes les paires (taille, couleur) avec itertools.product, en liste."
+    setup: |-
+      from itertools import product
+      sizes = ['S', 'M']
+      colors = ['noir', 'blanc']
+    answer: |-
+      list(product(sizes, colors))
+  - id: py-combinations
+    prompt: "Toutes les paires non ordonnées de joueurs (itertools.combinations), en liste."
+    setup: |-
+      from itertools import combinations
+      players = ['ana', 'ben', 'cy']
+    answer: |-
+      list(combinations(players, 2))
+    note: "`permutations(players, 2)` si l'ordre compte (6 paires au lieu de 3)."
+  - id: py-chain
+    prompt: "Aplatir une liste de listes d'un niveau avec itertools.chain, en liste."
+    setup: |-
+      from itertools import chain
+      nested = [[1, 2], [3], [], [4, 5]]
+    answer: |-
+      list(chain.from_iterable(nested))
+    note: "Équivalent : `[x for sub in nested for x in sub]` (l'ordre des `for` est celui des boucles imbriquées)."
+  - id: py-dedupe-ordered
+    prompt: "Dédoublonner items en gardant l'ordre de première apparition (une ligne, en liste)."
+    setup: |-
+      items = [3, 1, 3, 2, 1]
+    answer: |-
+      list(dict.fromkeys(items))
+  - id: py-most-common
+    prompt: "Les 2 mots les plus fréquents de words avec leur nombre (Counter)."
+    setup: |-
+      from collections import Counter
+      words = ['a', 'b', 'a', 'c', 'b', 'a']
+    answer: |-
+      Counter(words).most_common(2)
+  - id: py-split-maxsplit
+    prompt: "Découper line en 3 morceaux au maximum sur les espaces (le dernier garde le reste)."
+    setup: |-
+      line = 'ERROR db: connexion perdue après 3 essais'
+    answer: |-
+      line.split(maxsplit=2)
+  - id: py-re-findall
+    prompt: "Tous les nombres entiers (en int) contenus dans text, avec re.findall."
+    setup: |-
+      import re
+      text = 'commande 42 : 3 articles pour 129 euros'
+    answer: |-
+      [int(n) for n in re.findall(r'\d+', text)]
+  - id: py-divmod
+    prompt: "Convertir seconds en (minutes, secondes) en une opération."
+    setup: |-
+      seconds = 754
+    answer: |-
+      divmod(seconds, 60)
+  - id: py-lru-cache
+    prompt: "Fonction fib(n) récursive mémoïsée avec functools.lru_cache, puis stocke fib(80) dans out."
+    kind: stmt
+    var: out
+    answer: |-
+      from functools import lru_cache
+
+      @lru_cache(maxsize=None)
+      def fib(n):
+          return n if n < 2 else fib(n - 1) + fib(n - 2)
+
+      out = fib(80)
+    note: "Sans cache, fib(80) ferait ~10¹⁶ appels. `functools.cache` (Python 3.9+) est un raccourci."
+  - id: py-next-default
+    prompt: "Le premier nombre pair de nums, ou None s'il n'y en a pas (next + générateur)."
+    setup: |-
+      nums = [3, 7, 8, 5, 10]
+    answer: |-
+      next((n for n in nums if n % 2 == 0), None)
+  - id: py-zip-transpose
+    prompt: "Transposée de la matrice m (liste de listes) en liste de listes."
+    setup: |-
+      m = [[1, 2, 3], [4, 5, 6]]
+    answer: |-
+      [list(col) for col in zip(*m)]

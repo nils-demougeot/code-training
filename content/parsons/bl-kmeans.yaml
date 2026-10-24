@@ -1,0 +1,52 @@
+id: bl-kmeans
+title: Une itération de k-means, puis la boucle
+domain: ml
+difficulty: medium
+statement: |
+  Remets dans l'ordre `kmeans(X, centroids, n_iter)` : à chaque itération, on **assigne** chaque point au centroïde le plus proche, puis on **recalcule** chaque centroïde comme la moyenne de ses points (un centroïde sans point ne bouge pas). On s'arrête si les assignations ne changent plus.
+
+  Renvoie `(labels, centroids)`.
+setup: |
+  import numpy as np
+  _rng = np.random.default_rng(0)
+  X = np.vstack([_rng.normal(0, 0.5, (50, 2)), _rng.normal(5, 0.5, (50, 2))])
+  INIT = np.array([[1.0, 1.0], [2.0, 2.0]])
+solution: |
+  import numpy as np
+
+
+  def kmeans(X, centroids, n_iter=100):
+      centroids = centroids.astype(float).copy()
+      labels = None
+      for _ in range(n_iter):
+          d2 = ((X[:, None, :] - centroids[None, :, :]) ** 2).sum(axis=2)
+          new_labels = d2.argmin(axis=1)
+          if labels is not None and np.array_equal(new_labels, labels):
+              break
+          labels = new_labels
+          for k in range(len(centroids)):
+              members = X[labels == k]
+              if len(members):
+                  centroids[k] = members.mean(axis=0)
+      return labels, centroids
+tests:
+  - name: Deux groupes bien séparés
+    check: |
+      labels, c = kmeans(X, INIT)
+      assert len(set(labels[:50])) == 1 and len(set(labels[50:])) == 1 and labels[0] != labels[-1]
+      assert np.allclose(sorted(c[:, 0]), [0, 5], atol=0.3)
+  - call: kmeans(X, INIT)
+  - name: Ne modifie pas les centroïdes d'origine
+    check: |
+      before = INIT.copy()
+      kmeans(X, INIT)
+      assert np.array_equal(INIT, before)
+distractors:
+  - line: "new_labels = d2.argmin(axis=0)"
+    replaces: "new_labels = d2.argmin(axis=1)"
+  - line: "centroids[k] = members.mean(axis=1)"
+    replaces: "centroids[k] = members.mean(axis=0)"
+explanation: |
+  - k-means alterne deux étapes jusqu'à convergence : **assignation** (E) et **mise à jour** (M).
+  - `X[:, None, :] - centroids[None, :, :]` donne toutes les différences `(n, k, d)` d'un coup.
+  - Le résultat dépend de l'initialisation : scikit-learn utilise k-means++ et plusieurs essais (`n_init`).

@@ -40,6 +40,28 @@ tests:
   - name: Montant élevé
     call: min_coins([1, 7, 13, 29], 9_999)
     hidden: true
+  - call: min_coins([1, 2], 1)
+    expected: "1"
+  - name: Comparé à un parcours en largeur sur les montants
+    check: |
+      import random
+      from collections import deque
+      def bfs(coins, amount):
+          dist, queue = {0: 0}, deque([0])
+          while queue:
+              a = queue.popleft()
+              if a == amount:
+                  return dist[a]
+              for c in coins:
+                  if a + c <= amount and a + c not in dist:
+                      dist[a + c] = dist[a] + 1
+                      queue.append(a + c)
+          return -1
+      rnd = random.Random(0)
+      for _ in range(300):
+          coins = rnd.sample(range(1, 15), rnd.randint(1, 4))
+          amount = rnd.randint(0, 60)
+          assert min_coins(coins, amount) == bfs(coins, amount), (coins, amount)
 hints:
   - "Sous-problème : `dp[a]` = nombre minimal de pièces pour le montant `a`."
   - "Transition : `dp[a] = min(dp[a - c] + 1 pour chaque pièce c <= a)`, avec `dp[0] = 0`."

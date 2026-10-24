@@ -52,6 +52,8 @@ tests:
     expected: "0.9"
   - call: p_healthy_given_negative(0.01, 0.99, 0.95)
   - call: after_two_positives(0.01, 0.99, 0.95)
+  - call: p_healthy_given_negative(0.3, 0.8, 0.9)
+    expected: "0.63 / (0.63 + 0.06)"
 hints:
   - "Bayes : P(M | +) = P(+ | M) · P(M) / P(+)."
   - "P(+) = vrais positifs + faux positifs = prévalence × sensibilité + (1 − prévalence) × (1 − spécificité)."

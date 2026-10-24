@@ -1,0 +1,75 @@
+id: sql-count-distinct
+title: COUNT, COUNT(DISTINCT) et taux
+domain: sql
+difficulty: easy
+minutes: 6
+language: sql
+shared: sql_shop
+tags: [COUNT DISTINCT, GROUP BY, LEFT JOIN, ROUND]
+statement: |
+  Pour chaque **ville**, donne :
+
+  - `n_customers` : le nombre de clients inscrits ;
+  - `n_buyers` : le nombre de clients **distincts** ayant au moins une commande **livrée** ;
+  - `buyer_rate` : `n_buyers / n_customers`, arrondi à 2 décimales.
+
+  Toutes les villes doivent apparaître, même sans acheteur. Tri par `buyer_rate` décroissant, puis `city`.
+starter: |
+  SELECT c.city, COUNT(*) AS n_customers
+  FROM customers c
+  GROUP BY c.city
+solution: |
+  SELECT c.city,
+         COUNT(DISTINCT c.id) AS n_customers,
+         COUNT(DISTINCT o.customer_id) AS n_buyers,
+         ROUND(1.0 * COUNT(DISTINCT o.customer_id) / COUNT(DISTINCT c.id), 2) AS buyer_rate
+  FROM customers c
+  LEFT JOIN orders o ON o.customer_id = c.id AND o.status = 'livrée'
+  GROUP BY c.city
+  ORDER BY buyer_rate DESC, c.city
+tests:
+  - name: Résultat de la requête
+    call: q(QUERY)
+wrong:
+  - |
+    SELECT c.city,
+           COUNT(*) AS n_customers,
+           COUNT(o.customer_id) AS n_buyers,
+           ROUND(1.0 * COUNT(o.customer_id) / COUNT(*), 2) AS buyer_rate
+    FROM customers c
+    LEFT JOIN orders o ON o.customer_id = c.id AND o.status = 'livrée'
+    GROUP BY c.city
+    ORDER BY buyer_rate DESC, c.city
+  - |
+    SELECT c.city,
+           COUNT(DISTINCT c.id) AS n_customers,
+           COUNT(DISTINCT o.customer_id) AS n_buyers,
+           ROUND(1.0 * COUNT(DISTINCT o.customer_id) / COUNT(DISTINCT c.id), 2) AS buyer_rate
+    FROM customers c
+    LEFT JOIN orders o ON o.customer_id = c.id
+    WHERE o.status = 'livrée'
+    GROUP BY c.city
+    ORDER BY buyer_rate DESC, c.city
+  - |
+    SELECT c.city,
+           COUNT(DISTINCT c.id) AS n_customers,
+           COUNT(DISTINCT o.customer_id) AS n_buyers,
+           ROUND(COUNT(DISTINCT o.customer_id) / COUNT(DISTINCT c.id), 2) AS buyer_rate
+    FROM customers c
+    LEFT JOIN orders o ON o.customer_id = c.id AND o.status = 'livrée'
+    GROUP BY c.city
+    ORDER BY buyer_rate DESC, c.city
+parsons:
+  distractors:
+    - line: "WHERE o.status = 'livrée'"
+      replaces: "LEFT JOIN orders o ON o.customer_id = c.id AND o.status = 'livrée'"
+    - line: "COUNT(o.customer_id) AS n_buyers,"
+      replaces: "COUNT(DISTINCT o.customer_id) AS n_buyers,"
+hints:
+  - "Un client avec 3 commandes apparaît 3 fois après la jointure : `COUNT(DISTINCT ...)`."
+  - "Mettre la condition `status = 'livrée'` dans le `ON` du `LEFT JOIN` garde les clients sans commande livrée ; dans le `WHERE`, elle les supprime."
+  - "En SQLite, `3 / 4` vaut `0` (division entière) : multiplie par `1.0`."
+explanation: |
+  - `COUNT(*)` compte les lignes, `COUNT(col)` les valeurs non NULL, `COUNT(DISTINCT col)` les valeurs distinctes non NULL.
+  - **Filtre dans le `ON` vs dans le `WHERE`** avec un `LEFT JOIN` : dans le `WHERE`, les lignes sans correspondance (NULL) sont éliminées et la jointure devient un `INNER JOIN` déguisé.
+  - Division entière : piège classique en SQLite et PostgreSQL. `1.0 * a / b` ou `CAST(a AS REAL)`.

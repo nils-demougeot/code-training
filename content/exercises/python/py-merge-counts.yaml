@@ -1,0 +1,88 @@
+id: py-merge-counts
+title: Fusionner des compteurs
+domain: python
+difficulty: easy
+minutes: 5
+tags: [Counter, dict, sum, fusion]
+statement: |
+  Chaque magasin envoie ses ventes du jour sous forme de dict `{produit: quantité}`.
+
+  1. `merge_sales(reports)` : à partir d'une **liste** de ces dicts, renvoie le total par produit (un `dict`).
+  2. `best_sellers(reports, k)` : les `k` produits les plus vendus, sous forme de liste de tuples `(produit, total)` triée par total décroissant puis par nom.
+setup: |
+  REPORTS = [
+      {"café": 30, "thé": 12, "croissant": 25},
+      {"café": 22, "croissant": 40, "jus": 7},
+      {"thé": 9, "jus": 7, "café": 18},
+  ]
+starter: |
+  from collections import Counter
+
+
+  def merge_sales(reports):
+      pass
+
+
+  def best_sellers(reports, k):
+      pass
+solution: |
+  from collections import Counter
+
+
+  def merge_sales(reports):
+      total = Counter()
+      for report in reports:
+          total.update(report)
+      return dict(total)
+
+
+  def best_sellers(reports, k):
+      totals = merge_sales(reports)
+      return sorted(totals.items(), key=lambda kv: (-kv[1], kv[0]))[:k]
+tests:
+  - call: merge_sales(REPORTS)
+    expected: "{'café': 70, 'thé': 21, 'croissant': 65, 'jus': 14}"
+  - call: merge_sales([])
+    expected: "{}"
+  - call: best_sellers(REPORTS, 2)
+    expected: "[('café', 70), ('croissant', 65)]"
+  - name: Égalités départagées par le nom
+    call: "best_sellers([{'b': 5, 'a': 5, 'c': 1}], 2)"
+    expected: "[('a', 5), ('b', 5)]"
+  - call: "merge_sales([{'x': 1}, {'x': 2, 'y': 3}, {'y': -3}])"
+    hidden: true
+wrong:
+  - |
+    def merge_sales(reports):
+        out = {}
+        for report in reports:
+            out.update(report)
+        return out
+
+
+    def best_sellers(reports, k):
+        totals = merge_sales(reports)
+        return sorted(totals.items(), key=lambda kv: (-kv[1], kv[0]))[:k]
+  - |
+    from collections import Counter
+
+
+    def merge_sales(reports):
+        return dict(sum((Counter(r) for r in reports), Counter()))
+
+
+    def best_sellers(reports, k):
+        return Counter(merge_sales(reports)).most_common(k)
+parsons:
+  distractors:
+    - line: "total = report"
+      replaces: "total.update(report)"
+    - line: "return sorted(totals.items(), key=lambda kv: kv[1])[:k]"
+      replaces: "return sorted(totals.items(), key=lambda kv: (-kv[1], kv[0]))[:k]"
+hints:
+  - "`Counter.update(d)` **additionne** les valeurs, alors que `dict.update` les **remplace**."
+  - "Tri sur deux critères dont un décroissant : `key=lambda kv: (-kv[1], kv[0])`."
+explanation: |
+  - `Counter().update(mapping)` additionne ; `dict.update` écrase. Erreur fréquente !
+  - `sum(counters, Counter())` fonctionne aussi, mais l'addition de Counters **supprime les totaux ≤ 0** (ici `y` disparaîtrait), alors que `update` les garde.
+  - `most_common(k)` ne départage pas les égalités par ordre alphabétique : quand l'ordre exact compte, trie toi-même.

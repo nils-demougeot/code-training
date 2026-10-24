@@ -1,5 +1,6 @@
 import { parse } from 'yaml'
-import type { DesignCase, Deck, DocLibrary, Domain, Exercise, Fiche, FlashCard, Project, QuizQuestion } from './types'
+import { parsonsEligible, toBlocks } from './parsons'
+import type { DesignCase, Deck, DocLibrary, Domain, Exercise, Fiche, FlashCard, ParsonsProblem, Project, QuizQuestion } from './types'
 
 // All learning content lives in /content as YAML (code blocks need no escaping there)
 // and is bundled at build time.
@@ -23,6 +24,9 @@ const docFiles = import.meta.glob('/content/docs/*.yaml', {
   query: '?raw', import: 'default', eager: true,
 }) as Record<string, string>
 const designFiles = import.meta.glob('/content/design/*.yaml', {
+  query: '?raw', import: 'default', eager: true,
+}) as Record<string, string>
+const parsonsFiles = import.meta.glob('/content/parsons/*.yaml', {
   query: '?raw', import: 'default', eager: true,
 }) as Record<string, string>
 
@@ -98,3 +102,34 @@ export const designCases: DesignCase[] = Object.entries(designFiles)
   .sort(([a], [b]) => a.localeCompare(b))
   .map(([, raw]) => parse(raw) as DesignCase)
 export const designCaseById = new Map(designCases.map((c) => [c.id, c]))
+
+/** Code-blocks problems: written ones first, then every eligible exercise. */
+export const parsonsProblems: ParsonsProblem[] = [
+  ...Object.values(parsonsFiles).map((raw) => {
+    const d = parse(raw) as Omit<ParsonsProblem, 'source'>
+    return { ...d, distractors: d.distractors ?? [], source: 'parsons' as const }
+  }),
+  ...exercises
+    .filter((e) => e.engine !== 'local' && !e.parsons?.skip && parsonsEligible(toBlocks(e.solution, e.language)))
+    .map((e) => ({
+      id: e.id,
+      title: e.title,
+      domain: e.domain,
+      difficulty: e.difficulty,
+      statement: e.statement,
+      solution: e.solution,
+      setup: e.setup,
+      shared: e.shared,
+      language: e.language,
+      tests: e.tests.filter((t) => !t.bonus),
+      distractors: e.parsons?.distractors ?? [],
+      explanation: e.explanation,
+      source: 'exercise' as const,
+    })),
+].sort(
+  (a, b) =>
+    DOMAIN_ORDER.indexOf(a.domain) - DOMAIN_ORDER.indexOf(b.domain) ||
+    (a.source === b.source ? 0 : a.source === 'parsons' ? -1 : 1) ||
+    DIFF_ORDER[a.difficulty] - DIFF_ORDER[b.difficulty],
+)
+export const parsonsById = new Map(parsonsProblems.map((p) => [p.id, p]))

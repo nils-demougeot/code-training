@@ -1,0 +1,103 @@
+id: py-transpose
+title: Matrices en listes de listes
+domain: python
+difficulty: easy
+minutes: 6
+tags: [zip, compréhension, listes imbriquées, matrices]
+statement: |
+  Sans NumPy, une matrice est une **liste de lignes** : `[[1, 2, 3], [4, 5, 6]]` a 2 lignes et 3 colonnes.
+
+  1. `transpose(m)` : la transposée, en **liste de listes** (pas de tuples).
+  2. `matmul(a, b)` : le produit matriciel `a × b`. Lève une `ValueError` si les dimensions sont incompatibles.
+  3. `zeros(n_rows, n_cols)` : une matrice de zéros dont les lignes sont **indépendantes**.
+starter: |
+  def transpose(m):
+      pass
+
+
+  def matmul(a, b):
+      pass
+
+
+  def zeros(n_rows, n_cols):
+      pass
+solution: |
+  def transpose(m):
+      return [list(col) for col in zip(*m)]
+
+
+  def matmul(a, b):
+      if len(a[0]) != len(b):
+          raise ValueError(f"dimensions incompatibles : {len(a)}x{len(a[0])} et {len(b)}x{len(b[0])}")
+      b_cols = transpose(b)
+      return [[sum(x * y for x, y in zip(row, col)) for col in b_cols] for row in a]
+
+
+  def zeros(n_rows, n_cols):
+      return [[0] * n_cols for _ in range(n_rows)]
+tests:
+  - call: transpose([[1, 2, 3], [4, 5, 6]])
+    expected: "[[1, 4], [2, 5], [3, 6]]"
+  - call: transpose([[7]])
+  - call: matmul([[1, 2], [3, 4]], [[5, 6], [7, 8]])
+    expected: "[[19, 22], [43, 50]]"
+  - call: matmul([[1, 2, 3]], [[1], [0], [2]])
+    expected: "[[7]]"
+  - name: Dimensions incompatibles
+    check: |
+      try:
+          matmul([[1, 2]], [[1, 2]])
+      except ValueError:
+          pass
+      else:
+          raise AssertionError("ValueError attendue pour (1x2) @ (1x2)")
+  - call: zeros(2, 3)
+    expected: "[[0, 0, 0], [0, 0, 0]]"
+  - name: Lignes indépendantes
+    check: |
+      z = zeros(3, 2)
+      z[0][0] = 1
+      assert z == [[1, 0], [0, 0], [0, 0]], f"modifier une ligne en a modifié d'autres : {z}"
+  - name: Identique à NumPy
+    check: |
+      import numpy as np
+      rng = np.random.default_rng(0)
+      a, b = rng.integers(-5, 5, (3, 4)), rng.integers(-5, 5, (4, 2))
+      assert matmul(a.tolist(), b.tolist()) == (a @ b).tolist()
+wrong:
+  - |
+    def transpose(m):
+        return list(zip(*m))
+
+
+    def matmul(a, b):
+        return [[sum(x * y for x, y in zip(row, col)) for col in zip(*b)] for row in a]
+
+
+    def zeros(n_rows, n_cols):
+        return [[0] * n_cols] * n_rows
+  - |
+    def transpose(m):
+        return [list(col) for col in zip(*m)]
+
+
+    def matmul(a, b):
+        return [[x * y for x, y in zip(ra, rb)] for ra, rb in zip(a, b)]
+
+
+    def zeros(n_rows, n_cols):
+        return [[0 for _ in range(n_cols)] for _ in range(n_rows)]
+parsons:
+  distractors:
+    - line: "return [[0] * n_cols] * n_rows"
+      replaces: "return [[0] * n_cols for _ in range(n_rows)]"
+    - line: "if len(a) != len(b[0]):"
+      replaces: "if len(a[0]) != len(b):"
+hints:
+  - "`zip(*m)` « dézippe » les lignes : il produit les colonnes (sous forme de tuples)."
+  - "Coefficient (i, j) du produit : somme des produits de la ligne i de `a` et de la colonne j de `b`."
+  - "`[[0] * n] * m` copie **la même** ligne m fois : utilise une compréhension."
+explanation: |
+  - `zip(*m)` est l'idiome Python de la transposée.
+  - Le piège `[[0] * n] * m` : les m lignes sont **le même objet**, modifier `z[0][0]` modifie toutes les lignes.
+  - Le produit en Python pur est en O(n³) et lent : en pratique, `np.array(a) @ np.array(b)`. Mais savoir l'écrire montre que tu comprends ce que fait `@`.

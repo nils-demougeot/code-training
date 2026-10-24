@@ -149,3 +149,117 @@ questions:
     choices: ["(3, 1)", "(1, 3)", "(3,)", "ValueError"]
     answer: 2
     explain: "Transposer un tableau 1D ne fait **rien** : il n'a qu'un axe. Pour une colonne : `v[:, None]` ou `v.reshape(-1, 1)`."
+  - id: q-np-broadcast-shape
+    topic: Broadcasting
+    verify: true
+    question: Qu'affiche ce code ?
+    code: |
+      import numpy as np
+      a = np.ones((4, 1, 3))
+      b = np.ones((5, 1))
+      print((a + b).shape)
+    choices: ["(4, 5, 3)", "(4, 1, 3)", "ValueError", "(5, 4, 3)"]
+    answer: 0
+    explain: "On aligne les shapes **à droite** : `(4, 1, 3)` et `(_, 5, 1)`. Chaque dimension 1 s'étend : résultat `(4, 5, 3)`."
+  - id: q-np-integer-division
+    topic: dtype
+    verify: true
+    question: Qu'affiche ce code ?
+    code: |
+      import numpy as np
+      a = np.array([1, 2, 3])
+      a[0] = 2.9
+      print(a)
+    choices: ["[2 2 3]", "[2.9 2.  3. ]", "[3 2 3]", "TypeError"]
+    answer: 0
+    explain: "Un tableau a un dtype **fixe** : affecter un float dans un tableau d'entiers le **tronque** silencieusement."
+  - id: q-np-sum-bool
+    topic: Masques
+    verify: true
+    question: Qu'affiche ce code ?
+    code: |
+      import numpy as np
+      x = np.array([3, -1, 4, -1, 5])
+      print((x > 0).sum(), (x > 0).mean(), x[x > 0].sum())
+    choices: ["3 0.6 12", "12 0.6 3", "3 3.0 12", "3 0.6 3"]
+    answer: 0
+    explain: "Un masque booléen se somme comme des 0/1 (nombre de vrais) et sa moyenne est une proportion."
+  - id: q-np-arange-float
+    topic: Création
+    verify: true
+    question: Qu'affiche ce code ?
+    code: |
+      import numpy as np
+      print(len(np.arange(0, 1, 0.1)), len(np.linspace(0, 1, 10)), np.linspace(0, 1, 5)[1])
+    choices: ["10 10 0.25", "11 10 0.2", "10 11 0.25", "10 10 0.2"]
+    answer: 0
+    explain: "`arange` exclut la borne de fin et prend un **pas** ; `linspace` inclut les deux bornes et prend un **nombre de points**."
+  - id: q-np-squeeze-newaxis
+    topic: Shapes
+    verify: true
+    question: Qu'affiche ce code ?
+    code: |
+      import numpy as np
+      v = np.arange(3)
+      print(v[:, None].shape, v[None, :].shape, np.zeros((1, 3, 1)).squeeze().shape)
+    choices: ["(3, 1) (1, 3) (3,)", "(1, 3) (3, 1) (3,)", "(3, 1) (1, 3) (1, 3)", "(3,) (3,) (3,)"]
+    answer: 0
+    explain: "`None` (alias `np.newaxis`) ajoute un axe de taille 1 à l'endroit indiqué ; `squeeze` retire tous les axes de taille 1."
+  - id: q-np-argsort-twice
+    topic: Tri
+    verify: true
+    question: Qu'affiche ce code ?
+    code: |
+      import numpy as np
+      x = np.array([30, 10, 20])
+      print(np.argsort(x), np.argsort(np.argsort(x)))
+    choices: ["[1 2 0] [2 0 1]", "[2 0 1] [1 2 0]", "[1 2 0] [1 2 0]", "[0 1 2] [2 0 1]"]
+    answer: 0
+    explain: "`argsort` donne les indices qui trient le tableau ; appliqué deux fois, il donne le **rang** de chaque élément (30 est 3e → rang 2)."
+  - id: q-np-where-three
+    topic: Sélection
+    verify: true
+    question: Qu'affiche ce code ?
+    code: |
+      import numpy as np
+      x = np.array([-2, 0, 3])
+      print(np.where(x > 0, x, 0), np.where(x > 0)[0])
+    choices: ["[0 0 3] [2]", "[0 0 3] [3]", "[3] [2]", "[-2 0 3] [2]"]
+    answer: 0
+    explain: "Avec 3 arguments, `np.where` choisit élément par élément ; avec 1 seul, il renvoie un tuple des **indices** où la condition est vraie."
+  - id: q-np-aggregate-axis-none
+    topic: Axes
+    verify: true
+    question: Qu'affiche ce code ?
+    code: |
+      import numpy as np
+      m = np.array([[1, 2], [3, 4]])
+      print(m.max(), m.max(axis=0), m.argmax())
+    choices: ["4 [3 4] 3", "4 [2 4] 3", "4 [3 4] (1, 1)", "[2 4] [3 4] 3"]
+    answer: 0
+    explain: "Sans `axis`, l'agrégation porte sur tout le tableau ; `argmax` renvoie alors un indice **à plat**. `np.unravel_index(3, m.shape)` donne `(1, 1)`."
+  - id: q-np-float-equality
+    topic: Égalité
+    verify: true
+    question: Qu'affiche ce code ?
+    code: |
+      import numpy as np
+      a = np.array([0.1 + 0.2])
+      print(a == 0.3, np.isclose(a, 0.3), np.allclose(a, [0.3]))
+    choices: ["[False] [ True] True", "[ True] [ True] True", "[False] [False] False", "False True True"]
+    answer: 0
+    explain: "Les flottants ne se comparent pas avec `==` : `np.isclose` (élément par élément) et `np.allclose` (un booléen) utilisent une tolérance."
+  - id: q-np-random-seed
+    topic: Aléatoire
+    verify: true
+    question: Qu'affiche ce code ?
+    code: |
+      import numpy as np
+      a = np.random.default_rng(42).integers(0, 100, 3)
+      b = np.random.default_rng(42).integers(0, 100, 3)
+      rng = np.random.default_rng(42)
+      c, d = rng.integers(0, 100, 3), rng.integers(0, 100, 3)
+      print((a == b).all(), (c == d).all())
+    choices: ["True False", "True True", "False False", "False True"]
+    answer: 0
+    explain: "Même seed → même séquence. Mais deux tirages successifs d'un **même** générateur avancent dans la séquence et diffèrent."

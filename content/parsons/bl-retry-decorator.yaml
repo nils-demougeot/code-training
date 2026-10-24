@@ -1,0 +1,72 @@
+id: bl-retry-decorator
+title: Décorateur de retry
+domain: python
+difficulty: medium
+statement: |
+  Remets dans l'ordre un décorateur **paramétré** `retry(times)` : la fonction décorée est rappelée tant qu'elle lève une exception, au plus `times` fois au total. Si tous les essais échouent, la **dernière** exception est relancée.
+
+  Le décorateur doit conserver le nom de la fonction (`functools.wraps`).
+solution: |
+  import functools
+
+
+  def retry(times):
+      def decorator(func):
+          @functools.wraps(func)
+          def wrapper(*args, **kwargs):
+              for attempt in range(times):
+                  try:
+                      return func(*args, **kwargs)
+                  except Exception:
+                      if attempt == times - 1:
+                          raise
+          return wrapper
+      return decorator
+tests:
+  - name: Réussit au 3e essai
+    check: |
+      calls = []
+      @retry(5)
+      def flaky(x):
+          calls.append(x)
+          if len(calls) < 3:
+              raise ConnectionError("réseau")
+          return x * 2
+      assert flaky(21) == 42 and len(calls) == 3
+  - name: Relance la dernière exception
+    check: |
+      calls = []
+      @retry(3)
+      def always_fails():
+          calls.append(1)
+          raise ValueError(f"essai {len(calls)}")
+      try:
+          always_fails()
+      except ValueError as e:
+          assert str(e) == "essai 3", str(e)
+      else:
+          raise AssertionError("une ValueError était attendue")
+      assert len(calls) == 3
+  - name: functools.wraps
+    check: |
+      @retry(2)
+      def my_function():
+          """doc"""
+      assert my_function.__name__ == "my_function" and my_function.__doc__ == "doc"
+distractors:
+  - line: "if attempt == times:"
+    replaces: "if attempt == times - 1:"
+  - line: "return func"
+    replaces: "return func(*args, **kwargs)"
+explanation: |
+  Un décorateur **avec paramètres** a trois niveaux :
+  ```python
+  def retry(times):          # reçoit les paramètres
+      def decorator(func):   # reçoit la fonction
+          def wrapper(*a, **kw):   # remplace la fonction
+              ...
+          return wrapper
+      return decorator
+  ```
+  - `raise` seul relance l'exception en cours avec sa trace d'origine.
+  - `functools.wraps` copie `__name__`, `__doc__`… sinon toutes les fonctions décorées s'appellent `wrapper`.

@@ -44,6 +44,8 @@ tests:
       assert '.apply(' not in inspect.getsource(add_features), "essaie sans apply : opérations vectorisées uniquement"
   - call: add_features(make_orders(100, seed=8))[['price_band', 'region']].value_counts().sort_index()
     hidden: true
+  - name: Bornes des tranches de prix (39, 40, 149, 150)
+    call: "add_features(pd.DataFrame({'qty': [1, 1, 1, 1], 'price': [39.0, 40.0, 149.0, 150.0], 'city': ['Paris', 'Lyon', 'Marseille', 'Bordeaux'], 'date': pd.to_datetime(['2024-03-02', '2024-03-03', '2024-03-04', '2024-03-08'])}))"
 hints:
   - "Booléen vectorisé : `pd.to_datetime(df['date']).dt.dayofweek >= 5`."
   - "Plusieurs seuils : `np.select([cond1, cond2], ['low', 'mid'], default='high')` ou `pd.cut(df.price, bins=[0, 40, 150, np.inf], right=False, labels=[...])`."

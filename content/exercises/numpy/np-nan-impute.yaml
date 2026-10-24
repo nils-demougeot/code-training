@@ -1,0 +1,123 @@
+id: np-nan-impute
+title: Valeurs manquantes et aberrantes
+domain: numpy
+difficulty: medium
+minutes: 8
+tags: [np.where, nanmean, isnan, clip, broadcasting]
+statement: |
+  `X` est une matrice `(n_samples, n_features)` de `float` qui contient des `np.nan`.
+
+  1. `impute_mean(X)` : remplace chaque `nan` par la **moyenne de sa colonne** (calculée sans les `nan`). Ne modifie pas `X`.
+  2. `clip_outliers(X, k=3)` : pour chaque colonne, ramène les valeurs en dehors de `[moyenne − k·écart-type, moyenne + k·écart-type]` aux bornes (statistiques de la colonne, `ddof=0`). On suppose qu'il n'y a plus de `nan`.
+  3. `missing_report(X)` : la proportion de `nan` par colonne.
+setup: |
+  import numpy as np
+  X = np.array([[1.0, np.nan, 3.0],
+                [2.0, 10.0, np.nan],
+                [np.nan, 14.0, 9.0],
+                [5.0, 12.0, 6.0]])
+starter: |
+  import numpy as np
+
+
+  def impute_mean(X):
+      pass
+
+
+  def clip_outliers(X, k=3):
+      pass
+
+
+  def missing_report(X):
+      pass
+solution: |
+  import numpy as np
+
+
+  def impute_mean(X):
+      col_means = np.nanmean(X, axis=0)
+      return np.where(np.isnan(X), col_means, X)
+
+
+  def clip_outliers(X, k=3):
+      mu = X.mean(axis=0)
+      sigma = X.std(axis=0)
+      return np.clip(X, mu - k * sigma, mu + k * sigma)
+
+
+  def missing_report(X):
+      return np.isnan(X).mean(axis=0)
+tests:
+  - call: impute_mean(X)
+    expected: np.array([[1.0, 12.0, 3.0], [2.0, 10.0, 6.0], [8 / 3, 14.0, 9.0], [5.0, 12.0, 6.0]])
+  - name: X n'est pas modifié
+    check: |
+      before = X.copy()
+      impute_mean(X)
+      assert np.array_equal(X, before, equal_nan=True)
+  - call: missing_report(X)
+    expected: np.array([0.25, 0.25, 0.25])
+  - call: clip_outliers(np.array([[0.0], [0.0], [0.0], [0.0], [10.0]]), k=1)
+  - name: Valeurs extrêmes ramenées, les autres intactes
+    check: |
+      rng = np.random.default_rng(0)
+      Z = rng.normal(size=(1000, 3))
+      Z[0, 0], Z[1, 2] = 50.0, -40.0
+      out = clip_outliers(Z, k=3)
+      mu, sd = Z.mean(0), Z.std(0)
+      assert np.isclose(out[0, 0], mu[0] + 3 * sd[0]) and np.isclose(out[1, 2], mu[2] - 3 * sd[2])
+      inside = np.abs(Z - mu) <= 3 * sd
+      assert np.array_equal(out[inside], Z[inside])
+  - name: k = 3 par défaut
+    check: |
+      Z = np.vstack([np.zeros((99, 1)), [[10.0]]])
+      mu, sd = Z.mean(), Z.std()
+      assert np.isclose(clip_outliers(Z)[-1, 0], mu + 3 * sd)
+wrong:
+  - |
+    import numpy as np
+
+
+    def impute_mean(X):
+        X = X.copy()
+        X[np.isnan(X)] = np.nanmean(X)
+        return X
+
+
+    def clip_outliers(X, k=3):
+        mu, sigma = X.mean(axis=0), X.std(axis=0)
+        return np.clip(X, mu - k * sigma, mu + k * sigma)
+
+
+    def missing_report(X):
+        return np.isnan(X).mean(axis=0)
+  - |
+    import numpy as np
+
+
+    def impute_mean(X):
+        return np.where(np.isnan(X), np.nanmean(X, axis=0), X)
+
+
+    def clip_outliers(X, k=3):
+        mu, sigma = X.mean(), X.std()
+        return np.clip(X, mu - k * sigma, mu + k * sigma)
+
+
+    def missing_report(X):
+        return np.isnan(X).sum(axis=0)
+parsons:
+  distractors:
+    - line: "col_means = np.mean(X, axis=0)"
+      replaces: "col_means = np.nanmean(X, axis=0)"
+    - line: "return np.where(X == np.nan, col_means, X)"
+      replaces: "return np.where(np.isnan(X), col_means, X)"
+hints:
+  - "`np.nanmean(X, axis=0)` ignore les `nan` ; `np.mean` renverrait `nan`."
+  - "`np.where(condition, a, b)` choisit élément par élément ; `col_means` de shape `(n_features,)` se broadcast sur chaque ligne."
+  - "⚠️ `X == np.nan` est toujours `False` : utilise `np.isnan(X)`."
+  - "`np.clip(X, bas, haut)` accepte des bornes par colonne (broadcasting)."
+explanation: |
+  - `nan != nan` : on teste avec `np.isnan`, jamais avec `==`.
+  - `np.where(np.isnan(X), col_means, X)` renvoie un **nouveau** tableau ; `X[mask] = ...` modifie l'original (piège si `X` vient de l'appelant).
+  - En pratique : `SimpleImputer(strategy='mean')` dans un pipeline scikit-learn, pour que les moyennes soient apprises **sur le train uniquement**.

@@ -1,0 +1,47 @@
+id: bl-binary-search
+title: Recherche dichotomique (borne inférieure)
+domain: algo
+difficulty: easy
+statement: |
+  Remets dans l'ordre `lower_bound(arr, target)` : dans une liste **triée**, le plus petit indice `i` tel que `arr[i] >= target` (ou `len(arr)` si aucun).
+
+  La version « intervalle semi-ouvert `[lo, hi)` » évite les erreurs d'indice classiques.
+solution: |
+  def lower_bound(arr, target):
+      lo, hi = 0, len(arr)
+      while lo < hi:
+          mid = (lo + hi) // 2
+          if arr[mid] < target:
+              lo = mid + 1
+          else:
+              hi = mid
+      return lo
+tests:
+  - call: lower_bound([1, 3, 3, 5, 8], 3)
+    expected: "1"
+  - call: lower_bound([1, 3, 3, 5, 8], 4)
+    expected: "3"
+  - call: lower_bound([1, 3, 3, 5, 8], 9)
+    expected: "5"
+  - call: lower_bound([], 1)
+    expected: "0"
+  - name: Comparé à bisect_left
+    check: |
+      import bisect, random
+      rnd = random.Random(0)
+      for _ in range(500):
+          arr = sorted(rnd.randint(0, 20) for _ in range(rnd.randint(0, 15)))
+          t = rnd.randint(-1, 21)
+          assert lower_bound(arr, t) == bisect.bisect_left(arr, t), (arr, t)
+distractors:
+  - line: "if arr[mid] <= target:"
+    replaces: "if arr[mid] < target:"
+  - line: "mid = (lo + hi) / 2"
+    replaces: "mid = (lo + hi) // 2"
+  - line: "hi = mid - 1"
+    replaces: "hi = mid"
+explanation: |
+  - Invariant : tout ce qui est avant `lo` est `< target`, tout ce qui est à partir de `hi` est `>= target`. La boucle s'arrête quand `lo == hi`.
+  - `lo = mid` (au lieu de `mid + 1`) peut boucler à l'infini quand `hi = lo + 1`.
+  - `arr[mid] <= target` donnerait la borne **supérieure** (`bisect_right`) ; `/` produit un flottant, inutilisable comme indice.
+  - En Python : `bisect.bisect_left(arr, target)`.

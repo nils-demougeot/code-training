@@ -1,0 +1,117 @@
+id: algo-sliding-window
+title: Fenêtre glissante
+domain: algo
+difficulty: easy
+minutes: 8
+interview: true
+tags: [fenêtre glissante, deux pointeurs, somme]
+statement: |
+  1. `max_window_sum(nums, k)` : la plus grande somme de `k` éléments **consécutifs** (`1 <= k <= len(nums)`).
+  2. `shortest_subarray_at_least(nums, target)` : `nums` ne contient que des entiers **positifs**. Renvoie la longueur du plus court sous-tableau contigu de somme `>= target`, ou `0` s'il n'y en a pas.
+starter: |
+  def max_window_sum(nums, k):
+      pass
+
+
+  def shortest_subarray_at_least(nums, target):
+      pass
+solution: |
+  def max_window_sum(nums, k):
+      window = sum(nums[:k])
+      best = window
+      for i in range(k, len(nums)):
+          window += nums[i] - nums[i - k]
+          best = max(best, window)
+      return best
+
+
+  def shortest_subarray_at_least(nums, target):
+      best = float('inf')
+      total = left = 0
+      for right, x in enumerate(nums):
+          total += x
+          while total >= target:
+              best = min(best, right - left + 1)
+              total -= nums[left]
+              left += 1
+      return 0 if best == float('inf') else best
+tests:
+  - call: max_window_sum([2, 1, 5, 1, 3, 2], 3)
+    expected: "9"
+  - call: max_window_sum([-1, -2, -3], 1)
+    expected: "-1"
+  - call: max_window_sum([4, 2], 2)
+  - call: shortest_subarray_at_least([2, 3, 1, 2, 4, 3], 7)
+    expected: "2"
+  - call: shortest_subarray_at_least([1, 1, 1], 10)
+    expected: "0"
+  - name: Comparé à une recherche exhaustive
+    check: |
+      import random
+      rnd = random.Random(1)
+      for _ in range(200):
+          nums = [rnd.randint(1, 9) for _ in range(rnd.randint(1, 15))]
+          k = rnd.randint(1, len(nums))
+          assert max_window_sum(nums, k) == max(sum(nums[i:i + k]) for i in range(len(nums) - k + 1))
+          t = rnd.randint(1, 40)
+          lengths = [j - i + 1 for i in range(len(nums)) for j in range(i, len(nums)) if sum(nums[i:j + 1]) >= t]
+          assert shortest_subarray_at_least(nums, t) == (min(lengths) if lengths else 0), (nums, t)
+  - name: "Bonus : complexité O(n)"
+    bonus: true
+    check: |
+      k = growth_exponent(max_window_sum, lambda n: (list(range(n)), n // 2))
+      assert k < 1.5, f"Ta solution semble en O(n^{k:.1f}) : recalculer sum() de chaque fenêtre coûte O(k). Mets à jour la somme en ajoutant l'élément qui entre et en retirant celui qui sort."
+complexity:
+  target: O(n)
+  note: |
+    `sum(nums[i:i + k])` pour chaque position coûte O(n·k), soit O(n²) quand k ≈ n/2. En faisant glisser la fenêtre, on ajoute l'élément qui entre et on retire celui qui sort : O(1) par position.
+naive: |
+  def max_window_sum(nums, k):
+      return max(sum(nums[i:i + k]) for i in range(len(nums) - k + 1))
+
+
+  def shortest_subarray_at_least(nums, target):
+      best = 0
+      for i in range(len(nums)):
+          total = 0
+          for j in range(i, len(nums)):
+              total += nums[j]
+              if total >= target:
+                  if best == 0 or j - i + 1 < best:
+                      best = j - i + 1
+                  break
+      return best
+wrong:
+  - |
+    def max_window_sum(nums, k):
+        window = sum(nums[:k])
+        best = window
+        for i in range(k, len(nums)):
+            window += nums[i] - nums[i - k + 1]
+            best = max(best, window)
+        return best
+
+
+    def shortest_subarray_at_least(nums, target):
+        best = float('inf')
+        total = left = 0
+        for right, x in enumerate(nums):
+            total += x
+            if total >= target:
+                best = min(best, right - left + 1)
+                total -= nums[left]
+                left += 1
+        return 0 if best == float('inf') else best
+parsons:
+  distractors:
+    - line: "if total >= target:"
+      replaces: "while total >= target:"
+    - line: "window += nums[i] - nums[i - k + 1]"
+      replaces: "window += nums[i] - nums[i - k]"
+hints:
+  - "Fenêtre de taille fixe : quand l'indice `i` entre, l'indice `i - k` sort."
+  - "Fenêtre de taille variable : avance `right` ; **tant que** la somme suffit, enregistre la longueur puis avance `left`."
+explanation: |
+  - **Taille fixe** : maintenir la somme courante, `window += entrant - sortant`.
+  - **Taille variable** (deux pointeurs) : `right` agrandit, `left` réduit ; chaque indice entre et sort au plus une fois → O(n).
+  - La version variable suppose des nombres **positifs** (la somme croît avec la fenêtre). Avec des négatifs, il faut des sommes préfixes et une deque.

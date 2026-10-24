@@ -36,3 +36,121 @@ questions:
     choices: ["SELECT → FROM → WHERE → GROUP BY", "FROM → WHERE → GROUP BY → HAVING → SELECT → ORDER BY", "FROM → SELECT → WHERE → ORDER BY", "WHERE → FROM → GROUP BY → SELECT"]
     answer: 1
     explain: "C'est pourquoi un alias défini dans le SELECT n'est pas utilisable dans le WHERE (dans la plupart des moteurs)."
+  - id: q-sql-count-null
+    topic: Valeurs NULL
+    verify: true
+    question: Qu'affiche ce code ?
+    code: |
+      import sqlite3
+      db = sqlite3.connect(":memory:")
+      db.executescript("CREATE TABLE t(x); INSERT INTO t VALUES (1), (NULL), (3);")
+      print(db.execute("SELECT COUNT(*), COUNT(x), SUM(x), AVG(x) FROM t").fetchone())
+    choices: ["(3, 2, 4, 2.0)", "(3, 3, 4, 1.3333333333333333)", "(2, 2, 4, 2.0)", "(3, 2, None, None)"]
+    answer: 0
+    explain: "Les agrégations **ignorent les NULL** (sauf `COUNT(*)`). `AVG` divise par le nombre de valeurs non NULL."
+  - id: q-sql-null-not-in
+    topic: Valeurs NULL
+    verify: true
+    question: Qu'affiche ce code ?
+    code: |
+      import sqlite3
+      db = sqlite3.connect(":memory:")
+      db.executescript("CREATE TABLE a(x); INSERT INTO a VALUES (1), (2); CREATE TABLE b(y); INSERT INTO b VALUES (1), (NULL);")
+      print(db.execute("SELECT COUNT(*) FROM a WHERE x NOT IN (SELECT y FROM b)").fetchone()[0])
+    choices: ["0", "1", "2", "NULL"]
+    answer: 0
+    explain: "`2 NOT IN (1, NULL)` vaut `NULL` (on ne sait pas si 2 = NULL), donc la ligne est écartée. Piège célèbre : préfère `NOT EXISTS` ou un `LEFT JOIN ... IS NULL`."
+  - id: q-sql-integer-division
+    topic: Types
+    verify: true
+    question: "Qu'affiche ce code (SQLite) ?"
+    code: |
+      import sqlite3
+      db = sqlite3.connect(":memory:")
+      print(db.execute("SELECT 7 / 2, 7 / 2.0, CAST(7 AS REAL) / 2").fetchone())
+    choices: ["(3, 3.5, 3.5)", "(3.5, 3.5, 3.5)", "(3, 3, 3.5)", "(4, 3.5, 3.5)"]
+    answer: 0
+    explain: "Entier / entier = division **entière** en SQLite (et PostgreSQL). Pour un ratio : `1.0 * a / b` ou `CAST`."
+  - id: q-sql-order-of-execution
+    topic: Exécution
+    question: "Dans quel ordre une requête SQL est-elle logiquement évaluée ?"
+    choices:
+      - "SELECT → FROM → WHERE → GROUP BY → HAVING → ORDER BY"
+      - "FROM → WHERE → GROUP BY → HAVING → SELECT → ORDER BY"
+      - "FROM → SELECT → WHERE → GROUP BY → ORDER BY → HAVING"
+      - "WHERE → FROM → GROUP BY → SELECT → HAVING → ORDER BY"
+    answer: 1
+    explain: "C'est pour ça qu'un alias défini dans le `SELECT` n'est pas utilisable dans le `WHERE` (pas encore calculé), mais l'est dans l'`ORDER BY`. Les window functions sont calculées juste avant le `SELECT` final."
+  - id: q-sql-left-join-count
+    topic: Jointures
+    verify: true
+    question: Qu'affiche ce code ?
+    code: |
+      import sqlite3
+      db = sqlite3.connect(":memory:")
+      db.executescript("""
+      CREATE TABLE c(id); INSERT INTO c VALUES (1), (2);
+      CREATE TABLE o(cid); INSERT INTO o VALUES (1), (1);
+      """)
+      print(db.execute("SELECT c.id, COUNT(*), COUNT(o.cid) FROM c LEFT JOIN o ON o.cid = c.id GROUP BY c.id").fetchall())
+    choices: ["[(1, 2, 2), (2, 1, 0)]", "[(1, 2, 2), (2, 0, 0)]", "[(1, 2, 2)]", "[(1, 2, 2), (2, 1, 1)]"]
+    answer: 0
+    explain: "Le client 2 a une ligne (avec des NULL) après le `LEFT JOIN` : `COUNT(*)` vaut 1. `COUNT(o.cid)` ignore le NULL et donne le bon nombre de commandes : 0."
+  - id: q-sql-union
+    topic: Ensembles
+    verify: true
+    question: Qu'affiche ce code ?
+    code: |
+      import sqlite3
+      db = sqlite3.connect(":memory:")
+      print(len(db.execute("SELECT 1 UNION SELECT 1 UNION SELECT 2").fetchall()),
+            len(db.execute("SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 2").fetchall()))
+    choices: ["2 3", "3 3", "2 2", "3 2"]
+    answer: 0
+    explain: "`UNION` dédoublonne (coûteux), `UNION ALL` garde tout. Utilise `UNION ALL` quand tu sais qu'il n'y a pas de doublons."
+  - id: q-sql-window-vs-group
+    topic: Window functions
+    question: "Différence entre `SUM(x) ... GROUP BY g` et `SUM(x) OVER (PARTITION BY g)` ?"
+    choices:
+      - "Aucune"
+      - "GROUP BY renvoie une ligne par groupe ; OVER garde toutes les lignes et ajoute la somme du groupe à chacune"
+      - "OVER est plus rapide car il n'utilise pas d'index"
+      - "OVER ne fonctionne qu'avec ORDER BY"
+    answer: 1
+    explain: "Une window function **ne réduit pas** les lignes : idéal pour comparer chaque ligne à son groupe (part du total, écart à la moyenne, rang)."
+  - id: q-sql-distinct-multi
+    topic: DISTINCT
+    verify: true
+    question: Qu'affiche ce code ?
+    code: |
+      import sqlite3
+      db = sqlite3.connect(":memory:")
+      db.executescript("CREATE TABLE t(a, b); INSERT INTO t VALUES (1, 'x'), (1, 'y'), (1, 'x'), (2, 'x');")
+      print(db.execute("SELECT COUNT(*) FROM (SELECT DISTINCT a, b FROM t)").fetchone()[0],
+            db.execute("SELECT COUNT(DISTINCT a) FROM t").fetchone()[0])
+    choices: ["3 2", "4 2", "2 2", "3 4"]
+    answer: 0
+    explain: "`DISTINCT` porte sur la **combinaison** de toutes les colonnes sélectionnées."
+  - id: q-sql-like
+    topic: Filtres
+    verify: true
+    question: Qu'affiche ce code ?
+    code: |
+      import sqlite3
+      db = sqlite3.connect(":memory:")
+      db.executescript("CREATE TABLE p(n); INSERT INTO p VALUES ('Livre Python'), ('Python'), ('Pythonic'), ('Jython');")
+      print(db.execute("SELECT COUNT(*) FROM p WHERE n LIKE 'Python%'").fetchone()[0],
+            db.execute("SELECT COUNT(*) FROM p WHERE n LIKE '%ython'").fetchone()[0])
+    choices: ["2 3", "3 3", "2 2", "1 3"]
+    answer: 0
+    explain: "`%` remplace n'importe quelle suite de caractères (même vide), `_` exactement un caractère. Un `LIKE 'abc%'` peut utiliser un index, pas un `LIKE '%abc'`."
+  - id: q-sql-index
+    topic: Performance
+    question: "Une requête `SELECT * FROM orders WHERE customer_id = 42` est lente sur 100 millions de lignes. Premier réflexe ?"
+    choices:
+      - "Ajouter un index sur customer_id"
+      - "Remplacer * par la liste des colonnes"
+      - "Ajouter LIMIT 1000"
+      - "Passer en NoSQL"
+    answer: 0
+    explain: "Sans index, la base parcourt toute la table (*full scan*). Un index B-tree trouve les lignes en O(log n). Vérifie avec `EXPLAIN` (ou `EXPLAIN QUERY PLAN` en SQLite)."

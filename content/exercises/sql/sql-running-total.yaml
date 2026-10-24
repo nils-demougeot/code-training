@@ -1,0 +1,83 @@
+id: sql-running-total
+title: Cumul et moyenne mobile (window frame)
+domain: sql
+difficulty: hard
+minutes: 10
+language: sql
+shared: sql_shop
+interview: true
+tags: [window function, SUM OVER, ROWS BETWEEN, cumul]
+statement: |
+  Calcule le CA de chaque **mois** (format `'YYYY-MM'`, commandes livrées uniquement), puis :
+
+  - `cumulative` : le CA cumulé depuis le premier mois ;
+  - `moving_avg_3` : la moyenne du CA sur le mois courant et les **2 mois précédents** (sur les premiers mois, la moyenne porte sur les mois disponibles), arrondie à 2 décimales.
+
+  Colonnes : `month`, `revenue`, `cumulative`, `moving_avg_3`, triées par `month`.
+starter: |
+  SELECT strftime('%Y-%m', order_date) AS month, COUNT(*) AS n
+  FROM orders
+  GROUP BY month
+solution: |
+  WITH monthly AS (
+      SELECT strftime('%Y-%m', o.order_date) AS month, SUM(oi.quantity * p.price) AS revenue
+      FROM orders o
+      JOIN order_items oi ON oi.order_id = o.id
+      JOIN products p ON p.id = oi.product_id
+      WHERE o.status = 'livrée'
+      GROUP BY month
+  )
+  SELECT month,
+         revenue,
+         SUM(revenue) OVER (ORDER BY month) AS cumulative,
+         ROUND(AVG(revenue) OVER (ORDER BY month ROWS BETWEEN 2 PRECEDING AND CURRENT ROW), 2) AS moving_avg_3
+  FROM monthly
+  ORDER BY month
+tests:
+  - name: Résultat de la requête
+    call: q(QUERY)
+wrong:
+  - |
+    WITH monthly AS (
+        SELECT strftime('%Y-%m', o.order_date) AS month, SUM(oi.quantity * p.price) AS revenue
+        FROM orders o
+        JOIN order_items oi ON oi.order_id = o.id
+        JOIN products p ON p.id = oi.product_id
+        WHERE o.status = 'livrée'
+        GROUP BY month
+    )
+    SELECT month,
+           revenue,
+           SUM(revenue) OVER () AS cumulative,
+           ROUND(AVG(revenue) OVER (ORDER BY month ROWS BETWEEN 3 PRECEDING AND CURRENT ROW), 2) AS moving_avg_3
+    FROM monthly
+    ORDER BY month
+  - |
+    WITH monthly AS (
+        SELECT strftime('%Y-%m', o.order_date) AS month, SUM(oi.quantity * p.price) AS revenue
+        FROM orders o
+        JOIN order_items oi ON oi.order_id = o.id
+        JOIN products p ON p.id = oi.product_id
+        WHERE o.status = 'livrée'
+        GROUP BY month
+    )
+    SELECT month,
+           revenue,
+           SUM(revenue) OVER (ORDER BY month) AS cumulative,
+           ROUND(AVG(revenue) OVER (ORDER BY month), 2) AS moving_avg_3
+    FROM monthly
+    ORDER BY month
+parsons:
+  distractors:
+    - line: "SUM(revenue) OVER () AS cumulative,"
+      replaces: "SUM(revenue) OVER (ORDER BY month) AS cumulative,"
+    - line: "ROUND(AVG(revenue) OVER (ORDER BY month ROWS BETWEEN 3 PRECEDING AND CURRENT ROW), 2) AS moving_avg_3"
+      replaces: "ROUND(AVG(revenue) OVER (ORDER BY month ROWS BETWEEN 2 PRECEDING AND CURRENT ROW), 2) AS moving_avg_3"
+hints:
+  - "Agrège d'abord par mois dans une CTE."
+  - "`SUM(x) OVER (ORDER BY month)` : avec un `ORDER BY`, la fenêtre par défaut va du début jusqu'à la ligne courante → un cumul."
+  - "Fenêtre glissante : `OVER (ORDER BY month ROWS BETWEEN 2 PRECEDING AND CURRENT ROW)`."
+explanation: |
+  - Le **cadre** (frame) d'une window function précise quelles lignes entrent dans le calcul. Par défaut avec `ORDER BY` : du début à la ligne courante.
+  - `ROWS BETWEEN 2 PRECEDING AND CURRENT ROW` = 3 lignes ; « 3 mois » ne correspond à « 3 lignes » que si aucun mois ne manque.
+  - Pandas : `s.cumsum()` et `s.rolling(3, min_periods=1).mean()`.

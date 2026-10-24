@@ -1,0 +1,135 @@
+id: algo-max-subarray
+title: Sous-tableau de somme maximale (Kadane)
+domain: algo
+difficulty: medium
+minutes: 10
+interview: true
+tags: [programmation dynamique, Kadane, une passe]
+statement: |
+  Écris `max_subarray(nums)` : la plus grande somme d'un sous-tableau **contigu et non vide** de `nums` (liste non vide d'entiers).
+
+  ```python
+  max_subarray([-2, 1, -3, 4, -1, 2, 1, -5, 4])   # 6, avec [4, -1, 2, 1]
+  max_subarray([-3, -1, -2])                        # -1
+  ```
+
+  Puis `best_range(nums)` : le couple d'indices `(début, fin)` inclusifs d'un sous-tableau de somme maximale. En cas d'égalité, le **plus court**, puis celui qui commence **le plus tôt**.
+starter: |
+  def max_subarray(nums):
+      pass
+
+
+  def best_range(nums):
+      pass
+solution: |
+  def max_subarray(nums):
+      best = current = nums[0]
+      for x in nums[1:]:
+          current = max(x, current + x)
+          best = max(best, current)
+      return best
+
+
+  def best_range(nums):
+      best = (nums[0], 0, 0)
+      current, start = nums[0], 0
+      for i in range(1, len(nums)):
+          if current <= 0:
+              current, start = nums[i], i
+          else:
+              current += nums[i]
+          candidate = (current, start, i)
+          if (candidate[0], start - i, -start) > (best[0], best[1] - best[2], -best[1]):
+              best = candidate
+      return best[1], best[2]
+tests:
+  - call: max_subarray([-2, 1, -3, 4, -1, 2, 1, -5, 4])
+    expected: "6"
+  - call: max_subarray([-3, -1, -2])
+    expected: "-1"
+  - call: max_subarray([5])
+  - call: best_range([-2, 1, -3, 4, -1, 2, 1, -5, 4])
+    expected: "(3, 6)"
+  - name: Égalité → le plus court
+    call: best_range([3, -3, 3])
+    expected: "(0, 0)"
+  - name: Comparé à une recherche exhaustive
+    check: |
+      import random
+      rnd = random.Random(0)
+      for _ in range(300):
+          nums = [rnd.randint(-10, 10) for _ in range(rnd.randint(1, 12))]
+          sums = {(i, j): sum(nums[i:j + 1]) for i in range(len(nums)) for j in range(i, len(nums))}
+          best = max(sums.values())
+          assert max_subarray(nums) == best, nums
+          expected = min((j - i, i, j) for (i, j), s in sums.items() if s == best)
+          assert best_range(nums) == (expected[1], expected[2]), (nums, best_range(nums), expected)
+  - name: "Bonus : complexité O(n)"
+    bonus: true
+    check: |
+      k = growth_exponent(max_subarray, lambda n: ([(-1) ** i * (i % 7) for i in range(n)],))
+      assert k < 1.5, f"Ta solution semble en O(n^{k:.1f}) : garde seulement la meilleure somme qui se termine à l'indice courant."
+complexity:
+  target: O(n)
+  note: |
+    Tester tous les couples (début, fin) coûte O(n²). **Kadane** : la meilleure somme qui se termine en `i` est soit `nums[i]` seul, soit la meilleure qui se termine en `i - 1` plus `nums[i]`. Une seule variable suffit, donc une seule passe.
+naive: |
+  def max_subarray(nums):
+      best = nums[0]
+      for i in range(len(nums)):
+          total = 0
+          for j in range(i, len(nums)):
+              total += nums[j]
+              best = max(best, total)
+      return best
+
+
+  def best_range(nums):
+      best = None
+      for i in range(len(nums)):
+          total = 0
+          for j in range(i, len(nums)):
+              total += nums[j]
+              key = (total, i - j, -i)
+              if best is None or key > best[0]:
+                  best = (key, i, j)
+      return best[1], best[2]
+wrong:
+  - |
+    def max_subarray(nums):
+        best = current = 0
+        for x in nums:
+            current = max(0, current + x)
+            best = max(best, current)
+        return best
+
+
+    def best_range(nums):
+        return 0, len(nums) - 1
+  - |
+    def max_subarray(nums):
+        return max(sum(nums), max(nums))
+
+
+    def best_range(nums):
+        i = nums.index(max(nums))
+        return i, i
+parsons:
+  distractors:
+    - line: "current = max(0, current + x)"
+      replaces: "current = max(x, current + x)"
+    - line: "best = current = 0"
+      replaces: "best = current = nums[0]"
+hints:
+  - "Pour chaque position, quelle est la meilleure somme d'un sous-tableau qui **se termine ici** ?"
+  - "Soit on prolonge le sous-tableau précédent (`current + x`), soit on repart de zéro avec `x`."
+  - "Initialiser à `0` donne un mauvais résultat quand tous les nombres sont négatifs."
+explanation: |
+  ```python
+  best = current = nums[0]
+  for x in nums[1:]:
+      current = max(x, current + x)   # prolonger ou repartir
+      best = max(best, current)
+  ```
+  - C'est de la **programmation dynamique** avec un état de taille 1 : O(n) en temps, O(1) en mémoire.
+  - Piège : la version « `max(0, current + x)` » renvoie 0 pour une liste entièrement négative, alors qu'un sous-tableau doit être non vide.

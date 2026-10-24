@@ -159,3 +159,130 @@ questions:
     choices: ["KeyError", "counts vaut {'a': 1}", "TypeError", "counts vaut {'a': 0}"]
     answer: 0
     explain: "Lire une clé absente lève `KeyError`. Solutions : `counts.get('a', 0) + 1`, `defaultdict(int)` ou `Counter`."
+  - id: q-py-unpacking-star
+    topic: Déballage
+    verify: true
+    question: Qu'affiche ce code ?
+    code: |
+      first, *middle, last = [1, 2, 3, 4, 5]
+      print(first, middle, last)
+    choices: ["1 [2, 3, 4] 5", "1 (2, 3, 4) 5", "1 2 5", "ValueError"]
+    answer: 0
+    explain: "`*middle` capture tous les éléments restants **dans une liste**, même s'il n'y en a aucun (`[]`)."
+  - id: q-py-dict-get-default
+    topic: Dicts
+    verify: true
+    question: Qu'affiche ce code ?
+    code: |
+      stock = {"pomme": 3}
+      print(stock.get("poire"), stock.get("poire", 0), stock.setdefault("kiwi", 5), len(stock))
+    choices: ["None 0 5 2", "None 0 5 1", "KeyError", "0 0 5 2"]
+    answer: 0
+    explain: "`get` ne modifie jamais le dict ; `setdefault` **insère** la clé si elle manque, d'où une longueur de 2."
+  - id: q-py-zip-shortest
+    topic: Itérateurs
+    verify: true
+    question: Qu'affiche ce code ?
+    code: |
+      print(list(zip([1, 2, 3], "ab")))
+    choices: ["[(1, 'a'), (2, 'b')]", "[(1, 'a'), (2, 'b'), (3, None)]", "ValueError", "[(1, 2, 3), ('a', 'b')]"]
+    answer: 0
+    explain: "`zip` s'arrête au plus court. `itertools.zip_longest` complète avec `None`, et `zip(..., strict=True)` (Python 3.10+) lève une erreur si les longueurs diffèrent."
+  - id: q-py-enumerate-start
+    topic: Itérateurs
+    verify: true
+    question: Qu'affiche ce code ?
+    code: |
+      for i, c in enumerate("xyz", start=1):
+          pass
+      print(i, c)
+    choices: ["3 z", "2 z", "3 y", "NameError"]
+    answer: 0
+    explain: "`start=1` décale le compteur. La variable de boucle survit après la boucle en Python : elle garde la dernière valeur."
+  - id: q-py-sorted-key-len
+    topic: Tri
+    verify: true
+    question: Qu'affiche ce code ?
+    code: |
+      words = ["kiwi", "fig", "banana", "date"]
+      print(sorted(words, key=len))
+    choices: ["['fig', 'kiwi', 'date', 'banana']", "['fig', 'date', 'kiwi', 'banana']", "['banana', 'date', 'fig', 'kiwi']", "['fig', 'banana', 'date', 'kiwi']"]
+    answer: 0
+    explain: "Le tri est **stable** : `kiwi` et `date` ont la même longueur et gardent leur ordre d'origine."
+  - id: q-py-set-ops
+    topic: Sets
+    verify: true
+    question: Qu'affiche ce code ?
+    code: |
+      a, b = {1, 2, 3}, {2, 3, 4}
+      print(sorted(a & b), sorted(a | b), sorted(a - b), sorted(a ^ b))
+    choices: ["[2, 3] [1, 2, 3, 4] [1] [1, 4]", "[2, 3] [1, 2, 3, 4] [1, 4] [1]", "[1, 4] [1, 2, 3, 4] [1] [2, 3]", "[2, 3] [1, 2, 3, 4] [4] [1, 4]"]
+    answer: 0
+    explain: "`&` intersection, `|` union, `-` différence, `^` différence symétrique (dans l'un ou l'autre, pas les deux)."
+  - id: q-py-copy-shallow
+    topic: Références
+    verify: true
+    question: Qu'affiche ce code ?
+    code: |
+      import copy
+      a = [[1, 2], [3]]
+      b = a.copy()
+      c = copy.deepcopy(a)
+      a[0].append(99)
+      print(b[0], c[0])
+    choices: ["[1, 2, 99] [1, 2]", "[1, 2] [1, 2]", "[1, 2, 99] [1, 2, 99]", "[1, 2] [1, 2, 99]"]
+    answer: 0
+    explain: "`list.copy()` est une copie **superficielle** : les sous-listes sont partagées. `copy.deepcopy` copie récursivement."
+  - id: q-py-fstring-format
+    topic: Chaînes
+    verify: true
+    question: Qu'affiche ce code ?
+    code: |
+      x = 1234.5678
+      print(f"{x:,.2f}|{0.256:.1%}|{7:03d}")
+    choices: ["1,234.57|25.6%|007", "1234.57|25.6%|7", "1,234.56|25.6%|007", "1,234.57|0.3%|007"]
+    answer: 0
+    explain: "`,` ajoute des séparateurs de milliers, `.2f` arrondit, `.1%` multiplie par 100 et ajoute `%`, `03d` complète avec des zéros."
+  - id: q-py-scope-global
+    topic: Portée
+    verify: true
+    question: Que se passe-t-il ?
+    code: |
+      count = 0
+      def incr():
+          count += 1
+      incr()
+    choices: ["UnboundLocalError", "count vaut 1", "NameError", "count vaut 0, sans erreur"]
+    answer: 0
+    explain: "Une affectation dans une fonction rend la variable **locale** à toute la fonction : `count += 1` lit une locale pas encore définie. Il faudrait `global count` (ou mieux, renvoyer une valeur)."
+  - id: q-py-any-all-empty
+    topic: Built-ins
+    verify: true
+    question: Qu'affiche ce code ?
+    code: |
+      print(any([]), all([]), any([0, "", None]), all([1, "a", [0]]))
+    choices: ["False True False True", "False False False True", "True True False False", "False True False False"]
+    answer: 0
+    explain: "`all([])` est vrai (aucun contre-exemple), `any([])` est faux. `[0]` est une liste non vide, donc vraie."
+  - id: q-py-chained-comparison
+    topic: Opérateurs
+    verify: true
+    question: Qu'affiche ce code ?
+    code: |
+      x = 5
+      print(1 < x < 10, 1 < x > 3, (1 < x) < 10)
+    choices: ["True True True", "True False True", "False True True", "True True False"]
+    answer: 0
+    explain: "`a < b > c` signifie `a < b and b > c`. `(1 < x)` vaut `True`, qui vaut 1 dans une comparaison numérique."
+  - id: q-py-defaultdict
+    topic: Dicts
+    verify: true
+    question: Qu'affiche ce code ?
+    code: |
+      from collections import defaultdict
+      d = defaultdict(list)
+      d["a"].append(1)
+      print(d["b"], len(d))
+    choices: ["[] 2", "[] 1", "KeyError", "None 1"]
+    answer: 0
+    explain: "**Lire** une clé absente d'un `defaultdict` la crée avec la valeur par défaut. Pour tester sans créer : `\"b\" in d`."

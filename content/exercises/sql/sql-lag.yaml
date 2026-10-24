@@ -1,0 +1,59 @@
+id: sql-lag
+title: Délai entre commandes avec LAG
+domain: sql
+difficulty: hard
+minutes: 10
+language: sql
+shared: sql_shop
+tags: [LAG, window function, julianday, PARTITION BY]
+statement: |
+  Pour chaque commande **non annulée**, calcule le nombre de jours depuis la commande précédente **du même client** (`NULL` pour sa première commande).
+
+  Colonnes : `name`, `order_date`, `days_since_prev` (un entier). Tri par `name` puis `order_date`.
+
+  En SQLite, `julianday(date)` convertit une date en nombre de jours : la différence de deux `julianday` est un nombre de jours.
+starter: |
+  SELECT c.name, o.order_date
+  FROM orders o
+  JOIN customers c ON c.id = o.customer_id
+  ORDER BY c.name, o.order_date
+solution: |
+  SELECT c.name,
+         o.order_date,
+         CAST(julianday(o.order_date) - julianday(LAG(o.order_date) OVER (PARTITION BY o.customer_id ORDER BY o.order_date)) AS INTEGER) AS days_since_prev
+  FROM orders o
+  JOIN customers c ON c.id = o.customer_id
+  WHERE o.status <> 'annulée'
+  ORDER BY c.name, o.order_date
+tests:
+  - name: Résultat de la requête
+    call: q(QUERY)
+wrong:
+  - |
+    SELECT c.name,
+           o.order_date,
+           CAST(julianday(o.order_date) - julianday(LAG(o.order_date) OVER (ORDER BY o.order_date)) AS INTEGER) AS days_since_prev
+    FROM orders o
+    JOIN customers c ON c.id = o.customer_id
+    WHERE o.status <> 'annulée'
+    ORDER BY c.name, o.order_date
+  - |
+    SELECT c.name,
+           o.order_date,
+           CAST(julianday(LEAD(o.order_date) OVER (PARTITION BY o.customer_id ORDER BY o.order_date)) - julianday(o.order_date) AS INTEGER) AS days_since_prev
+    FROM orders o
+    JOIN customers c ON c.id = o.customer_id
+    WHERE o.status <> 'annulée'
+    ORDER BY c.name, o.order_date
+parsons:
+  distractors:
+    - line: "WHERE o.status = 'annulée'"
+      replaces: "WHERE o.status <> 'annulée'"
+hints:
+  - "`LAG(col) OVER (PARTITION BY client ORDER BY date)` renvoie la valeur de la ligne précédente **dans le même client**."
+  - "Sans `PARTITION BY`, la « précédente » serait la commande d'un autre client."
+  - "Le `WHERE` s'applique **avant** la window function : les commandes annulées ne comptent pas comme « précédentes »."
+explanation: |
+  - `LAG` / `LEAD` : accéder à la ligne précédente / suivante dans une fenêtre ordonnée. Indispensable pour les délais, les évolutions, les sessions.
+  - Ordre d'exécution SQL : `FROM` → `WHERE` → `GROUP BY` → `HAVING` → **window functions** → `SELECT` → `ORDER BY`.
+  - Pandas : `df.groupby('customer')['date'].diff()`.

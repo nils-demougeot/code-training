@@ -1,0 +1,83 @@
+id: pd-latest-per-key
+title: Dernière ligne par clé (dédoublonnage)
+domain: pandas
+difficulty: easy
+minutes: 6
+shared: shop_df
+tags: [drop_duplicates, sort_values, idxmax, keep]
+statement: |
+  1. `last_order_per_customer(df)` : pour chaque client, la ligne de sa **commande la plus récente** (si deux commandes ont la même date, celle avec le plus grand `order_id`). Résultat trié par `customer`, index `0..n-1`, mêmes colonnes que `df`.
+  2. `dedupe_exact(df, cols)` : supprime les lignes dupliquées sur les colonnes `cols` en gardant la **première** occurrence, sans changer l'ordre ni l'index des lignes conservées.
+starter: |
+  import pandas as pd
+
+
+  def last_order_per_customer(df):
+      pass
+
+
+  def dedupe_exact(df, cols):
+      pass
+solution: |
+  import pandas as pd
+
+
+  def last_order_per_customer(df):
+      return (
+          df.sort_values(['customer', 'date', 'order_id'])
+          .drop_duplicates('customer', keep='last')
+          .reset_index(drop=True)
+      )
+
+
+  def dedupe_exact(df, cols):
+      return df.drop_duplicates(subset=cols, keep='first')
+tests:
+  - call: last_order_per_customer(orders)
+  - name: Une ligne par client, la plus récente
+    check: |
+      out = last_order_per_customer(orders)
+      assert out['customer'].is_unique and len(out) == orders['customer'].nunique()
+      latest = orders.groupby('customer')['date'].max()
+      assert (out.set_index('customer')['date'] == latest).all()
+  - name: Égalité de date départagée par order_id
+    call: "last_order_per_customer(pd.DataFrame({'customer': ['a', 'a', 'b'], 'date': pd.to_datetime(['2024-01-02', '2024-01-02', '2024-01-01']), 'order_id': [7, 3, 1]}))"
+  - call: "dedupe_exact(orders, ['customer', 'product'])"
+  - call: "dedupe_exact(make_orders(200, seed=8), ['city', 'category'])"
+    hidden: true
+wrong:
+  - |
+    import pandas as pd
+
+
+    def last_order_per_customer(df):
+        return df.drop_duplicates('customer', keep='last').sort_values('customer').reset_index(drop=True)
+
+
+    def dedupe_exact(df, cols):
+        return df.drop_duplicates(subset=cols, keep='first')
+  - |
+    import pandas as pd
+
+
+    def last_order_per_customer(df):
+        return (
+            df.sort_values(['customer', 'date', 'order_id'])
+            .drop_duplicates('customer', keep='last')
+            .reset_index(drop=True)
+        )
+
+
+    def dedupe_exact(df, cols):
+        return df.drop_duplicates(subset=cols).reset_index(drop=True)
+parsons:
+  distractors:
+    - line: "return df.sort_values(['customer', 'date', 'order_id']).drop_duplicates('customer', keep='first').reset_index(drop=True)"
+      replaces: "return ("
+hints:
+  - "Trie d'abord pour que la ligne voulue soit la **dernière** de chaque client, puis `drop_duplicates('customer', keep='last')`."
+  - "`drop_duplicates(subset=cols)` garde la première occurrence par défaut et conserve l'index d'origine."
+explanation: |
+  - **Trier puis `drop_duplicates(keep='last')`** : l'idiome pour « la dernière version de chaque clé » (dernier statut d'une commande, dernière adresse d'un client…).
+  - Sans tri, « dernière » veut dire « dernière dans l'ordre actuel du DataFrame », pas « la plus récente ».
+  - Équivalent SQL : `ROW_NUMBER() OVER (PARTITION BY customer ORDER BY date DESC, order_id DESC) = 1`.

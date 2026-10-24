@@ -1,0 +1,116 @@
+id: algo-islands
+title: Compter les îles
+domain: algo
+difficulty: medium
+minutes: 10
+interview: true
+tags: [grille, DFS, BFS, composantes connexes]
+statement: |
+  `grid` est une liste de chaînes de `'1'` (terre) et `'0'` (eau). Une **île** est un groupe de cases de terre reliées **horizontalement ou verticalement** (pas en diagonale).
+
+  1. `count_islands(grid)` : le nombre d'îles.
+  2. `island_sizes(grid)` : la liste des tailles des îles (nombre de cases), triée par ordre **décroissant**.
+
+  Ne modifie pas `grid`.
+setup: |
+  MAP = [
+      "11000",
+      "11010",
+      "00100",
+      "00011",
+      "10001",
+  ]
+starter: |
+  def count_islands(grid):
+      pass
+
+
+  def island_sizes(grid):
+      pass
+solution: |
+  def island_sizes(grid):
+      rows, cols = len(grid), len(grid[0]) if grid else 0
+      seen = set()
+      sizes = []
+      for r in range(rows):
+          for c in range(cols):
+              if grid[r][c] != '1' or (r, c) in seen:
+                  continue
+              seen.add((r, c))
+              stack, size = [(r, c)], 0
+              while stack:
+                  y, x = stack.pop()
+                  size += 1
+                  for ny, nx in ((y + 1, x), (y - 1, x), (y, x + 1), (y, x - 1)):
+                      if 0 <= ny < rows and 0 <= nx < cols and grid[ny][nx] == '1' and (ny, nx) not in seen:
+                          seen.add((ny, nx))
+                          stack.append((ny, nx))
+              sizes.append(size)
+      return sorted(sizes, reverse=True)
+
+
+  def count_islands(grid):
+      return len(island_sizes(grid))
+tests:
+  - call: count_islands(MAP)
+    expected: "5"
+  - call: island_sizes(MAP)
+    expected: "[4, 3, 1, 1, 1]"
+  - call: count_islands([])
+    expected: "0"
+  - call: count_islands(["000", "000"])
+    expected: "0"
+  - name: Pas de connexion en diagonale
+    call: count_islands(["101", "010", "101"])
+    expected: "5"
+  - name: Grande île en serpentin (pas de récursion trop profonde)
+    check: |
+      n = 120
+      g = ["1" * n if i % 2 == 0 else ("0" * (n - 1) + "1" if i % 4 == 1 else "1" + "0" * (n - 1)) for i in range(n)]
+      assert count_islands(g) == 1 and island_sizes(g) == [sum(row.count("1") for row in g)]
+wrong:
+  - |
+    def island_sizes(grid):
+        rows, cols = len(grid), len(grid[0]) if grid else 0
+        seen, sizes = set(), []
+        for r in range(rows):
+            for c in range(cols):
+                if grid[r][c] != '1' or (r, c) in seen:
+                    continue
+                seen.add((r, c))
+                stack, size = [(r, c)], 0
+                while stack:
+                    y, x = stack.pop()
+                    size += 1
+                    for dy in (-1, 0, 1):
+                        for dx in (-1, 0, 1):
+                            ny, nx = y + dy, x + dx
+                            if 0 <= ny < rows and 0 <= nx < cols and grid[ny][nx] == '1' and (ny, nx) not in seen:
+                                seen.add((ny, nx))
+                                stack.append((ny, nx))
+                sizes.append(size)
+        return sorted(sizes, reverse=True)
+
+
+    def count_islands(grid):
+        return len(island_sizes(grid))
+  - |
+    def count_islands(grid):
+        return sum(row.count('1') for row in grid)
+
+
+    def island_sizes(grid):
+        return [1] * count_islands(grid)
+parsons:
+  distractors:
+    - line: "if 0 < ny < rows and 0 < nx < cols and grid[ny][nx] == '1' and (ny, nx) not in seen:"
+      replaces: "if 0 <= ny < rows and 0 <= nx < cols and grid[ny][nx] == '1' and (ny, nx) not in seen:"
+hints:
+  - "Parcours la grille ; à chaque case de terre **pas encore visitée**, lance un parcours (DFS ou BFS) qui marque toute l'île."
+  - "Le nombre de parcours lancés = le nombre d'îles."
+  - "Une pile explicite évite la limite de récursion de Python sur les grandes îles."
+explanation: |
+  - Compter les **composantes connexes** d'un graphe implicite (la grille). O(lignes × colonnes).
+  - Marque une case comme vue **quand tu l'empiles**, pas quand tu la dépiles, sinon elle peut être empilée plusieurs fois.
+  - En Python, un DFS récursif dépasse vite la limite de 1000 appels : préfère une pile ou une `deque`.
+  - Variantes : plus grande île, île la plus proche (BFS multi-source), régions entourées.

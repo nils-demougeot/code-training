@@ -1,0 +1,106 @@
+id: py-nested-get
+title: Lire une config imbriquée
+domain: python
+difficulty: easy
+minutes: 6
+tags: [dict, get, try/except, JSON]
+statement: |
+  Les réponses d'API et les fichiers de config sont des dictionnaires imbriqués. Écris :
+
+  1. `deep_get(d, path, default=None)` : `path` est une chaîne `"a.b.c"`. Renvoie `d["a"]["b"]["c"]`, ou `default` si un niveau manque **ou** si on tombe sur autre chose qu'un dict en chemin.
+  2. `deep_set(d, path, value)` : affecte la valeur en **créant** les dictionnaires intermédiaires manquants. Modifie `d` et ne renvoie rien.
+setup: |
+  CONFIG = {"model": {"name": "xgb", "params": {"depth": 6, "lr": 0.1}}, "seed": 42}
+starter: |
+  def deep_get(d, path, default=None):
+      pass
+
+
+  def deep_set(d, path, value):
+      pass
+solution: |
+  def deep_get(d, path, default=None):
+      current = d
+      for key in path.split('.'):
+          if not isinstance(current, dict) or key not in current:
+              return default
+          current = current[key]
+      return current
+
+
+  def deep_set(d, path, value):
+      *parents, last = path.split('.')
+      current = d
+      for key in parents:
+          current = current.setdefault(key, {})
+      current[last] = value
+tests:
+  - call: deep_get(CONFIG, "model.params.depth")
+    expected: "6"
+  - call: deep_get(CONFIG, "seed")
+  - call: deep_get(CONFIG, "model.params.gamma", default=0)
+    expected: "0"
+  - call: deep_get(CONFIG, "model.name.first")
+    expected: None
+  - call: deep_get(CONFIG, "optimizer.lr")
+    expected: None
+  - name: deep_set crée les niveaux manquants
+    check: |
+      d = {}
+      assert deep_set(d, "a.b.c", 1) is None
+      assert d == {"a": {"b": {"c": 1}}}, d
+      deep_set(d, "a.b.d", 2)
+      deep_set(d, "a.x", 3)
+      assert d == {"a": {"b": {"c": 1, "d": 2}, "x": 3}}, d
+  - name: deep_get ne modifie pas le dict
+    check: |
+      import copy
+      before = copy.deepcopy(CONFIG)
+      deep_get(CONFIG, "model.params.missing.deeper")
+      assert CONFIG == before
+wrong:
+  - |
+    def deep_get(d, path, default=None):
+        current = d
+        for key in path.split('.'):
+            current = current.get(key, default)
+        return current
+
+
+    def deep_set(d, path, value):
+        *parents, last = path.split('.')
+        current = d
+        for key in parents:
+            current = current.setdefault(key, {})
+        current[last] = value
+  - |
+    def deep_get(d, path, default=None):
+        try:
+            current = d
+            for key in path.split('.'):
+                current = current[key]
+            return current
+        except (KeyError, TypeError):
+            return default
+
+
+    def deep_set(d, path, value):
+        current = d
+        for key in path.split('.'):
+            current = current.setdefault(key, {})
+        current = value
+parsons:
+  distractors:
+    - line: "current = current.get(key, {})"
+      replaces: "current = current.setdefault(key, {})"
+    - line: "parents, last = path.split('.')"
+      replaces: "*parents, last = path.split('.')"
+hints:
+  - "Découpe le chemin avec `path.split('.')` puis descends niveau par niveau."
+  - "Vérifie `isinstance(current, dict)` à chaque niveau : `\"xgb\".get` n'existe pas."
+  - "`d.setdefault(key, {})` renvoie la valeur existante, ou insère et renvoie `{}`."
+  - "Déballage étendu : `*parents, last = 'a.b.c'.split('.')`."
+explanation: |
+  - `*parents, last = path.split('.')` sépare proprement les niveaux intermédiaires de la clé finale.
+  - `setdefault` évite le `if key not in d: d[key] = {}`.
+  - Chaîner des `.get(key, default)` est un piège : si une valeur intermédiaire est une chaîne ou un nombre, `.get` lève une `AttributeError`.

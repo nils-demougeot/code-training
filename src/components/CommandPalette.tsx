@@ -1,8 +1,8 @@
 import clsx from 'clsx'
-import { BookMarked, BookOpen, Boxes, Code2, CornerDownLeft, FlaskConical, Rocket, Search } from 'lucide-react'
+import { BookMarked, BookOpen, Boxes, Code2, CornerDownLeft, FlaskConical, Puzzle, Rocket, Search } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { designCases, docLibraries, exercises, fiches, projects } from '@/lib/content'
+import { designCases, docLibraries, exercises, fiches, parsonsProblems, projects } from '@/lib/content'
 import { DOMAINS } from '@/lib/domains'
 import { LABS } from '@/labs/registry'
 
@@ -11,10 +11,10 @@ interface Item {
   label: string
   sub: string
   to: string
-  kind: 'exercise' | 'fiche' | 'project' | 'lab' | 'doc' | 'design'
+  kind: 'exercise' | 'fiche' | 'project' | 'lab' | 'doc' | 'design' | 'blocks'
 }
 
-const ICONS = { exercise: Code2, fiche: BookOpen, project: Rocket, lab: FlaskConical, doc: BookMarked, design: Boxes }
+const ICONS = { exercise: Code2, fiche: BookOpen, project: Rocket, lab: FlaskConical, doc: BookMarked, design: Boxes, blocks: Puzzle }
 
 function normalize(s: string) {
   return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
@@ -36,6 +36,9 @@ export function CommandPalette() {
       ...projects.map((p) => ({ id: p.id, label: p.title, sub: `Projet · ${p.summary}`, to: `/projets/${p.id}`, kind: 'project' as const })),
       ...LABS.map((l) => ({ id: l.id, label: l.title, sub: `Lab · ${l.summary}`, to: `/labs/${l.id}`, kind: 'lab' as const })),
       ...designCases.map((c) => ({ id: c.id, label: c.title, sub: `Design ML · ${c.summary}`, to: `/design/${c.id}`, kind: 'design' as const })),
+      ...parsonsProblems
+        .filter((b) => b.source === 'parsons')
+        .map((b) => ({ id: b.id, label: b.title, sub: `Blocs de code · ${DOMAINS[b.domain].label}`, to: `/blocs/${b.id}`, kind: 'blocks' as const })),
       ...docLibraries.flatMap((lib) =>
         lib.sections.flatMap((sec) =>
           sec.entries.map((e) => ({

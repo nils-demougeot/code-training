@@ -1,0 +1,108 @@
+id: dl-conv2d
+title: Convolution 2D à la main
+domain: dl
+difficulty: hard
+minutes: 15
+interview: true
+tags: [convolution, stride, padding, CNN, sliding_window_view]
+statement: |
+  1. `conv_output_size(n, k, stride=1, padding=0)` : la taille de sortie d'une convolution sur une dimension, $\lfloor \frac{n + 2p - k}{s} \rfloor + 1$.
+  2. `conv2d(img, kernel, stride=1, padding=0)` : la « convolution » d'un CNN (en réalité une **corrélation croisée** : le noyau n'est pas retourné) d'une image `(H, W)` par un noyau `(kh, kw)`, avec un padding de zéros et un pas `stride`. Renvoie un tableau `(H_out, W_out)`.
+
+  Une double boucle sur les positions de sortie est acceptée ; la version vectorisée avec `np.lib.stride_tricks.sliding_window_view` est un bonus.
+setup: |
+  import numpy as np
+  IMG = np.arange(25.0).reshape(5, 5)
+  EDGE = np.array([[1.0, 0.0, -1.0], [1.0, 0.0, -1.0], [1.0, 0.0, -1.0]])
+starter: |
+  import numpy as np
+
+
+  def conv_output_size(n, k, stride=1, padding=0):
+      pass
+
+
+  def conv2d(img, kernel, stride=1, padding=0):
+      pass
+solution: |
+  import numpy as np
+
+
+  def conv_output_size(n, k, stride=1, padding=0):
+      return (n + 2 * padding - k) // stride + 1
+
+
+  def conv2d(img, kernel, stride=1, padding=0):
+      x = np.pad(img, padding)
+      kh, kw = kernel.shape
+      windows = np.lib.stride_tricks.sliding_window_view(x, (kh, kw))[::stride, ::stride]
+      return np.einsum('ijkl,kl->ij', windows, kernel)
+tests:
+  - call: conv_output_size(32, 3)
+    expected: "30"
+  - call: conv_output_size(32, 3, padding=1)
+    expected: "32"
+  - call: conv_output_size(224, 7, stride=2, padding=3)
+    expected: "112"
+  - call: conv2d(IMG, EDGE)
+    expected: np.full((3, 3), -6.0)
+  - call: conv2d(IMG, EDGE, padding=1)
+  - call: conv2d(IMG, np.ones((2, 2)), stride=2)
+    expected: np.array([[12.0, 20.0], [52.0, 60.0]])
+  - name: Comparé à scipy.signal.correlate2d
+    check: |
+      from scipy.signal import correlate2d
+      rng = np.random.default_rng(0)
+      for _ in range(20):
+          img = rng.normal(size=(rng.integers(5, 12), rng.integers(5, 12)))
+          k = rng.normal(size=(3, 2))
+          s, p = int(rng.integers(1, 3)), int(rng.integers(0, 2))
+          ref_full = correlate2d(np.pad(img, p), k, mode='valid')[::s, ::s]
+          out = conv2d(img, k, stride=s, padding=p)
+          assert out.shape == (conv_output_size(img.shape[0], 3, s, p), conv_output_size(img.shape[1], 2, s, p))
+          assert np.allclose(out, ref_full)
+wrong:
+  - |
+    import numpy as np
+    from scipy.signal import convolve2d
+
+
+    def conv_output_size(n, k, stride=1, padding=0):
+        return (n + padding - k) // stride + 1
+
+
+    def conv2d(img, kernel, stride=1, padding=0):
+        return convolve2d(np.pad(img, padding), kernel, mode='valid')[::stride, ::stride]
+  - |
+    import numpy as np
+
+
+    def conv_output_size(n, k, stride=1, padding=0):
+        return (n + 2 * padding - k) // stride + 1
+
+
+    def conv2d(img, kernel, stride=1, padding=0):
+        x = np.pad(img, padding)
+        kh, kw = kernel.shape
+        h = conv_output_size(img.shape[0], kh, stride, padding)
+        w = conv_output_size(img.shape[1], kw, stride, padding)
+        out = np.zeros((h, w))
+        for i in range(h):
+            for j in range(w):
+                out[i, j] = np.sum(x[i:i + kh, j:j + kw] * kernel)
+        return out
+parsons:
+  distractors:
+    - line: "return (n + padding - k) // stride + 1"
+      replaces: "return (n + 2 * padding - k) // stride + 1"
+    - line: "windows = np.lib.stride_tricks.sliding_window_view(x, (kh, kw))"
+      replaces: "windows = np.lib.stride_tricks.sliding_window_view(x, (kh, kw))[::stride, ::stride]"
+hints:
+  - "Le padding ajoute `p` zéros de **chaque** côté : `n + 2p`."
+  - "Position de sortie `(i, j)` : la fenêtre commence en `(i * stride, j * stride)` dans l'image paddée."
+  - "`sliding_window_view(x, (kh, kw))` donne toutes les fenêtres `(H', W', kh, kw)` ; `[::stride, ::stride]` applique le pas ; `np.einsum('ijkl,kl->ij', ...)` fait les produits scalaires."
+explanation: |
+  - Formule à connaître par cœur : $\lfloor (n + 2p - k) / s \rfloor + 1$. Avec `k=3, p=1, s=1` la taille est conservée ; `s=2` la divise par deux.
+  - Les CNN calculent une **corrélation croisée** ; la convolution mathématique retourne le noyau (`scipy.signal.convolve2d`).
+  - Le piège de la double boucle : oublier `stride` dans l'indexation (`x[i:i+kh]` au lieu de `x[i*s:i*s+kh]`).
+  - Nombre de paramètres d'une couche `Conv2d(C_in, C_out, k)` : $C_{out} \times C_{in} \times k^2 + C_{out}$, indépendant de la taille de l'image.

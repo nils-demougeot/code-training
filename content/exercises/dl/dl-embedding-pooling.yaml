@@ -1,0 +1,119 @@
+id: dl-embedding-pooling
+title: Embeddings, padding et mean pooling
+domain: dl
+difficulty: medium
+minutes: 10
+tags: [embedding, padding, masque, indexation avancée, NLP]
+statement: |
+  En NLP, des phrases de longueurs différentes sont **paddées** (complétées avec l'indice `0`) pour former un batch rectangulaire.
+
+  1. `embed(token_ids, table)` : `token_ids` de shape `(batch, seq_len)`, `table` de shape `(vocab, dim)`. Renvoie les embeddings `(batch, seq_len, dim)` (indexation avancée, sans boucle).
+  2. `padding_mask(token_ids, pad_id=0)` : un masque booléen `(batch, seq_len)`, `True` pour les vrais tokens.
+  3. `mean_pool(embeddings, mask)` : la moyenne des embeddings de chaque phrase **sur les vrais tokens uniquement**, shape `(batch, dim)`. Une phrase vide (que du padding) donne un vecteur nul.
+setup: |
+  import numpy as np
+  TABLE = np.arange(12.0).reshape(6, 2)
+  TABLE[0] = 0.0
+  IDS = np.array([[1, 2, 3], [4, 5, 0], [2, 0, 0]])
+starter: |
+  import numpy as np
+
+
+  def embed(token_ids, table):
+      pass
+
+
+  def padding_mask(token_ids, pad_id=0):
+      pass
+
+
+  def mean_pool(embeddings, mask):
+      pass
+solution: |
+  import numpy as np
+
+
+  def embed(token_ids, table):
+      return table[token_ids]
+
+
+  def padding_mask(token_ids, pad_id=0):
+      return token_ids != pad_id
+
+
+  def mean_pool(embeddings, mask):
+      m = mask[..., None].astype(embeddings.dtype)
+      total = (embeddings * m).sum(axis=1)
+      count = m.sum(axis=1)
+      return total / np.maximum(count, 1)
+tests:
+  - call: embed(IDS, TABLE).shape
+    expected: "(3, 3, 2)"
+  - call: embed(IDS, TABLE)[1]
+    expected: np.array([[8.0, 9.0], [10.0, 11.0], [0.0, 0.0]])
+  - call: padding_mask(IDS)
+    expected: np.array([[True, True, True], [True, True, False], [True, False, False]])
+  - call: mean_pool(embed(IDS, TABLE), padding_mask(IDS))
+    expected: np.array([[4.0, 5.0], [9.0, 10.0], [4.0, 5.0]])
+  - name: Phrase vide → vecteur nul, sans warning
+    check: |
+      import warnings
+      ids = np.array([[0, 0], [1, 0]])
+      with warnings.catch_warnings():
+          warnings.simplefilter("error")
+          out = mean_pool(embed(ids, TABLE), padding_mask(ids))
+      assert np.array_equal(out, [[0.0, 0.0], [2.0, 3.0]])
+  - name: Le padding ne change pas le résultat
+    check: |
+      rng = np.random.default_rng(0)
+      table = rng.normal(size=(50, 8))
+      a = np.array([[7, 3, 9]])
+      b = np.array([[7, 3, 9, 0, 0, 0, 0]])
+      ea = mean_pool(embed(a, table), padding_mask(a))
+      eb = mean_pool(embed(b, table), padding_mask(b))
+      assert np.allclose(ea, eb)
+wrong:
+  - |
+    import numpy as np
+
+
+    def embed(token_ids, table):
+        return table[token_ids]
+
+
+    def padding_mask(token_ids, pad_id=0):
+        return token_ids != pad_id
+
+
+    def mean_pool(embeddings, mask):
+        return embeddings.mean(axis=1)
+  - |
+    import numpy as np
+
+
+    def embed(token_ids, table):
+        return table[token_ids]
+
+
+    def padding_mask(token_ids, pad_id=0):
+        return token_ids == pad_id
+
+
+    def mean_pool(embeddings, mask):
+        m = mask[..., None]
+        return (embeddings * m).sum(axis=1) / m.sum(axis=1)
+parsons:
+  distractors:
+    - line: "total = (embeddings * m).sum(axis=0)"
+      replaces: "total = (embeddings * m).sum(axis=1)"
+    - line: "m = mask.astype(embeddings.dtype)"
+      replaces: "m = mask[..., None].astype(embeddings.dtype)"
+hints:
+  - "Une table d'embeddings est une simple matrice : `table[ids]` indexe toutes les lignes d'un coup."
+  - "Ajoute un axe au masque pour le broadcaster sur la dimension des embeddings : `mask[..., None]`."
+  - "Divise par le nombre de **vrais** tokens, avec `np.maximum(count, 1)` pour éviter 0/0."
+explanation: |
+  - `nn.Embedding` n'est qu'une **table de correspondance** apprise : `table[ids]`.
+  - Moyenner sur toute la longueur compte les tokens de padding : deux phrases identiques auraient des embeddings différents selon la taille du batch.
+  - Le même masque sert dans l'attention (`-inf` sur les positions de padding) et dans la loss (ignorer les positions paddées).
+  - C'est le *mean pooling* utilisé pour obtenir un embedding de phrase (Sentence-BERT).

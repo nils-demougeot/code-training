@@ -1,0 +1,42 @@
+id: bl-bootstrap-loop
+title: Bootstrap de la différence entre deux modèles
+domain: stats
+difficulty: medium
+statement: |
+  Deux modèles ont été évalués sur le **même** jeu de test : `correct_a` et `correct_b` sont des tableaux de booléens (prédiction correcte ou non pour chaque exemple).
+
+  Remets dans l'ordre `bootstrap_diff(correct_a, correct_b, n_boot, seed)` qui renvoie l'intervalle de confiance à 95 % de `accuracy(b) - accuracy(a)`, en rééchantillonnant **les mêmes indices** pour les deux modèles (échantillons appariés).
+setup: |
+  import numpy as np
+  _rng = np.random.default_rng(1)
+  CORRECT_A = _rng.random(500) < 0.80
+  CORRECT_B = np.where(_rng.random(500) < 0.5, CORRECT_A, _rng.random(500) < 0.86)
+solution: |
+  import numpy as np
+
+
+  def bootstrap_diff(correct_a, correct_b, n_boot=2000, seed=0):
+      rng = np.random.default_rng(seed)
+      n = len(correct_a)
+      diffs = np.empty(n_boot)
+      for i in range(n_boot):
+          idx = rng.integers(0, n, n)
+          diffs[i] = correct_b[idx].mean() - correct_a[idx].mean()
+      lo, hi = np.percentile(diffs, [2.5, 97.5])
+      return float(lo), float(hi)
+tests:
+  - call: bootstrap_diff(CORRECT_A, CORRECT_B)
+  - name: L'intervalle contient la différence observée
+    check: |
+      lo, hi = bootstrap_diff(CORRECT_A, CORRECT_B)
+      d = CORRECT_B.mean() - CORRECT_A.mean()
+      assert lo < d < hi and hi - lo < 0.1, (lo, d, hi)
+distractors:
+  - line: "diffs[i] = correct_b[rng.integers(0, n, n)].mean() - correct_a[idx].mean()"
+    replaces: "diffs[i] = correct_b[idx].mean() - correct_a[idx].mean()"
+  - line: "lo, hi = np.percentile(diffs, [5, 95])"
+    replaces: "lo, hi = np.percentile(diffs, [2.5, 97.5])"
+explanation: |
+  - Pour comparer deux modèles évalués sur les **mêmes** exemples, on rééchantillonne les **mêmes indices** : la variance de la différence est bien plus faible qu'avec deux tirages indépendants.
+  - Si l'intervalle contient 0, on ne peut pas conclure que B est meilleur que A.
+  - C'est la bonne façon de rapporter « +2 points d'accuracy » dans un rapport ou en entretien.

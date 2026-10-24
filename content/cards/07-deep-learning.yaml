@@ -95,3 +95,30 @@ cards:
     answer: |-
       1.0
     note: "C'est une distribution de probabilités. Pour du multi-label (plusieurs classes vraies à la fois), on utilise une sigmoïde par classe à la place."
+  - id: dl-conv-output
+    kind: reveal
+    prompt: "Taille de sortie d'une convolution (entrée n, noyau k, padding p, stride s) ?"
+    answer: |-
+      n_out = floor((n + 2p - k) / s) + 1
+      k = 3, p = 1, s = 1 → taille conservée ; s = 2 → divisée par 2
+  - id: dl-attention-formula
+    kind: reveal
+    prompt: "Formule de l'attention (scaled dot-product) et rôle de chaque terme ?"
+    answer: |-
+      Attention(Q, K, V) = softmax(Q Kᵀ / √d_k) V
+      Q Kᵀ : similarités requêtes/clés ; √d_k : évite la saturation du softmax ;
+      softmax : poids qui somment à 1 ; × V : moyenne pondérée des valeurs.
+  - id: dl-layernorm-vs-batchnorm
+    kind: reveal
+    prompt: "BatchNorm vs LayerNorm ?"
+    answer: |-
+      BatchNorm : normalise chaque feature sur le batch (stats différentes en train / eval).
+      LayerNorm : normalise chaque exemple sur ses features (même calcul en train / eval).
+      → CNN : BatchNorm ; Transformers, RNN, petits batchs : LayerNorm.
+  - id: dl-grad-check
+    kind: reveal
+    prompt: "Comment vérifier une backprop écrite à la main ?"
+    answer: |-
+      Gradient numérique par différences centrées :
+      (f(w + ε eᵢ) − f(w − ε eᵢ)) / 2ε, avec ε ≈ 1e-5,
+      puis erreur relative ‖g − g_num‖ / (‖g‖ + ‖g_num‖) < 1e-7.

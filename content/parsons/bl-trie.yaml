@@ -1,0 +1,62 @@
+id: bl-trie
+title: Un trie pour l'autocomplétion
+domain: algo
+difficulty: medium
+statement: |
+  Remets dans l'ordre une classe `Trie` (arbre de préfixes) :
+
+  - `insert(word)` ajoute un mot ;
+  - `starts_with(prefix)` renvoie la liste **triée** des mots insérés qui commencent par `prefix`.
+
+  Chaque nœud est un dict `{caractère: nœud}` ; la clé spéciale `'$'` marque la fin d'un mot.
+solution: |
+  class Trie:
+      def __init__(self):
+          self.root = {}
+
+      def insert(self, word):
+          node = self.root
+          for ch in word:
+              node = node.setdefault(ch, {})
+          node['$'] = True
+
+      def starts_with(self, prefix):
+          node = self.root
+          for ch in prefix:
+              if ch not in node:
+                  return []
+              node = node[ch]
+          out = []
+          stack = [(node, prefix)]
+          while stack:
+              current, word = stack.pop()
+              for ch, child in current.items():
+                  if ch == '$':
+                      out.append(word)
+                  else:
+                      stack.append((child, word + ch))
+          return sorted(out)
+tests:
+  - name: Autocomplétion
+    check: |
+      t = Trie()
+      for w in ["data", "date", "dataset", "deep", "dog", "dat"]:
+          t.insert(w)
+      assert t.starts_with("dat") == ["dat", "data", "dataset", "date"], t.starts_with("dat")
+      assert t.starts_with("de") == ["deep"]
+      assert t.starts_with("x") == []
+      assert t.starts_with("") == ["dat", "data", "dataset", "date", "deep", "dog"]
+  - name: Un préfixe n'est pas un mot
+    check: |
+      t = Trie()
+      t.insert("python")
+      assert t.starts_with("py") == ["python"] and t.starts_with("pythons") == []
+distractors:
+  - line: "node = node.get(ch, {})"
+    replaces: "node = node.setdefault(ch, {})"
+  - line: "stack.append((child, word))"
+    replaces: "stack.append((child, word + ch))"
+explanation: |
+  - Un trie partage les préfixes communs : chercher un préfixe coûte O(longueur du préfixe), quel que soit le nombre de mots.
+  - `setdefault(ch, {})` crée le nœud s'il n'existe pas **et** le renvoie ; `get(ch, {})` renverrait un dict détaché de l'arbre.
+  - Usages : autocomplétion, correcteurs, tokenizers (BPE), routage d'URL.

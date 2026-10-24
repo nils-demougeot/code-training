@@ -1,0 +1,39 @@
+id: bl-pandas-report
+title: Un rapport pandas étape par étape
+domain: pandas
+difficulty: easy
+shared: shop_df
+statement: |
+  Remets dans l'ordre `report(df)` : à partir des commandes,
+
+  1. calcule `total = qty * price` ;
+  2. garde les commandes du **premier trimestre** 2024 (janvier à mars) ;
+  3. calcule par ville le CA total et le nombre de commandes ;
+  4. ajoute la part du CA de chaque ville (`share`, entre 0 et 1) ;
+  5. trie par CA décroissant.
+
+  Renvoie un DataFrame indexé par `city` avec les colonnes `revenue`, `n_orders`, `share`.
+solution: |
+  import pandas as pd
+
+
+  def report(df):
+      df = df.assign(total=df['qty'] * df['price'])
+      q1 = df[df['date'] < '2024-04-01']
+      out = q1.groupby('city').agg(revenue=('total', 'sum'), n_orders=('order_id', 'count'))
+      out['share'] = out['revenue'] / out['revenue'].sum()
+      return out.sort_values('revenue', ascending=False)
+tests:
+  - call: report(orders)
+  - name: Les parts somment à 1
+    check: |
+      assert abs(report(orders)['share'].sum() - 1) < 1e-9
+distractors:
+  - line: "q1 = df[df['date'] <= '2024-04-01']"
+    replaces: "q1 = df[df['date'] < '2024-04-01']"
+  - line: "out['share'] = out['revenue'] / df['total'].sum()"
+    replaces: "out['share'] = out['revenue'] / out['revenue'].sum()"
+explanation: |
+  - Décomposer un traitement en étapes nommées (`q1`, `out`) le rend lisible et débogable : on peut afficher chaque étape.
+  - Les dates se comparent directement à des chaînes ISO : `df['date'] < '2024-04-01'`.
+  - La part doit être calculée sur le total **filtré** (Q1), pas sur tout le DataFrame.

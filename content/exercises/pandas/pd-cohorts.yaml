@@ -1,0 +1,112 @@
+id: pd-cohorts
+title: Cohortes d'acquisition
+domain: pandas
+difficulty: hard
+minutes: 12
+interview: true
+shared: shop_df
+tags: [groupby, transform, dt.to_period, pivot_table, cohortes]
+setup: |
+  SMALL = pd.DataFrame({
+      "order_id": [1, 2, 3, 4, 5, 6, 7],
+      "customer": ["ana", "ana", "ben", "ben", "ben", "cy", "ana"],
+      "date": pd.to_datetime(["2024-01-15", "2024-03-02", "2024-02-10", "2024-02-20", "2024-04-05", "2024-04-01", "2024-04-20"]),
+  })
+statement: |
+  Analyse de **cohortes** : on regroupe les clients selon le mois de leur **première commande**, puis on suit leur activité.
+
+  1. `add_cohort(df)` : renvoie une copie de `df` avec deux colonnes :
+     - `cohort` : le mois de la première commande du client (`Period` mensuel, ex. `2024-01`) ;
+     - `months_since` : le nombre de mois entre le mois de la commande et le mois de cohorte (`0` pour le mois d'acquisition).
+  2. `retention(df)` : un tableau avec les cohortes en lignes, `months_since` en colonnes, et le **nombre de clients distincts actifs** dans les cellules (`0` si aucun).
+starter: |
+  import pandas as pd
+
+
+  def add_cohort(df):
+      pass
+
+
+  def retention(df):
+      pass
+solution: |
+  import pandas as pd
+
+
+  def add_cohort(df):
+      out = df.copy()
+      month = out['date'].dt.to_period('M')
+      out['cohort'] = month.groupby(out['customer']).transform('min')
+      out['months_since'] = (month - out['cohort']).apply(lambda offset: offset.n)
+      return out
+
+
+  def retention(df):
+      d = add_cohort(df)
+      return d.pivot_table(index='cohort', columns='months_since', values='customer', aggfunc='nunique', fill_value=0)
+tests:
+  - name: Colonnes ajoutées
+    call: add_cohort(orders)[['customer', 'date', 'cohort', 'months_since']]
+  - name: Mois d'acquisition = 0 pour chaque client
+    check: |
+      d = add_cohort(orders)
+      first = d.loc[d.groupby('customer')['date'].idxmin()]
+      assert (first['months_since'] == 0).all()
+      assert (d['months_since'] >= 0).all()
+  - call: retention(orders)
+  - name: Clients acquis à des mois différents
+    call: add_cohort(SMALL)
+  - call: retention(SMALL)
+  - name: Ne modifie pas df
+    check: |
+      before = orders.copy()
+      add_cohort(orders)
+      pd.testing.assert_frame_equal(orders, before)
+  - call: retention(make_orders(200, seed=5))
+    hidden: true
+wrong:
+  - |
+    import pandas as pd
+
+
+    def add_cohort(df):
+        out = df.copy()
+        month = out['date'].dt.to_period('M')
+        out['cohort'] = month.min()
+        out['months_since'] = (month - out['cohort']).apply(lambda offset: offset.n)
+        return out
+
+
+    def retention(df):
+        d = add_cohort(df)
+        return d.pivot_table(index='cohort', columns='months_since', values='customer', aggfunc='nunique', fill_value=0)
+  - |
+    import pandas as pd
+
+
+    def add_cohort(df):
+        out = df.copy()
+        month = out['date'].dt.to_period('M')
+        out['cohort'] = month.groupby(out['customer']).transform('min')
+        out['months_since'] = (month - out['cohort']).apply(lambda offset: offset.n)
+        return out
+
+
+    def retention(df):
+        d = add_cohort(df)
+        return d.pivot_table(index='cohort', columns='months_since', values='customer', aggfunc='count', fill_value=0)
+parsons:
+  distractors:
+    - line: "out['cohort'] = month.groupby(out['customer']).min()"
+      replaces: "out['cohort'] = month.groupby(out['customer']).transform('min')"
+    - line: "return d.pivot_table(index='cohort', columns='months_since', values='customer', aggfunc='count', fill_value=0)"
+      replaces: "return d.pivot_table(index='cohort', columns='months_since', values='customer', aggfunc='nunique', fill_value=0)"
+hints:
+  - "`df['date'].dt.to_period('M')` donne le mois de chaque commande."
+  - "`groupby(...).transform('min')` renvoie, **pour chaque ligne**, le minimum de son groupe (même longueur que `df`), contrairement à `.min()` qui renvoie une ligne par groupe."
+  - "La différence de deux `Period` est un décalage ; son attribut `.n` est le nombre de mois."
+  - "`pivot_table(..., aggfunc='nunique', fill_value=0)` compte les clients distincts."
+explanation: |
+  - `transform` est la clé : elle « rediffuse » une statistique de groupe sur chaque ligne, sans jointure.
+  - Une table de rétention se lit en diagonale : la colonne 0 est la taille de la cohorte, les colonnes suivantes la part qui revient.
+  - `nunique` et pas `count` : un client qui commande deux fois le même mois ne compte qu'une fois.

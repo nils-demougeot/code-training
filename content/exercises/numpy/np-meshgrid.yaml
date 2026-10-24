@@ -1,0 +1,93 @@
+id: np-meshgrid
+title: Évaluer une fonction sur une grille
+domain: numpy
+difficulty: medium
+minutes: 7
+tags: [meshgrid, broadcasting, ogrid, visualisation]
+statement: |
+  Pour tracer la frontière de décision d'un modèle ou une fonction de perte, on l'évalue sur une **grille** de points.
+
+  1. `grid_points(xmin, xmax, ymin, ymax, n)` : un tableau `(n * n, 2)` de tous les points `(x, y)` avec `x` et `y` pris dans `np.linspace(min, max, n)`. L'ordre : `x` varie le plus vite (`(x0, y0), (x1, y0), …`).
+  2. `gaussian_bump(n, sigma)` : une image `(n, n)` où le pixel `(i, j)` vaut $\exp\left(-\frac{(i - c)^2 + (j - c)^2}{2\sigma^2}\right)$ avec $c = (n - 1)/2$. Sans boucle.
+starter: |
+  import numpy as np
+
+
+  def grid_points(xmin, xmax, ymin, ymax, n):
+      pass
+
+
+  def gaussian_bump(n, sigma):
+      pass
+solution: |
+  import numpy as np
+
+
+  def grid_points(xmin, xmax, ymin, ymax, n):
+      xx, yy = np.meshgrid(np.linspace(xmin, xmax, n), np.linspace(ymin, ymax, n))
+      return np.column_stack([xx.ravel(), yy.ravel()])
+
+
+  def gaussian_bump(n, sigma):
+      c = (n - 1) / 2
+      i = np.arange(n)[:, None]
+      j = np.arange(n)[None, :]
+      return np.exp(-((i - c) ** 2 + (j - c) ** 2) / (2 * sigma ** 2))
+tests:
+  - call: grid_points(0, 1, 10, 20, 2)
+    expected: np.array([[0.0, 10.0], [1.0, 10.0], [0.0, 20.0], [1.0, 20.0]])
+  - call: grid_points(-1, 1, -1, 1, 5).shape
+    expected: "(25, 2)"
+  - call: gaussian_bump(3, 1.0)
+  - name: Maximum au centre, symétrique
+    check: |
+      g = gaussian_bump(9, 2.0)
+      assert g.shape == (9, 9) and np.unravel_index(g.argmax(), g.shape) == (4, 4)
+      assert np.allclose(g, g.T) and np.allclose(g, g[::-1])
+  - name: Asymétrie i / j détectée
+    call: gaussian_bump(4, 0.7)[0, 1]
+wrong:
+  - |
+    import numpy as np
+
+
+    def grid_points(xmin, xmax, ymin, ymax, n):
+        xx, yy = np.meshgrid(np.linspace(xmin, xmax, n), np.linspace(ymin, ymax, n), indexing='ij')
+        return np.column_stack([xx.ravel(), yy.ravel()])
+
+
+    def gaussian_bump(n, sigma):
+        c = n / 2
+        i, j = np.arange(n)[:, None], np.arange(n)[None, :]
+        return np.exp(-((i - c) ** 2 + (j - c) ** 2) / (2 * sigma ** 2))
+  - |
+    import numpy as np
+
+
+    def grid_points(xmin, xmax, ymin, ymax, n):
+        return np.column_stack([np.linspace(xmin, xmax, n * n), np.linspace(ymin, ymax, n * n)])
+
+
+    def gaussian_bump(n, sigma):
+        c = (n - 1) / 2
+        i = np.arange(n)
+        return np.exp(-((i - c) ** 2 + (i - c) ** 2) / (2 * sigma ** 2))
+parsons:
+  distractors:
+    - line: "return np.column_stack([xx, yy])"
+      replaces: "return np.column_stack([xx.ravel(), yy.ravel()])"
+    - line: "j = np.arange(n)[:, None]"
+      replaces: "j = np.arange(n)[None, :]"
+hints:
+  - "`np.meshgrid(xs, ys)` renvoie deux matrices `(len(ys), len(xs))` : `xx` varie le long des colonnes."
+  - "`.ravel()` aplatit en parcourant les lignes : c'est bien `x` qui varie le plus vite."
+  - "Broadcasting : `i` en colonne `(n, 1)` et `j` en ligne `(1, n)` donnent une grille `(n, n)` sans `meshgrid`."
+explanation: |
+  ```python
+  xx, yy = np.meshgrid(xs, ys)
+  pts = np.c_[xx.ravel(), yy.ravel()]
+  Z = model.predict(pts).reshape(xx.shape)   # puis plt.contourf(xx, yy, Z)
+  ```
+  - C'est le code standard pour tracer une **frontière de décision**.
+  - Le broadcasting `(n, 1)` op `(1, n)` → `(n, n)` remplace souvent `meshgrid` et économise de la mémoire (`np.ogrid`).
+  - `indexing='ij'` (convention matricielle) inverse les rôles de x et y par rapport à `'xy'` (défaut).

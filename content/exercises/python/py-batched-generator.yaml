@@ -49,6 +49,9 @@ tests:
           pass
       else:
           raise AssertionError("batched(..., 0) devrait lever ValueError")
+  - name: Batchs de taille 1
+    call: list(batched([1, 2, 3], 1))
+    expected: "[[1], [2], [3]]"
 hints:
   - "`it = iter(iterable)` crée un itérateur qu'on peut consommer petit à petit."
   - "`itertools.islice(it, n)` prend au plus n éléments de l'itérateur."

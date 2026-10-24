@@ -1,0 +1,119 @@
+id: algo-subsets
+title: Sous-ensembles et backtracking
+domain: algo
+difficulty: medium
+minutes: 10
+tags: [backtracking, récursion, combinatoire, itertools]
+statement: |
+  1. `subsets(nums)` : tous les sous-ensembles de `nums` (éléments distincts), chacun sous forme de **liste dans l'ordre d'origine**. L'ordre des sous-ensembles dans la liste renvoyée est libre.
+  2. `combination_sum(candidates, target)` : toutes les combinaisons de nombres de `candidates` (entiers positifs distincts, **réutilisables**) dont la somme vaut `target`. Chaque combinaison est une liste **triée** ; la liste des combinaisons est triée.
+
+  ```python
+  combination_sum([2, 3, 6, 7], 7)   # [[2, 2, 3], [7]]
+  ```
+starter: |
+  def subsets(nums):
+      pass
+
+
+  def combination_sum(candidates, target):
+      pass
+solution: |
+  def subsets(nums):
+      out = [[]]
+      for x in nums:
+          out += [subset + [x] for subset in out]
+      return out
+
+
+  def combination_sum(candidates, target):
+      candidates = sorted(candidates)
+      out = []
+
+      def backtrack(start, remaining, path):
+          if remaining == 0:
+              out.append(path[:])
+              return
+          for i in range(start, len(candidates)):
+              c = candidates[i]
+              if c > remaining:
+                  break
+              path.append(c)
+              backtrack(i, remaining - c, path)
+              path.pop()
+
+      backtrack(0, target, [])
+      return out
+tests:
+  - name: Sous-ensembles de [1, 2, 3]
+    call: sorted(subsets([1, 2, 3]))
+    expected: "[[], [1], [1, 2], [1, 2, 3], [1, 3], [2], [2, 3], [3]]"
+  - call: subsets([])
+    expected: "[[]]"
+  - name: 2^n sous-ensembles distincts, dans l'ordre d'origine
+    check: |
+      s = subsets([5, 3, 8, 1])
+      assert len(s) == 16 and len({tuple(x) for x in s}) == 16
+      order = {v: i for i, v in enumerate([5, 3, 8, 1])}
+      assert all([order[v] for v in x] == sorted(order[v] for v in x) for x in s)
+  - call: combination_sum([2, 3, 6, 7], 7)
+    expected: "[[2, 2, 3], [7]]"
+  - call: combination_sum([2, 3, 5], 8)
+    expected: "[[2, 2, 2, 2], [2, 3, 3], [3, 5]]"
+  - call: combination_sum([4], 3)
+    expected: "[]"
+  - call: combination_sum([7, 3, 2], 12)
+    hidden: true
+wrong:
+  - |
+    from itertools import combinations
+
+
+    def subsets(nums):
+        return [list(c) for r in range(1, len(nums) + 1) for c in combinations(nums, r)]
+
+
+    def combination_sum(candidates, target):
+        return [list(c) for r in range(1, len(candidates) + 1) for c in combinations(sorted(candidates), r) if sum(c) == target]
+  - |
+    def subsets(nums):
+        out = [[]]
+        for x in nums:
+            out += [subset + [x] for subset in out]
+        return out
+
+
+    def combination_sum(candidates, target):
+        candidates = sorted(candidates)
+        out = []
+
+        def backtrack(start, remaining, path):
+            if remaining == 0:
+                out.append(path)
+                return
+            for i in range(start, len(candidates)):
+                c = candidates[i]
+                if c > remaining:
+                    break
+                path.append(c)
+                backtrack(i, remaining - c, path)
+                path.pop()
+
+        backtrack(0, target, [])
+        return out
+parsons:
+  distractors:
+    - line: "backtrack(i + 1, remaining - c, path)"
+      replaces: "backtrack(i, remaining - c, path)"
+    - line: "out.append(path)"
+      replaces: "out.append(path[:])"
+hints:
+  - "Sous-ensembles itératifs : pour chaque élément, double la liste en ajoutant l'élément à chaque sous-ensemble existant."
+  - "Backtracking : choisir, explorer, annuler (`path.append` → appel récursif → `path.pop()`)."
+  - "Pour autoriser la réutilisation sans doublons d'ordre, rappelle avec le **même** indice `i` (pas `i + 1`)."
+  - "Copie `path[:]` avant de l'ajouter au résultat : la liste continue d'être modifiée ensuite."
+explanation: |
+  - Le **backtracking** explore un arbre de décisions : on ajoute un choix, on explore, on l'annule.
+  - Partir de `start` évite de produire `[2, 3, 2]` et `[2, 2, 3]` : chaque combinaison est générée dans l'ordre croissant une seule fois.
+  - Bug classique : `out.append(path)` ajoute **la même** liste plusieurs fois, vidée à la fin par les `pop()`.
+  - `itertools.combinations` ne gère pas la réutilisation (il faudrait `combinations_with_replacement`).

@@ -1,0 +1,80 @@
+id: py-compress
+title: Compression RLE avec itertools.groupby
+domain: python
+difficulty: easy
+minutes: 6
+interview: true
+tags: [itertools.groupby, chaînes, run-length encoding]
+statement: |
+  La compression **RLE** remplace chaque suite de caractères identiques par le caractère suivi du nombre de répétitions.
+
+  1. `compress(s)` : `"aaabccdddd"` → `"a3b1c2d4"`.
+  2. `decompress(s)` : l'inverse, `"a3b1c2d4"` → `"aaabccdddd"`. Les nombres peuvent avoir plusieurs chiffres (`"x12"`).
+
+  `compress("")` renvoie `""`.
+starter: |
+  from itertools import groupby
+
+
+  def compress(s):
+      pass
+
+
+  def decompress(s):
+      pass
+solution: |
+  import re
+  from itertools import groupby
+
+
+  def compress(s):
+      return ''.join(f'{ch}{len(list(group))}' for ch, group in groupby(s))
+
+
+  def decompress(s):
+      return ''.join(ch * int(n) for ch, n in re.findall(r'(\D)(\d+)', s))
+tests:
+  - call: compress("aaabccdddd")
+    expected: "'a3b1c2d4'"
+  - call: compress("")
+    expected: "''"
+  - call: compress("abc")
+  - call: decompress("a3b1c2d4")
+    expected: "'aaabccdddd'"
+  - call: decompress("x12y1")
+  - name: Aller-retour
+    check: |
+      for s in ["", "z", "aabbbcccc", "x" * 25 + "yy", "abababab"]:
+          assert decompress(compress(s)) == s, f"échec pour {s!r}"
+  - call: compress("zzzzzzzzzzzz")
+    hidden: true
+wrong:
+  - |
+    import re
+    from itertools import groupby
+
+
+    def compress(s):
+        return ''.join(f'{ch}{len(list(group))}' for ch, group in groupby(s))
+
+
+    def decompress(s):
+        return ''.join(s[i] * int(s[i + 1]) for i in range(0, len(s), 2))
+  - |
+    from collections import Counter
+
+
+    def compress(s):
+        return ''.join(f'{ch}{n}' for ch, n in Counter(s).items())
+
+
+    def decompress(s):
+        return ''
+hints:
+  - "`groupby('aaab')` produit `('a', <groupe de 3 'a'>)` puis `('b', <groupe>)` : les éléments **consécutifs** égaux."
+  - "Un groupe est un itérateur : `len(list(group))` ou `sum(1 for _ in group)`."
+  - "Pour décompresser avec des nombres à plusieurs chiffres : `re.findall(r'(\\D)(\\d+)', s)`."
+explanation: |
+  - `itertools.groupby` regroupe les éléments **consécutifs** identiques. Pour regrouper toutes les occurrences, il faut d'abord trier.
+  - `Counter` compte toutes les occurrences, ce n'est pas la même chose : `Counter("abab")` donne `a:2, b:2`.
+  - Piège classique : les compteurs à plusieurs chiffres. Une regex `(\D)(\d+)` les gère proprement.

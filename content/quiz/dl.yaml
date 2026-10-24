@@ -81,3 +81,71 @@ questions:
     choices: ["[0.5 0.5]", "[nan nan]", "[1. 0.]", "[inf inf]"]
     answer: 1
     explain: "`exp(1000)` déborde en `inf`, et `inf / inf = nan`. Soustraire le max avant l'exponentielle règle le problème sans changer le résultat."
+  - id: q-dl-conv-output
+    topic: CNN
+    question: "Image 32 × 32, convolution 5 × 5, stride 1, sans padding. Taille de sortie ?"
+    choices: ["28 × 28", "32 × 32", "27 × 27", "30 × 30"]
+    answer: 0
+    explain: "$(n + 2p - k) / s + 1 = (32 - 5) / 1 + 1 = 28$."
+  - id: q-dl-conv-params
+    topic: CNN
+    question: "Nombre de paramètres de `nn.Conv2d(3, 16, kernel_size=3)` ?"
+    choices: ["448", "432", "144", "16"]
+    answer: 0
+    explain: "$16 \\times 3 \\times 3 \\times 3 = 432$ poids, plus 16 biais : 448. Indépendant de la taille de l'image : c'est le partage de poids."
+  - id: q-dl-vanishing
+    topic: Entraînement
+    question: "Pourquoi ReLU plutôt que sigmoid dans les couches cachées d'un réseau profond ?"
+    choices:
+      - "ReLU est plus précise"
+      - "La dérivée de sigmoid est ≤ 0,25 : multipliée sur beaucoup de couches, le gradient s'évanouit"
+      - "Sigmoid ne peut pas sortir de valeurs négatives, donc le réseau ne peut pas apprendre"
+      - "ReLU est différentiable partout"
+    answer: 1
+    explain: "Avec ReLU, la dérivée vaut 1 pour les entrées positives : le gradient traverse les couches sans s'atténuer. (Elle n'est pas dérivable en 0, ce qui ne gêne pas en pratique.)"
+  - id: q-dl-attention-scale
+    topic: Transformers
+    question: "Pourquoi diviser $QK^\\top$ par $\\sqrt{d_k}$ dans l'attention ?"
+    choices:
+      - "Pour normaliser la sortie entre 0 et 1"
+      - "Pour éviter que les scores grandissent avec la dimension et saturent le softmax"
+      - "Pour réduire le nombre de paramètres"
+      - "Pour rendre l'attention causale"
+    answer: 1
+    explain: "Le produit scalaire de vecteurs aléatoires de dimension $d$ a une variance proportionnelle à $d$. Sans correction, le softmax devient quasi one-hot et les gradients s'annulent."
+  - id: q-dl-overfit-small-batch
+    topic: Débogage
+    question: "Bon premier test quand on écrit une boucle d'entraînement ?"
+    choices:
+      - "Lancer 100 epochs sur tout le dataset"
+      - "Vérifier que le modèle peut sur-apprendre un tout petit batch (loss proche de 0)"
+      - "Ajouter du dropout partout"
+      - "Augmenter le learning rate"
+    answer: 1
+    explain: "Si le modèle ne mémorise même pas 10 exemples, il y a un bug (labels décalés, loss mal branchée, `zero_grad` oublié…). C'est le conseil n°1 de Karpathy."
+  - id: q-dl-cross-entropy-input
+    topic: PyTorch
+    question: "`nn.CrossEntropyLoss` attend en entrée…"
+    choices: ["des probabilités (après softmax)", "des logits bruts (avant softmax)", "des labels one-hot", "des log-probabilités"]
+    answer: 1
+    explain: "Elle applique `log_softmax` en interne (de façon stable). Ajouter un softmax avant applique deux fois la normalisation et ralentit l'apprentissage. Les cibles sont des indices de classe."
+  - id: q-dl-adam-vs-sgd
+    topic: Optimisation
+    question: "Que fait Adam par rapport à SGD ?"
+    choices:
+      - "Il calcule le gradient exact au lieu d'une estimation"
+      - "Il adapte le pas de chaque paramètre avec des moyennes mobiles du gradient et de son carré"
+      - "Il supprime le besoin de learning rate"
+      - "Il n'utilise que le signe du gradient"
+    answer: 1
+    explain: "Adam combine momentum (moyenne du gradient) et RMSProp (moyenne du carré). Converge vite et sans trop de réglage ; SGD + momentum généralise parfois mieux en vision."
+  - id: q-dl-embedding
+    topic: NLP
+    question: "Qu'est-ce que `nn.Embedding(10000, 64)` ?"
+    choices:
+      - "Une couche convolutive"
+      - "Une table de 10 000 vecteurs de dimension 64 apprise, indexée par l'identifiant du token"
+      - "Un tokenizer"
+      - "Une couche d'attention à 64 têtes"
+    answer: 1
+    explain: "C'est une matrice `(10000, 64)` : `embedding(ids)` renvoie les lignes correspondantes. Équivalent à un one-hot suivi d'une couche linéaire, sans le coût du one-hot."

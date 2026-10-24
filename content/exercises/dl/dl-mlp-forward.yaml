@@ -56,6 +56,20 @@ tests:
       assert P.shape == (10, 3), f"shape {P.shape}"
       assert np.allclose(P.sum(axis=1), 1) and (P >= 0).all()
   - call: forward(np.ones((2, 4)), init_params([4, 5, 3], seed=2))
+  - name: 3 couches et biais non nuls
+    check: |
+      rng = np.random.default_rng(7)
+      params = [(rng.normal(size=(3, 5)), rng.normal(size=5)), (rng.normal(size=(5, 4)), rng.normal(size=4)), (rng.normal(size=(4, 2)), rng.normal(size=2))]
+      X = rng.normal(size=(6, 3))
+      h = np.maximum(0, X @ params[0][0] + params[0][1])
+      h = np.maximum(0, h @ params[1][0] + params[1][1])
+      z = h @ params[2][0] + params[2][1]
+      p = np.exp(z - z.max(1, keepdims=True)); p /= p.sum(1, keepdims=True)
+      assert np.allclose(forward(X, params), p)
+  - name: Graine par défaut = 0
+    check: |
+      a, b = init_params([3, 4, 2]), init_params([3, 4, 2], seed=0)
+      assert all(np.array_equal(x[0], y[0]) for x, y in zip(a, b))
 hints:
   - "Boucle sur `zip(sizes[:-1], sizes[1:])` pour les paires `(n_in, n_out)`."
   - "Une seule instance de `rng` pour tout le réseau, sinon toutes les couches auraient les mêmes nombres."

@@ -56,3 +56,77 @@ questions:
     choices: ["seen vaut {[1, 2]}", "TypeError", "seen vaut {1, 2}", "KeyError"]
     answer: 1
     explain: "Une liste est mutable donc **non hashable** : elle ne peut pas être dans un set ni servir de clé de dict. Utilise un `tuple`."
+  - id: q-algo-dict-complexity
+    topic: Complexité
+    question: "Complexité moyenne de `d[key] = value` et de `key in d` pour un dict ?"
+    choices: ["O(1) et O(1)", "O(log n) et O(log n)", "O(1) et O(n)", "O(n) et O(1)"]
+    answer: 0
+    explain: "Un dict est une table de hachage : insertion et recherche en O(1) en moyenne (O(n) dans le pire cas, très rare)."
+  - id: q-algo-two-pointers
+    topic: Patterns
+    question: "Trouver deux nombres de somme `target` dans un tableau **trié**, en O(1) de mémoire ?"
+    choices: ["Deux pointeurs aux extrémités", "Un dict des valeurs vues", "Une double boucle", "Un tas"]
+    answer: 0
+    explain: "Si la somme est trop petite, on avance le pointeur gauche ; trop grande, on recule le droit. O(n) en temps, O(1) en mémoire. Le dict marche aussi mais utilise O(n) de mémoire."
+  - id: q-algo-deque-rotate
+    topic: Structures
+    verify: true
+    question: Qu'affiche ce code ?
+    code: |
+      from collections import deque
+      d = deque([1, 2, 3], maxlen=3)
+      d.append(4)
+      d.appendleft(0)
+      print(list(d))
+    choices: ["[0, 2, 3]", "[0, 1, 2, 3, 4]", "[2, 3, 4]", "[0, 1, 2]"]
+    answer: 0
+    explain: "Avec `maxlen`, ajouter d'un côté éjecte un élément de l'autre : `append(4)` → `[2, 3, 4]`, puis `appendleft(0)` → `[0, 2, 3]`. Pratique pour une fenêtre glissante."
+  - id: q-algo-heapq-min
+    topic: Structures
+    verify: true
+    question: Qu'affiche ce code ?
+    code: |
+      import heapq
+      h = []
+      for x in [5, 1, 8, 3]:
+          heapq.heappush(h, x)
+      print(heapq.heappop(h), h[0], heapq.nlargest(2, [5, 1, 8, 3]))
+    choices: ["1 3 [8, 5]", "8 5 [8, 5]", "1 5 [5, 8]", "5 1 [8, 5]"]
+    answer: 0
+    explain: "`heapq` est un **min-heap** : `h[0]` est toujours le minimum. Pour un max-heap, on pousse `-x`."
+  - id: q-algo-recursion-limit
+    topic: Récursion
+    question: "Un DFS récursif sur une grille 1000 × 1000 plante avec RecursionError. Meilleure correction ?"
+    choices:
+      - "sys.setrecursionlimit(10**9)"
+      - "Remplacer la récursion par une pile explicite (ou un BFS avec deque)"
+      - "Mémoïser avec lru_cache"
+      - "Parcourir la grille en diagonale"
+    answer: 1
+    explain: "Python limite la profondeur de récursion (~1000). Une pile explicite (`stack.append` / `stack.pop`) n'a pas cette limite. Monter la limite peut faire planter l'interpréteur."
+  - id: q-algo-dp-recognize
+    topic: Programmation dynamique
+    question: "Quel indice suggère une solution en programmation dynamique ?"
+    choices:
+      - "Le problème demande de trier"
+      - "On peut écrire la réponse à partir de réponses à des sous-problèmes qui se répètent"
+      - "Les données sont dans un graphe"
+      - "Il faut trouver un élément dans un tableau trié"
+    answer: 1
+    explain: "Sous-structure optimale + sous-problèmes qui se chevauchent = DP. Formule la récurrence, puis mémoïse (`lru_cache`) ou remplis un tableau."
+  - id: q-algo-sort-complexity
+    topic: Tri
+    question: "Complexité de `sorted()` en Python ?"
+    choices: ["O(n)", "O(n log n)", "O(n²)", "O(log n)"]
+    answer: 1
+    explain: "Timsort : O(n log n) dans le pire cas, et O(n) sur des données déjà (presque) triées."
+  - id: q-algo-string-concat
+    topic: Complexité
+    question: "Construire une chaîne de n caractères avec `s += c` dans une boucle, puis avec `''.join(liste)`. Qu'est-ce qui est recommandé ?"
+    choices:
+      - "Les deux sont toujours équivalents"
+      - "''.join, car chaque += peut recopier toute la chaîne (O(n²) au pire)"
+      - "+= car join crée une liste intermédiaire"
+      - "Utiliser str.format dans la boucle"
+    answer: 1
+    explain: "Les chaînes sont immuables : `+=` crée une nouvelle chaîne. CPython optimise parfois ce cas, mais `''.join(parts)` est garanti linéaire."

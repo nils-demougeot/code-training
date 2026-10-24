@@ -1,0 +1,145 @@
+id: dl-grad-check
+title: Vérifier un gradient numériquement
+domain: dl
+difficulty: medium
+minutes: 10
+tags: [gradient, différences finies, backprop, débogage]
+statement: |
+  Avant de faire confiance à une backprop écrite à la main, on la compare à un **gradient numérique**.
+
+  1. `numerical_grad(f, w, eps=1e-6)` : le gradient de `f` (fonction scalaire d'un tableau) en `w` par **différences centrées** : $\frac{f(w + \epsilon e_i) - f(w - \epsilon e_i)}{2\epsilon}$ pour chaque coordonnée. `w` peut avoir n'importe quelle shape ; ne le modifie pas.
+  2. `relative_error(a, b)` : $\frac{\|a - b\|}{\max(\|a\| + \|b\|, 10^{-12})}$ (norme euclidienne).
+  3. `mse_loss_and_grad(w, X, y)` : la loss $L = \frac{1}{n}\|Xw - y\|^2$ et son gradient analytique $\frac{2}{n} X^\top (Xw - y)$, en tuple.
+setup: |
+  import numpy as np
+  _rng = np.random.default_rng(0)
+  X = _rng.normal(size=(20, 3))
+  W_TRUE = np.array([1.0, -2.0, 0.5])
+  Y = X @ W_TRUE + _rng.normal(0, 0.1, 20)
+starter: |
+  import numpy as np
+
+
+  def numerical_grad(f, w, eps=1e-6):
+      pass
+
+
+  def relative_error(a, b):
+      pass
+
+
+  def mse_loss_and_grad(w, X, y):
+      pass
+solution: |
+  import numpy as np
+
+
+  def numerical_grad(f, w, eps=1e-6):
+      w = np.array(w, dtype=float)
+      grad = np.zeros_like(w)
+      for idx in np.ndindex(w.shape):
+          old = w[idx]
+          w[idx] = old + eps
+          plus = f(w)
+          w[idx] = old - eps
+          minus = f(w)
+          w[idx] = old
+          grad[idx] = (plus - minus) / (2 * eps)
+      return grad
+
+
+  def relative_error(a, b):
+      return float(np.linalg.norm(a - b) / max(np.linalg.norm(a) + np.linalg.norm(b), 1e-12))
+
+
+  def mse_loss_and_grad(w, X, y):
+      err = X @ w - y
+      return float(np.mean(err ** 2)), 2 / len(y) * X.T @ err
+tests:
+  - call: "numerical_grad(lambda w: float(np.sum(w ** 2)), np.array([1.0, -3.0]))"
+    expected: np.array([2.0, -6.0])
+  - name: Fonctionne sur une matrice
+    check: |
+      w = np.arange(6.0).reshape(2, 3)
+      g = numerical_grad(lambda m: float((m ** 3).sum()), w)
+      assert g.shape == (2, 3) and np.allclose(g, 3 * w ** 2, rtol=1e-5)
+  - name: Fonction non séparable (chaque coordonnée est restaurée)
+    call: "numerical_grad(lambda v: float(v[0] * v[1]), np.array([1.0, 2.0]), eps=0.5)"
+    expected: np.array([2.0, 1.0])
+  - name: w n'est pas modifié
+    check: |
+      w = np.array([0.5, 1.5])
+      numerical_grad(lambda v: float(v @ v), w)
+      assert np.array_equal(w, [0.5, 1.5])
+  - call: relative_error(np.array([1.0, 0.0]), np.array([1.0, 0.0]))
+    expected: "0.0"
+  - call: mse_loss_and_grad(np.zeros(3), X, Y)
+  - name: Gradient analytique = gradient numérique
+    check: |
+      w = np.array([0.3, 0.1, -0.7])
+      loss, g = mse_loss_and_grad(w, X, Y)
+      g_num = numerical_grad(lambda v: mse_loss_and_grad(v, X, Y)[0], w)
+      assert relative_error(g, g_num) < 1e-7, relative_error(g, g_num)
+  - name: Un gradient faux est détecté
+    check: |
+      w = np.array([0.3, 0.1, -0.7])
+      wrong = X.T @ (X @ w - Y) / len(Y)
+      g_num = numerical_grad(lambda v: mse_loss_and_grad(v, X, Y)[0], w)
+      assert relative_error(wrong, g_num) > 0.1
+wrong:
+  - |
+    import numpy as np
+
+
+    def numerical_grad(f, w, eps=1e-6):
+        grad = np.zeros_like(w, dtype=float)
+        for i in range(len(w)):
+            w_plus = w.copy(); w_plus[i] += eps
+            grad[i] = (f(w_plus) - f(w)) / eps
+        return grad
+
+
+    def relative_error(a, b):
+        return float(np.abs(a - b).max())
+
+
+    def mse_loss_and_grad(w, X, y):
+        err = X @ w - y
+        return float(np.mean(err ** 2)), X.T @ err / len(y)
+  - |
+    import numpy as np
+
+
+    def numerical_grad(f, w, eps=1e-6):
+        w = np.array(w, dtype=float)
+        grad = np.zeros_like(w)
+        for idx in np.ndindex(w.shape):
+            old = w[idx]
+            w[idx] = old + eps
+            plus = f(w)
+            w[idx] = old - eps
+            minus = f(w)
+            grad[idx] = (plus - minus) / (2 * eps)
+        return grad
+
+
+    def relative_error(a, b):
+        return float(np.linalg.norm(a - b) / max(np.linalg.norm(a) + np.linalg.norm(b), 1e-12))
+
+
+    def mse_loss_and_grad(w, X, y):
+        err = X @ w - y
+        return float(np.mean(err ** 2)), 2 / len(y) * X.T @ err
+parsons:
+  distractors:
+    - line: "grad[idx] = (plus - minus) / eps"
+      replaces: "grad[idx] = (plus - minus) / (2 * eps)"
+hints:
+  - "`np.ndindex(w.shape)` parcourt tous les indices d'un tableau de n'importe quelle dimension."
+  - "Modifie une coordonnée, évalue, puis **remets la valeur d'origine** avant de passer à la suivante."
+  - "Travaille sur une copie (`np.array(w, dtype=float)`) pour ne pas modifier le tableau de l'appelant."
+explanation: |
+  - Le **gradient checking** est le test unitaire de la backprop : une erreur relative < 1e-7 indique un gradient correct, > 1e-3 un bug.
+  - Différences **centrées** : erreur en $O(\epsilon^2)$ contre $O(\epsilon)$ pour les différences avant.
+  - Coût : 2 évaluations de `f` par paramètre. Impossible sur un vrai réseau, mais parfait sur une petite couche pour vérifier ses formules (`torch.autograd.gradcheck` fait pareil).
+  - Bug classique : oublier de restaurer `w[idx]`, ce qui fausse toutes les coordonnées suivantes.

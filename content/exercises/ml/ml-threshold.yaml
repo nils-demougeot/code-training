@@ -1,0 +1,143 @@
+id: ml-threshold
+title: Choisir le seuil de décision
+domain: ml
+difficulty: medium
+minutes: 10
+interview: true
+tags: [seuil, precision, recall, F1, coût métier]
+statement: |
+  Un modèle renvoie des probabilités. Le seuil `0.5` n'a rien de magique : on le choisit selon le métier.
+
+  1. `precision_recall_at(y, proba, threshold)` : le couple `(precision, recall)` pour la règle `proba >= threshold`. Si aucune prédiction positive, la precision vaut `1.0`.
+  2. `best_f1_threshold(y, proba)` : parmi les seuils égaux aux **valeurs distinctes** de `proba`, celui qui maximise le F1 (le plus **petit** seuil en cas d'égalité).
+  3. `min_cost_threshold(y, proba, cost_fp, cost_fn)` : parmi les mêmes seuils, celui qui minimise le **coût total** `cost_fp × FP + cost_fn × FN` (le plus petit en cas d'égalité).
+setup: |
+  import numpy as np
+  from sklearn.datasets import make_classification
+  from sklearn.linear_model import LogisticRegression
+  _X, Y = make_classification(n_samples=600, weights=[0.85], random_state=1)
+  PROBA = np.round(LogisticRegression(max_iter=1000).fit(_X[:300], Y[:300]).predict_proba(_X)[:, 1], 3)
+starter: |
+  import numpy as np
+
+
+  def precision_recall_at(y, proba, threshold):
+      pass
+
+
+  def best_f1_threshold(y, proba):
+      pass
+
+
+  def min_cost_threshold(y, proba, cost_fp, cost_fn):
+      pass
+solution: |
+  import numpy as np
+
+
+  def _counts(y, proba, threshold):
+      pred = proba >= threshold
+      tp = int((pred & (y == 1)).sum())
+      fp = int((pred & (y == 0)).sum())
+      fn = int((~pred & (y == 1)).sum())
+      return tp, fp, fn
+
+
+  def precision_recall_at(y, proba, threshold):
+      tp, fp, fn = _counts(y, proba, threshold)
+      precision = tp / (tp + fp) if tp + fp else 1.0
+      recall = tp / (tp + fn) if tp + fn else 0.0
+      return precision, recall
+
+
+  def best_f1_threshold(y, proba):
+      def f1(t):
+          p, r = precision_recall_at(y, proba, t)
+          return 2 * p * r / (p + r) if p + r else 0.0
+      thresholds = np.unique(proba)
+      scores = [f1(t) for t in thresholds]
+      return float(thresholds[int(np.argmax(scores))])
+
+
+  def min_cost_threshold(y, proba, cost_fp, cost_fn):
+      thresholds = np.unique(proba)
+      costs = []
+      for t in thresholds:
+          tp, fp, fn = _counts(y, proba, t)
+          costs.append(cost_fp * fp + cost_fn * fn)
+      return float(thresholds[int(np.argmin(costs))])
+tests:
+  - call: "precision_recall_at(np.array([1, 0, 1, 1, 0]), np.array([0.9, 0.8, 0.4, 0.7, 0.1]), 0.5)"
+    expected: "(2 / 3, 2 / 3)"
+  - call: "precision_recall_at(np.array([1, 0]), np.array([0.2, 0.1]), 0.5)"
+    expected: "(1.0, 0.0)"
+  - call: best_f1_threshold(Y, PROBA)
+  - name: Le F1 au meilleur seuil bat celui à 0,5
+    check: |
+      from sklearn.metrics import f1_score
+      t = best_f1_threshold(Y, PROBA)
+      assert f1_score(Y, PROBA >= t) >= f1_score(Y, PROBA >= 0.5)
+      best = max(f1_score(Y, PROBA >= s) for s in np.unique(PROBA))
+      assert abs(f1_score(Y, PROBA >= t) - best) < 1e-12
+  - call: min_cost_threshold(Y, PROBA, cost_fp=1, cost_fn=10)
+  - name: Des faux négatifs coûteux font baisser le seuil
+    check: |
+      low = min_cost_threshold(Y, PROBA, cost_fp=1, cost_fn=20)
+      high = min_cost_threshold(Y, PROBA, cost_fp=20, cost_fn=1)
+      assert low < high, (low, high)
+wrong:
+  - |
+    import numpy as np
+
+
+    def precision_recall_at(y, proba, threshold):
+        pred = proba >= threshold
+        tp = (pred & (y == 1)).sum()
+        return tp / max(pred.sum(), 1), tp / max((y == 1).sum(), 1)
+
+
+    def best_f1_threshold(y, proba):
+        return 0.5
+
+
+    def min_cost_threshold(y, proba, cost_fp, cost_fn):
+        return cost_fp / (cost_fp + cost_fn)
+  - |
+    import numpy as np
+
+
+    def precision_recall_at(y, proba, threshold):
+        pred = proba >= threshold
+        tp = int((pred & (y == 1)).sum())
+        fp = int((pred & (y == 0)).sum())
+        fn = int((~pred & (y == 1)).sum())
+        return (tp / (tp + fp) if tp + fp else 1.0), (tp / (tp + fn) if tp + fn else 0.0)
+
+
+    def best_f1_threshold(y, proba):
+        thresholds = np.unique(proba)
+        acc = [((proba >= t) == y).mean() for t in thresholds]
+        return float(thresholds[int(np.argmax(acc))])
+
+
+    def min_cost_threshold(y, proba, cost_fp, cost_fn):
+        thresholds = np.unique(proba)
+        costs = []
+        for t in thresholds:
+            pred = proba >= t
+            costs.append(cost_fn * (pred & (y == 0)).sum() + cost_fp * (~pred & (y == 1)).sum())
+        return float(thresholds[int(np.argmin(costs))])
+parsons:
+  distractors:
+    - line: "fn = int((pred & (y == 0)).sum())"
+      replaces: "fn = int((~pred & (y == 1)).sum())"
+    - line: "return float(thresholds[int(np.argmax(costs))])"
+      replaces: "return float(thresholds[int(np.argmin(costs))])"
+hints:
+  - "TP : prédit positif et vraiment positif ; FP : prédit positif mais négatif ; FN : prédit négatif mais positif."
+  - "`np.unique` trie les seuils : `argmax` / `argmin` renvoient le premier indice, donc le plus petit seuil en cas d'égalité."
+  - "Le coût dépend des erreurs, pas de l'accuracy."
+explanation: |
+  - Le seuil est un **choix métier** : baisser le seuil augmente le recall (moins de faux négatifs) et baisse la precision.
+  - Avec des coûts asymétriques (rater une fraude coûte 20 fois plus qu'une fausse alerte), on choisit le seuil qui minimise le coût attendu, sur un jeu de **validation**.
+  - Le seuil se règle sur des probabilités bien **calibrées** (`CalibratedClassifierCV`) ; un modèle mal calibré décale tout.

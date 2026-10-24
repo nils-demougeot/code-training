@@ -1,0 +1,98 @@
+id: pd-rolling
+title: Moyennes glissantes et resample
+domain: pandas
+difficulty: medium
+minutes: 8
+shared: shop_df
+tags: [resample, rolling, séries temporelles, asfreq]
+statement: |
+  1. `daily_revenue(df)` : une Series du CA (`qty * price`) **par jour**, indexée par date, sur **tous les jours** entre la première et la dernière commande (les jours sans commande valent `0`).
+  2. `rolling_7d(df)` : la moyenne glissante du CA journalier sur **7 jours** (le jour courant et les 6 précédents). Les 6 premiers jours, où la fenêtre est incomplète, valent `NaN`.
+  3. `best_week(df)` : la date de fin de la fenêtre de 7 jours au plus gros CA **total** (un `Timestamp`).
+starter: |
+  import pandas as pd
+
+
+  def daily_revenue(df):
+      pass
+
+
+  def rolling_7d(df):
+      pass
+
+
+  def best_week(df):
+      pass
+solution: |
+  import pandas as pd
+
+
+  def daily_revenue(df):
+      revenue = (df['qty'] * df['price']).groupby(df['date']).sum()
+      return revenue.resample('D').sum()
+
+
+  def rolling_7d(df):
+      return daily_revenue(df).rolling(7).mean()
+
+
+  def best_week(df):
+      return daily_revenue(df).rolling(7).sum().idxmax()
+tests:
+  - name: Tous les jours présents
+    check: |
+      s = daily_revenue(orders)
+      assert isinstance(s.index, pd.DatetimeIndex)
+      assert len(s) == (orders['date'].max() - orders['date'].min()).days + 1
+      assert (s >= 0).all() and abs(s.sum() - (orders['qty'] * orders['price']).sum()) < 1e-6
+  - call: daily_revenue(orders)
+  - call: rolling_7d(orders)
+  - call: best_week(orders)
+  - call: rolling_7d(make_orders(120, seed=2)).iloc[:10]
+    hidden: true
+  - name: Fenêtre de 7 jours exactement
+    call: "best_week(pd.DataFrame({'date': pd.to_datetime(['2024-01-01', '2024-01-07', '2024-01-08', '2024-01-09', '2024-01-13']), 'qty': [1, 1, 1, 1, 1], 'price': [100.0, 10.0, 10.0, 10.0, 80.0]}))"
+wrong:
+  - |
+    import pandas as pd
+
+
+    def daily_revenue(df):
+        return (df['qty'] * df['price']).groupby(df['date']).sum()
+
+
+    def rolling_7d(df):
+        return daily_revenue(df).rolling(7).mean()
+
+
+    def best_week(df):
+        return daily_revenue(df).rolling(7).sum().idxmax()
+  - |
+    import pandas as pd
+
+
+    def daily_revenue(df):
+        revenue = (df['qty'] * df['price']).groupby(df['date']).sum()
+        return revenue.resample('D').sum()
+
+
+    def rolling_7d(df):
+        return daily_revenue(df).rolling(7, min_periods=1).mean()
+
+
+    def best_week(df):
+        return daily_revenue(df).rolling(7).mean().max()
+parsons:
+  distractors:
+    - line: "return daily_revenue(df).rolling(7, min_periods=1).mean()"
+      replaces: "return daily_revenue(df).rolling(7).mean()"
+    - line: "return revenue.resample('W').sum()"
+      replaces: "return revenue.resample('D').sum()"
+hints:
+  - "Agrège par date, puis `.resample('D').sum()` crée les jours manquants avec 0."
+  - "`rolling(7)` exige 7 valeurs par défaut (`min_periods=7`) : les premiers jours donnent `NaN`."
+  - "`idxmax()` renvoie l'**index** (la date) du maximum, `max()` la valeur."
+explanation: |
+  - Une moyenne glissante sur des données **avec trous** est fausse : sans `resample('D')`, « 7 lignes » ne veut pas dire « 7 jours ».
+  - Alternative : `rolling('7D')` sur un index temporel, qui fenêtre par durée réelle.
+  - `rolling(7).mean()` est aligné à **droite** (la valeur du jour J inclut J-6..J) : pas de fuite du futur, important pour les features de séries temporelles.

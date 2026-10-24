@@ -64,6 +64,31 @@ tests:
   - name: Grande grille ouverte
     call: shortest_path(['.' * 300] * 300, (0, 0), (299, 299))
     expected: "598"
+  - name: Comparé à une référence sur des labyrinthes aléatoires
+    check: |
+      import random
+      def reference(grid, start, end):
+          rows, cols = len(grid), len(grid[0])
+          frontier, seen, dist = {start}, {start}, 0
+          while frontier:
+              if end in frontier:
+                  return dist
+              nxt = set()
+              for r, c in frontier:
+                  for nr, nc in ((r + 1, c), (r - 1, c), (r, c + 1), (r, c - 1)):
+                      if 0 <= nr < rows and 0 <= nc < cols and grid[nr][nc] == '.' and (nr, nc) not in seen:
+                          seen.add((nr, nc)); nxt.add((nr, nc))
+              frontier, dist = nxt, dist + 1
+          return -1
+      rnd = random.Random(1)
+      for _ in range(300):
+          rows, cols = rnd.randint(1, 7), rnd.randint(1, 7)
+          grid = [''.join('#' if rnd.random() < 0.3 else '.' for _ in range(cols)) for _ in range(rows)]
+          free = [(r, c) for r in range(rows) for c in range(cols) if grid[r][c] == '.']
+          if len(free) < 2:
+              continue
+          s, e = rnd.sample(free, 2)
+          assert shortest_path(grid, s, e) == reference(grid, s, e), (grid, s, e)
 hints:
   - "Dans un graphe **non pondéré**, le BFS (parcours en largeur) trouve le plus court chemin : il explore par distances croissantes."
   - "File FIFO : `collections.deque` avec `append` et `popleft`."

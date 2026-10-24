@@ -1,0 +1,141 @@
+id: dl-attention
+title: Attention (scaled dot-product)
+domain: dl
+difficulty: hard
+minutes: 15
+interview: true
+tags: [attention, Transformer, softmax, masque causal]
+statement: |
+  Le cœur d'un Transformer : $\text{Attention}(Q, K, V) = \text{softmax}\left(\frac{QK^\top}{\sqrt{d_k}}\right) V$.
+
+  1. `softmax(z, axis=-1)` : softmax **numériquement stable**.
+  2. `attention(Q, K, V, mask=None)` : `Q` de shape `(n_q, d_k)`, `K` de shape `(n_k, d_k)`, `V` de shape `(n_k, d_v)`. Renvoie le couple `(output, weights)` : la sortie `(n_q, d_v)` et les poids d'attention `(n_q, n_k)`. `mask` est un tableau booléen `(n_q, n_k)` : `False` = position **interdite** (score mis à `-inf` avant le softmax).
+  3. `causal_mask(n)` : le masque `(n, n)` qui interdit à chaque position de regarder **le futur** (triangle inférieur, diagonale comprise).
+setup: |
+  import numpy as np
+  _rng = np.random.default_rng(0)
+  Q = _rng.normal(size=(4, 8))
+  K = _rng.normal(size=(4, 8))
+  V = _rng.normal(size=(4, 3))
+starter: |
+  import numpy as np
+
+
+  def softmax(z, axis=-1):
+      pass
+
+
+  def attention(Q, K, V, mask=None):
+      pass
+
+
+  def causal_mask(n):
+      pass
+solution: |
+  import numpy as np
+
+
+  def softmax(z, axis=-1):
+      z = z - z.max(axis=axis, keepdims=True)
+      e = np.exp(z)
+      return e / e.sum(axis=axis, keepdims=True)
+
+
+  def attention(Q, K, V, mask=None):
+      scores = Q @ K.T / np.sqrt(K.shape[-1])
+      if mask is not None:
+          scores = np.where(mask, scores, -np.inf)
+      weights = softmax(scores, axis=-1)
+      return weights @ V, weights
+
+
+  def causal_mask(n):
+      return np.tril(np.ones((n, n), dtype=bool))
+tests:
+  - call: softmax(np.array([1000.0, 1000.0]))
+    expected: np.array([0.5, 0.5])
+  - call: attention(Q, K, V)
+  - name: Les poids somment à 1 sur chaque ligne
+    check: |
+      out, w = attention(Q, K, V)
+      assert out.shape == (4, 3) and w.shape == (4, 4)
+      assert np.allclose(w.sum(axis=1), 1)
+  - call: causal_mask(3)
+    expected: np.array([[True, False, False], [True, True, False], [True, True, True]])
+  - name: Masque causal → aucun poids sur le futur
+    check: |
+      out, w = attention(Q, K, V, causal_mask(4))
+      assert np.allclose(np.triu(w, 1), 0)
+      assert np.allclose(out[0], V[0]), "la première position ne peut regarder qu'elle-même"
+  - name: Le facteur 1/sqrt(d_k)
+    check: |
+      q = np.array([[1.0, 1.0, 1.0, 1.0]])
+      k = np.array([[1.0, 1.0, 1.0, 1.0], [0.0, 0.0, 0.0, 0.0]])
+      _, w = attention(q, k, np.eye(2))
+      assert np.allclose(w, softmax(np.array([[2.0, 0.0]]))), w
+  - name: Comparé à PyTorch (formule de référence)
+    check: |
+      rng = np.random.default_rng(5)
+      q, k, v = rng.normal(size=(6, 16)), rng.normal(size=(9, 16)), rng.normal(size=(9, 5))
+      s = q @ k.T / 4.0
+      ref_w = np.exp(s - s.max(1, keepdims=True)); ref_w /= ref_w.sum(1, keepdims=True)
+      out, w = attention(q, k, v)
+      assert np.allclose(w, ref_w) and np.allclose(out, ref_w @ v)
+wrong:
+  - |
+    import numpy as np
+
+
+    def softmax(z, axis=-1):
+        e = np.exp(z)
+        return e / e.sum(axis=axis, keepdims=True)
+
+
+    def attention(Q, K, V, mask=None):
+        scores = Q @ K.T
+        if mask is not None:
+            scores = np.where(mask, scores, -np.inf)
+        weights = softmax(scores)
+        return weights @ V, weights
+
+
+    def causal_mask(n):
+        return np.tril(np.ones((n, n), dtype=bool))
+  - |
+    import numpy as np
+
+
+    def softmax(z, axis=-1):
+        z = z - z.max(axis=axis, keepdims=True)
+        e = np.exp(z)
+        return e / e.sum(axis=axis, keepdims=True)
+
+
+    def attention(Q, K, V, mask=None):
+        scores = Q @ K.T / np.sqrt(K.shape[-1])
+        if mask is not None:
+            scores = np.where(mask, scores, 0.0)
+        weights = softmax(scores, axis=0)
+        return weights @ V, weights
+
+
+    def causal_mask(n):
+        return np.triu(np.ones((n, n), dtype=bool))
+parsons:
+  distractors:
+    - line: "weights = softmax(scores, axis=0)"
+      replaces: "weights = softmax(scores, axis=-1)"
+    - line: "scores = np.where(mask, scores, 0.0)"
+      replaces: "scores = np.where(mask, scores, -np.inf)"
+    - line: "return np.triu(np.ones((n, n), dtype=bool))"
+      replaces: "return np.tril(np.ones((n, n), dtype=bool))"
+hints:
+  - "Softmax stable : soustrais le max de chaque ligne avant `np.exp`."
+  - "`Q @ K.T` donne la matrice `(n_q, n_k)` des similarités ; divise par `sqrt(d_k)`."
+  - "Masquer = mettre `-inf` (et pas 0) : `exp(-inf) = 0`, donc poids nul après softmax."
+  - "Le softmax se fait **sur les clés** (dernier axe) : chaque requête répartit 100 % de son attention."
+explanation: |
+  - Chaque requête calcule sa similarité avec toutes les clés, la transforme en distribution (softmax), puis fait la **moyenne pondérée des valeurs**.
+  - $\sqrt{d_k}$ : sans ce facteur, les produits scalaires grandissent avec la dimension, le softmax sature et les gradients s'annulent.
+  - Le **masque causal** empêche un modèle de langage de voir les mots futurs ; un masque de padding ignore les positions vides.
+  - Mettre 0 au lieu de `-inf` ne masque rien : `exp(0) = 1`.

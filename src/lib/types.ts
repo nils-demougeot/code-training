@@ -44,6 +44,10 @@ export interface Exercise {
   complexity?: { target: string; note: string }
   /** Brute-force reference (validator only): must pass required tests and fail bonus tests. */
   naive?: string
+  /** Typical mistakes (validator only): each must fail at least one required test. */
+  wrong?: string[]
+  /** Parsons (code blocks) version of the exercise. */
+  parsons?: { skip?: boolean; distractors?: { line: string; replaces: string }[] }
 }
 
 export interface FlashCard {
@@ -204,4 +208,23 @@ export interface DesignCase {
   summary: string
   context: string
   steps: DesignStep[]
+}
+
+// ---------------------------------------------------------------- Parsons (code blocks)
+
+export interface ParsonsProblem {
+  id: string
+  title: string
+  domain: Domain
+  difficulty: Difficulty
+  statement: string
+  solution: string
+  setup?: string
+  shared?: string
+  language?: 'python' | 'sql'
+  tests: TestCase[]
+  distractors: { line: string; replaces: string }[]
+  explanation?: string
+  /** Derived from an exercise (same id), or written for the blocks mode (content/parsons). */
+  source: 'exercise' | 'parsons'
 }

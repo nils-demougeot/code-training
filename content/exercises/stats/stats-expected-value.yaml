@@ -1,0 +1,119 @@
+id: stats-expected-value
+title: Espérance d'un jeu
+domain: stats
+difficulty: easy
+minutes: 7
+tags: [espérance, variance, loi discrète, Fraction]
+statement: |
+  Une loi discrète est donnée par un dict `{valeur: probabilité}`.
+
+  1. `expectation(dist)` et `variance(dist)`.
+  2. `is_valid(dist)` : `True` si toutes les probabilités sont positives ou nulles et somment à 1 (à `1e-9` près).
+  3. Un jeu : tu paies **2 €**, on lance un dé ; tu gagnes `5 €` si tu fais 6, `3 €` si tu fais 4 ou 5, rien sinon. Écris `game_distribution()` qui renvoie la loi du **gain net** (gain − mise), avec des `Fraction`.
+
+  Le jeu est-il favorable ?
+starter: |
+  from fractions import Fraction
+
+
+  def expectation(dist):
+      pass
+
+
+  def variance(dist):
+      pass
+
+
+  def is_valid(dist):
+      pass
+
+
+  def game_distribution():
+      pass
+solution: |
+  from fractions import Fraction
+
+
+  def expectation(dist):
+      return sum(v * p for v, p in dist.items())
+
+
+  def variance(dist):
+      mu = expectation(dist)
+      return sum(p * (v - mu) ** 2 for v, p in dist.items())
+
+
+  def is_valid(dist):
+      return all(p >= 0 for p in dist.values()) and abs(sum(dist.values()) - 1) < 1e-9
+
+
+  def game_distribution():
+      sixth = Fraction(1, 6)
+      return {3: sixth, 1: 2 * sixth, -2: 3 * sixth}
+tests:
+  - call: "expectation({0: 0.5, 10: 0.5})"
+    expected: "5.0"
+  - call: "variance({0: 0.5, 10: 0.5})"
+    expected: "25.0"
+  - call: "is_valid({1: 0.2, 2: 0.8})"
+    expected: "True"
+  - call: "is_valid({1: 0.5, 2: 0.6})"
+    expected: "False"
+  - call: "is_valid({1: -0.2, 2: 1.2})"
+    expected: "False"
+  - call: game_distribution()
+    expected: "{3: Fraction(1, 6), 1: Fraction(1, 3), -2: Fraction(1, 2)}"
+  - call: expectation(game_distribution())
+    expected: Fraction(-1, 6)
+  - call: variance(game_distribution())
+wrong:
+  - |
+    from fractions import Fraction
+
+
+    def expectation(dist):
+        return sum(dist) / len(dist)
+
+
+    def variance(dist):
+        mu = expectation(dist)
+        return sum((v - mu) ** 2 for v in dist) / len(dist)
+
+
+    def is_valid(dist):
+        return sum(dist.values()) == 1
+
+
+    def game_distribution():
+        return {5: Fraction(1, 6), 3: Fraction(1, 3), 0: Fraction(1, 2)}
+  - |
+    from fractions import Fraction
+
+
+    def expectation(dist):
+        return sum(v * p for v, p in dist.items())
+
+
+    def variance(dist):
+        return sum(p * v ** 2 for v, p in dist.items())
+
+
+    def is_valid(dist):
+        return abs(sum(dist.values()) - 1) < 1e-9
+
+
+    def game_distribution():
+        sixth = Fraction(1, 6)
+        return {3: sixth, 1: 2 * sixth, -2: 3 * sixth}
+parsons:
+  distractors:
+    - line: "return sum(p * (v - mu) for v, p in dist.items())"
+      replaces: "return sum(p * (v - mu) ** 2 for v, p in dist.items())"
+hints:
+  - "$E[X] = \\sum_v v \\cdot P(X = v)$ et $Var(X) = \\sum_v P(X = v)(v - E[X])^2$."
+  - "Gain net = gain − 2 : un 6 rapporte +3, un 4 ou 5 rapporte +1, sinon −2."
+explanation: |
+  - Espérance du jeu : $3 \cdot \frac16 + 1 \cdot \frac13 - 2 \cdot \frac12 = -\frac16$ : on perd en moyenne 17 centimes par partie. Les casinos vivent de ces petites espérances négatives répétées.
+  - La moyenne des **valeurs** (sans pondérer par les probabilités) est une erreur fréquente.
+  - $Var(X) = E[X^2] - E[X]^2$ : oublier de soustraire $E[X]^2$ donne le moment d'ordre 2, pas la variance.
+  - En ML, l'espérance pondère les coûts : choisir le seuil d'un classifieur qui **minimise le coût moyen** (coût d'un faux positif × probabilité…).

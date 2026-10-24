@@ -199,3 +199,83 @@ cards:
     answer: |-
       pd.read_csv('data.csv', sep=';', parse_dates=['date'])
     note: "Autres options utiles : `usecols=`, `dtype=`, `nrows=`, `encoding='latin-1'`, `decimal=','`."
+  - id: pd-top-n-group
+    prompt: "Les 2 lignes au plus gros score de chaque équipe (trier puis groupby().head)."
+    setup: |-
+      import pandas as pd
+      df = pd.DataFrame({'team': ['a', 'a', 'a', 'b', 'b'], 'name': ['x', 'y', 'z', 'u', 'v'], 'score': [5, 9, 7, 3, 8]})
+    answer: |-
+      df.sort_values('score', ascending=False).groupby('team').head(2)
+  - id: pd-latest-per-key
+    prompt: "La dernière ligne (date la plus récente) de chaque client."
+    setup: |-
+      import pandas as pd
+      df = pd.DataFrame({'customer': ['a', 'b', 'a'], 'date': pd.to_datetime(['2024-01-05', '2024-02-01', '2024-03-10']), 'status': ['new', 'new', 'vip']})
+    answer: |-
+      df.sort_values('date').drop_duplicates('customer', keep='last')
+  - id: pd-melt
+    prompt: "Passer wide (store + une colonne par mois) au format long : colonnes store, month, sales."
+    setup: |-
+      import pandas as pd
+      wide = pd.DataFrame({'store': ['A', 'B'], 'jan': [10, 20], 'feb': [11, 21]})
+    answer: |-
+      wide.melt(id_vars='store', var_name='month', value_name='sales')
+  - id: pd-explode
+    prompt: "Une ligne par tag (la colonne tags contient des listes)."
+    setup: |-
+      import pandas as pd
+      df = pd.DataFrame({'id': [1, 2], 'tags': [['a', 'b'], ['c']]})
+    answer: |-
+      df.explode('tags')
+  - id: pd-str-extract
+    prompt: "Extraire le domaine (après @) de chaque email de s, en Series."
+    setup: |-
+      import pandas as pd
+      s = pd.Series(['ana@data.io', 'ben@mail.com'])
+    answer: |-
+      s.str.extract(r'@(.+)$', expand=False)
+  - id: pd-groupby-diff
+    prompt: "Nombre de jours depuis la commande précédente du même client (df est trié par client puis date)."
+    setup: |-
+      import pandas as pd
+      df = pd.DataFrame({'customer': ['a', 'a', 'b', 'b'], 'date': pd.to_datetime(['2024-01-01', '2024-01-11', '2024-01-03', '2024-01-04'])})
+    answer: |-
+      df.groupby('customer')['date'].diff().dt.days
+  - id: pd-rolling-mean
+    prompt: "Moyenne glissante sur 3 valeurs de s (NaN tant que la fenêtre est incomplète)."
+    setup: |-
+      import pandas as pd
+      s = pd.Series([1.0, 2.0, 3.0, 4.0, 5.0])
+    answer: |-
+      s.rolling(3).mean()
+  - id: pd-value-counts-pct
+    prompt: "La proportion de chaque ville dans s (fréquences relatives)."
+    setup: |-
+      import pandas as pd
+      s = pd.Series(['Paris', 'Lyon', 'Paris', 'Nice'])
+    answer: |-
+      s.value_counts(normalize=True)
+  - id: pd-crosstab
+    prompt: "Tableau de contingence des effectifs ville × segment."
+    setup: |-
+      import pandas as pd
+      df = pd.DataFrame({'city': ['Paris', 'Lyon', 'Paris'], 'segment': ['A', 'B', 'B']})
+    answer: |-
+      pd.crosstab(df['city'], df['segment'])
+  - id: pd-qcut
+    prompt: "Découper s en 4 groupes de même effectif étiquetés Q1 à Q4."
+    setup: |-
+      import pandas as pd
+      s = pd.Series(range(8))
+    answer: |-
+      pd.qcut(s, 4, labels=['Q1', 'Q2', 'Q3', 'Q4'])
+  - id: pd-loc-assign
+    prompt: "Mettre segment à 'senior' pour les lignes où age > 30, sans affectation en chaîne. Le résultat est df."
+    kind: stmt
+    var: df
+    setup: |-
+      import pandas as pd
+      df = pd.DataFrame({'age': [25, 40, 35], 'segment': ['std', 'std', 'std']})
+    answer: |-
+      df.loc[df['age'] > 30, 'segment'] = 'senior'
+    note: "`df[df.age > 30]['segment'] = ...` modifie une copie temporaire (SettingWithCopyWarning)."

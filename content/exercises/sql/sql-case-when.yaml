@@ -1,0 +1,72 @@
+id: sql-case-when
+title: Catégoriser avec CASE WHEN
+domain: sql
+difficulty: easy
+minutes: 6
+language: sql
+shared: sql_shop
+tags: [CASE WHEN, GROUP BY, agrégation conditionnelle]
+statement: |
+  Classe les produits par gamme de prix :
+
+  - `'standard'` si `price < 40` ;
+  - `'confort'` si `40 <= price < 150` ;
+  - `'premium'` sinon.
+
+  Pour chaque gamme : `tier`, `n_products` (nombre de produits) et `n_informatique` (nombre de produits de la catégorie `'Informatique'` dans la gamme, avec une **agrégation conditionnelle**).
+
+  Tri : `'standard'`, `'confort'`, `'premium'`, du moins cher au plus cher (ce n'est **pas** l'ordre alphabétique).
+starter: |
+  SELECT name, price
+  FROM products
+solution: |
+  SELECT CASE
+             WHEN price < 40 THEN 'standard'
+             WHEN price < 150 THEN 'confort'
+             ELSE 'premium'
+         END AS tier,
+         COUNT(*) AS n_products,
+         SUM(CASE WHEN category = 'Informatique' THEN 1 ELSE 0 END) AS n_informatique
+  FROM products
+  GROUP BY tier
+  ORDER BY MIN(price)
+tests:
+  - name: Résultat de la requête
+    call: q(QUERY)
+wrong:
+  - |
+    SELECT CASE
+               WHEN price < 40 THEN 'standard'
+               WHEN price < 150 THEN 'confort'
+               ELSE 'premium'
+           END AS tier,
+           COUNT(*) AS n_products,
+           SUM(CASE WHEN category = 'Informatique' THEN 1 ELSE 0 END) AS n_informatique
+    FROM products
+    GROUP BY tier
+    ORDER BY tier
+  - |
+    SELECT CASE
+               WHEN price <= 40 THEN 'standard'
+               WHEN price <= 150 THEN 'confort'
+               ELSE 'premium'
+           END AS tier,
+           COUNT(*) AS n_products,
+           COUNT(category = 'Informatique') AS n_informatique
+    FROM products
+    GROUP BY tier
+    ORDER BY MIN(price)
+parsons:
+  distractors:
+    - line: "ORDER BY tier"
+      replaces: "ORDER BY MIN(price)"
+    - line: "COUNT(category = 'Informatique') AS n_informatique"
+      replaces: "SUM(CASE WHEN category = 'Informatique' THEN 1 ELSE 0 END) AS n_informatique"
+hints:
+  - "`CASE WHEN cond THEN valeur ... ELSE valeur END` : les conditions sont testées **dans l'ordre**, la première vraie gagne."
+  - "Agrégation conditionnelle : `SUM(CASE WHEN condition THEN 1 ELSE 0 END)`."
+  - "Pour l'ordre des gammes, trie sur une valeur qui suit le même ordre, par exemple `MIN(price)`."
+explanation: |
+  - `CASE` évalue les branches dans l'ordre : `WHEN price < 150` n'a pas besoin de répéter `price >= 40`.
+  - `SUM(CASE WHEN … THEN 1 ELSE 0 END)` est le moyen portable de compter sous condition (PostgreSQL a aussi `COUNT(*) FILTER (WHERE …)`).
+  - ⚠️ `COUNT(condition)` compte les lignes où la condition n'est pas NULL, donc **toutes** les lignes (0 et 1 sont non NULL).

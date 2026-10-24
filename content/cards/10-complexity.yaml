@@ -84,3 +84,40 @@ cards:
     answer: |-
       Les hashables (immuables) : int, float, str, tuple (de hashables), frozenset.
       Pas list, dict, set.
+  - id: cx-prefix-sums
+    kind: reveal
+    prompt: "Répondre en O(1) à beaucoup de requêtes « somme de nums[i..j] » ?"
+    answer: |-
+      prefix = [0, *accumulate(nums)]          # O(n) une fois
+      somme(i, j) = prefix[j + 1] - prefix[i]  # O(1) par requête
+  - id: cx-kadane
+    kind: reveal
+    prompt: "Somme maximale d'un sous-tableau contigu en O(n) (Kadane) ?"
+    answer: |-
+      best = cur = nums[0]
+      for x in nums[1:]:
+          cur = max(x, cur + x)     # prolonger ou repartir
+          best = max(best, cur)
+  - id: cx-topo
+    kind: reveal
+    prompt: "Ordonner des tâches avec dépendances et détecter un cycle ?"
+    answer: |-
+      Tri topologique (Kahn) : file des nœuds de degré entrant 0,
+      on les retire en décrémentant leurs successeurs.
+      Moins de n nœuds traités → cycle. O(V + E).
+  - id: cx-dijkstra
+    kind: reveal
+    prompt: "Plus court chemin avec des poids positifs ? Complexité ?"
+    answer: |-
+      Dijkstra avec heapq : file de priorité (distance, nœud).
+      O((V + E) log V). Poids tous égaux → BFS. Poids négatifs → Bellman-Ford.
+  - id: cx-backtracking
+    kind: reveal
+    prompt: "Le squelette d'un backtracking (sous-ensembles, combinaisons, permutations) ?"
+    answer: |-
+      def backtrack(start, path):
+          out.append(path[:])            # copier !
+          for i in range(start, len(nums)):
+              path.append(nums[i])       # choisir
+              backtrack(i + 1, path)     # explorer
+              path.pop()                 # annuler

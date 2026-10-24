@@ -1,0 +1,101 @@
+id: pd-segments
+title: Segmenter avec pd.cut et pd.qcut
+domain: pandas
+difficulty: easy
+minutes: 6
+shared: shop_df
+tags: [cut, qcut, value_counts, catégories]
+statement: |
+  1. `basket_segment(df)` : renvoie une Series (même index que `df`) qui classe chaque commande selon son montant `qty * price` :
+     - `'petit'` si montant < 50 ;
+     - `'moyen'` si 50 ≤ montant < 200 ;
+     - `'gros'` si montant ≥ 200.
+  2. `segment_share(df)` : la proportion de commandes dans chaque segment, une Series indexée par `['petit', 'moyen', 'gros']` dans **cet ordre**.
+  3. `quartile_labels(df)` : le quartile du montant de chaque commande, étiqueté `'Q1'` à `'Q4'` (`pd.qcut`).
+starter: |
+  import numpy as np
+  import pandas as pd
+
+
+  def basket_segment(df):
+      pass
+
+
+  def segment_share(df):
+      pass
+
+
+  def quartile_labels(df):
+      pass
+solution: |
+  import numpy as np
+  import pandas as pd
+
+
+  def basket_segment(df):
+      amount = df['qty'] * df['price']
+      return pd.cut(amount, bins=[-np.inf, 50, 200, np.inf], labels=['petit', 'moyen', 'gros'], right=False)
+
+
+  def segment_share(df):
+      return basket_segment(df).value_counts(normalize=True, sort=False)
+
+
+  def quartile_labels(df):
+      return pd.qcut(df['qty'] * df['price'], q=4, labels=['Q1', 'Q2', 'Q3', 'Q4'])
+tests:
+  - name: Bornes (49, 50, 199, 200)
+    call: "list(basket_segment(pd.DataFrame({'qty': [1, 1, 1, 1], 'price': [49.0, 50.0, 199.0, 200.0]})))"
+    expected: "['petit', 'moyen', 'moyen', 'gros']"
+  - call: basket_segment(orders).astype(str)
+  - call: segment_share(orders)
+  - name: Ordre des segments
+    call: list(segment_share(orders).index)
+    expected: "['petit', 'moyen', 'gros']"
+  - call: quartile_labels(orders).astype(str).value_counts().sort_index()
+wrong:
+  - |
+    import numpy as np
+    import pandas as pd
+
+
+    def basket_segment(df):
+        amount = df['qty'] * df['price']
+        return pd.cut(amount, bins=[-np.inf, 50, 200, np.inf], labels=['petit', 'moyen', 'gros'])
+
+
+    def segment_share(df):
+        return basket_segment(df).value_counts(normalize=True, sort=False)
+
+
+    def quartile_labels(df):
+        return pd.qcut(df['qty'] * df['price'], q=4, labels=['Q1', 'Q2', 'Q3', 'Q4'])
+  - |
+    import numpy as np
+    import pandas as pd
+
+
+    def basket_segment(df):
+        amount = df['qty'] * df['price']
+        return pd.cut(amount, bins=[-np.inf, 50, 200, np.inf], labels=['petit', 'moyen', 'gros'], right=False)
+
+
+    def segment_share(df):
+        return basket_segment(df).value_counts(normalize=True)
+
+
+    def quartile_labels(df):
+        return pd.cut(df['qty'] * df['price'], bins=4, labels=['Q1', 'Q2', 'Q3', 'Q4'])
+parsons:
+  distractors:
+    - line: "return pd.cut(df['qty'] * df['price'], bins=4, labels=['Q1', 'Q2', 'Q3', 'Q4'])"
+      replaces: "return pd.qcut(df['qty'] * df['price'], q=4, labels=['Q1', 'Q2', 'Q3', 'Q4'])"
+hints:
+  - "`pd.cut(x, bins=[...], labels=[...])` : par défaut les intervalles sont fermés **à droite** `(a, b]`. Ici il faut `[a, b)` → `right=False`."
+  - "`np.inf` comme bornes extrêmes pour ne rien laisser dehors."
+  - "`value_counts(normalize=True, sort=False)` garde l'ordre des catégories au lieu de trier par fréquence."
+  - "`pd.qcut(x, q=4)` découpe en groupes de même effectif."
+explanation: |
+  - `pd.cut` : bornes **fixées** par toi ; `pd.qcut` : bornes calculées pour des groupes **de même taille**.
+  - Le piège des bornes : `(50, 200]` contre `[50, 200)` change le segment d'une commande de 50 € pile. Toujours vérifier les cas limites.
+  - Le résultat est de type `category`, ordonné : `value_counts(sort=False)` respecte cet ordre.
