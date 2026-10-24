@@ -130,6 +130,11 @@ def check_exercise(path, ex, card_ids, skip_local):
     tests = ex["tests"]
     solution = to_python(ex, ex["solution"])
     res = run({"mode": "test", "code": solution, "solution": solution, "setup": setup, "tests": tests})
+    # Bonus tests time the code: on a noisy machine (shared CI runners) give them two more chances.
+    for _ in range(2):
+        if not (res.get("ok") and res.get("passed") == res.get("total") and res.get("bonusPassed") != res.get("bonusTotal")):
+            break
+        res = run({"mode": "test", "code": solution, "solution": solution, "setup": setup, "tests": tests})
     if not res.get("ok") or res.get("passed") != res.get("total") or res.get("bonusPassed") != res.get("bonusTotal"):
         errors.append(f"{eid}: solution fails\n{describe_failures(res)}")
     has_bonus = any(t.get("bonus") for t in tests)
