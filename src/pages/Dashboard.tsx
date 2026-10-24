@@ -7,7 +7,7 @@ import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { Heatmap, Radar } from '@/components/charts'
 import { DifficultyBadge, DomainChip, ProgressBar, ProgressRing } from '@/components/ui'
-import { cards, DOMAIN_ORDER, exercises } from '@/lib/content'
+import { cards, EXERCISE_DOMAINS, exercises } from '@/lib/content'
 import { DOMAINS } from '@/lib/domains'
 import { BADGES, domainMastery, levelInfo, streak, totalXp, useProgress } from '@/lib/progress'
 import { dueCards, dueExerciseReviews, inProgress, recommendExercise, todayStats } from '@/lib/recommend'
@@ -191,11 +191,11 @@ export default function Dashboard() {
           <div className="section-title">Maîtrise par domaine</div>
           <div className="flex justify-center py-2">
             <Radar
-              axes={DOMAIN_ORDER.map((d) => ({ label: DOMAINS[d].short, value: domainMastery(p, d).ratio, color: DOMAINS[d].color }))}
+              axes={EXERCISE_DOMAINS.map((d) => ({ label: DOMAINS[d].short, value: domainMastery(p, d).ratio, color: DOMAINS[d].color }))}
             />
           </div>
           <div className="space-y-2">
-            {DOMAIN_ORDER.map((d) => {
+            {EXERCISE_DOMAINS.map((d) => {
               const m = domainMastery(p, d)
               return (
                 <Link key={d} to={`/exercices?domain=${d}`} className="flex items-center gap-3 text-xs hover:text-fg">

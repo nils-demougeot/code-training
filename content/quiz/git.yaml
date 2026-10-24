@@ -1,0 +1,114 @@
+domain: git
+questions:
+  - id: q-git-three-areas
+    topic: Bases
+    question: "Après `git add app.py`, où se trouve la modification ?"
+    choices: ["Dans le dernier commit", "Dans l'index (staging), prête pour le prochain commit", "Sur GitHub", "Dans le stash"]
+    answer: 1
+    explain: "`git add` copie l'état du fichier dans l'index ; seul `git commit` crée un commit, et seul `git push` l'envoie sur GitHub."
+  - id: q-git-fetch-pull
+    topic: Remote
+    question: "Différence entre `git fetch` et `git pull` ?"
+    choices:
+      - "Aucune"
+      - "fetch télécharge les nouveautés sans toucher à tes branches ; pull fait fetch puis merge (ou rebase)"
+      - "fetch envoie tes commits, pull les reçoit"
+      - "pull ne fonctionne qu'avec GitHub"
+    answer: 1
+    explain: "`git fetch` met seulement à jour `origin/main` & co. C'est toujours sans risque. `git pull` intègre ensuite ces changements dans ta branche."
+  - id: q-git-merge-rebase
+    topic: Branches
+    question: "Que fait `git rebase main` depuis la branche feature ?"
+    choices:
+      - "Il fusionne feature dans main"
+      - "Il recrée les commits de feature au-dessus de la pointe de main (nouveaux hash)"
+      - "Il supprime main"
+      - "Il crée un commit de merge"
+    answer: 1
+    explain: "Le rebase rejoue tes commits sur la nouvelle base : historique linéaire, mais commits réécrits. À ne pas faire sur une branche partagée."
+  - id: q-git-ff
+    topic: Branches
+    question: "Quand un `git merge feature` est-il un fast-forward ?"
+    choices: ["Toujours", "Quand main n'a pas avancé depuis la création de feature", "Quand il y a un conflit", "Quand feature est vide"]
+    answer: 1
+    explain: "Si la branche courante est un ancêtre de feature, Git avance simplement le pointeur : pas de commit de merge (sauf avec `--no-ff`)."
+  - id: q-git-reset-revert
+    topic: Annuler
+    question: "Un commit fautif est déjà sur origin/main, récupéré par l'équipe. Quelle commande ?"
+    choices: ["git reset --hard HEAD~1 puis git push --force", "git revert <commit> puis git push", "git commit --amend", "git checkout <commit>"]
+    answer: 1
+    explain: "`revert` ajoute un commit qui annule le fautif : l'historique partagé n'est pas réécrit. `reset` + `push --force` casserait les dépôts des collègues."
+  - id: q-git-reset-modes
+    topic: Annuler
+    question: "Après `git reset --soft HEAD~1`, que deviennent les changements du commit annulé ?"
+    choices: ["Ils sont perdus", "Ils sont dans l'index, prêts à être recommités", "Ils sont dans le stash", "Ils sont poussés sur GitHub"]
+    answer: 1
+    explain: "`--soft` ne déplace que la branche ; `--mixed` (défaut) vide aussi l'index ; `--hard` efface aussi les fichiers."
+  - id: q-git-detached
+    topic: Bases
+    question: "« You are in 'detached HEAD' state » signifie…"
+    choices:
+      - "Le dépôt est corrompu"
+      - "HEAD pointe directement sur un commit et non sur une branche : de nouveaux commits n'appartiendraient à aucune branche"
+      - "Tu n'es plus connecté à GitHub"
+      - "La branche a été supprimée sur GitHub"
+    answer: 1
+    explain: "Typique après `git checkout <hash>`. Pour garder des commits faits dans cet état : `git switch -c nouvelle-branche`."
+  - id: q-git-push-rejected
+    topic: Remote
+    question: "`git push` → « rejected (fetch first) ». Quelle réponse est correcte ?"
+    choices: ["git push --force", "git pull (ou git pull --rebase) puis git push", "Supprimer le dépôt et recloner", "git reset --hard origin/main"]
+    answer: 1
+    explain: "Le remote contient des commits que tu n'as pas. On les intègre d'abord. `--force` effacerait le travail du collègue, `reset --hard` effacerait le tien."
+  - id: q-git-conflict-markers
+    topic: Conflits
+    question: "Dans un conflit, la partie entre `<<<<<<< HEAD` et `=======` est…"
+    choices: ["la version de la branche fusionnée", "ta version (branche courante)", "l'ancêtre commun", "un commentaire de Git"]
+    answer: 1
+    explain: "HEAD = ta branche courante (« ours ») ; entre `=======` et `>>>>>>>` : la branche qu'on fusionne (« theirs »)."
+  - id: q-git-stash
+    topic: Annuler
+    question: "À quoi sert `git stash` ?"
+    choices:
+      - "Supprimer définitivement les modifications"
+      - "Mettre de côté les modifications non commitées pour retrouver un répertoire propre, puis les réappliquer avec `git stash pop`"
+      - "Créer une branche"
+      - "Envoyer un brouillon sur GitHub"
+    answer: 1
+    explain: "Utile pour changer de branche en urgence sans committer un travail inachevé."
+  - id: q-git-amend-pushed
+    topic: Annuler
+    question: "Pourquoi éviter `git commit --amend` sur un commit déjà poussé ?"
+    choices:
+      - "Ça ne fonctionne pas"
+      - "Il remplace le commit par un nouveau (nouveau hash) : l'historique local diverge de celui de GitHub et des collègues"
+      - "Il supprime le fichier modifié"
+      - "Il crée un conflit à coup sûr"
+    answer: 1
+    explain: "Il faudrait ensuite forcer le push. Sur une branche perso de PR, c'est acceptable avec `--force-with-lease` ; sur `main`, jamais."
+  - id: q-git-upstream
+    topic: Remote
+    question: "« The current branch feature has no upstream branch » : que faire ?"
+    choices: ["git pull", "git push -u origin feature", "git branch -d feature", "git init"]
+    answer: 1
+    explain: "La première publication d'une branche crée la branche distante et la relie (`-u`). Les push suivants n'ont plus besoin d'arguments."
+  - id: q-git-secret
+    topic: Bonnes pratiques
+    question: "Tu as commité et poussé une clé d'API par erreur. Priorité n°1 ?"
+    choices:
+      - "Supprimer le fichier et committer"
+      - "Révoquer / régénérer la clé immédiatement"
+      - "Faire un git revert"
+      - "Rendre le dépôt privé"
+    answer: 1
+    explain: "La clé reste dans l'historique (et a pu être copiée par des robots en quelques minutes). On la révoque d'abord, puis on nettoie l'historique et on ajoute le fichier au `.gitignore`."
+  - id: q-git-pr-conflict
+    topic: GitHub
+    question: "Ta pull request est en conflit avec main. Où se résout le conflit ?"
+    choices:
+      - "Sur main directement"
+      - "Dans ta branche de PR : intégrer main (merge ou rebase), résoudre, pousser"
+      - "En fermant la PR et en en ouvrant une autre"
+      - "GitHub le résout automatiquement"
+    answer: 1
+    explain: "Le push met la PR à jour toute seule. Simple conflits : GitHub propose aussi un éditeur en ligne."

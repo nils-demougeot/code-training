@@ -2,7 +2,7 @@ import { CheckCircle2, Circle, IndentIncrease, Puzzle, Shuffle, Sparkles } from 
 import { useMemo } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { DifficultyBadge, PageHeader, ProgressBar } from '@/components/ui'
-import { DOMAIN_ORDER, parsonsProblems } from '@/lib/content'
+import { EXERCISE_DOMAINS, parsonsProblems } from '@/lib/content'
 import { DOMAINS } from '@/lib/domains'
 import { toBlocks } from '@/lib/parsons'
 import { useProgress } from '@/lib/progress'
@@ -68,7 +68,7 @@ export default function Blocks() {
           </FilterButton>
         ))}
         <span className="mx-1 h-5 w-px bg-line" />
-        {DOMAIN_ORDER.map((d) => {
+        {EXERCISE_DOMAINS.map((d) => {
           const Icon = DOMAINS[d].icon
           return (
             <FilterButton key={d} active={domain === d} color={DOMAINS[d].color} onClick={() => setParam('domain', domain === d ? null : d)}>

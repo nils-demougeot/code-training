@@ -1,4 +1,4 @@
-import { Binary, Brain, Database, Dices, FileCode2, Grid3x3, Network, Table2, type LucideIcon } from 'lucide-react'
+import { Binary, Brain, Database, Dices, FileCode2, GitBranch, Grid3x3, Network, Table2, type LucideIcon } from 'lucide-react'
 import type { Difficulty, Domain } from './types'
 
 export interface DomainMeta {
@@ -66,6 +66,13 @@ export const DOMAINS: Record<Domain, DomainMeta> = {
     description: 'Structures de données et patterns classiques des entretiens de code.',
     icon: Binary,
     color: '#fb923c',
+  },
+  git: {
+    label: 'Git & GitHub',
+    short: 'GIT',
+    description: 'Commits, branches, merge, rebase, pull requests : le quotidien d’une équipe.',
+    icon: GitBranch,
+    color: '#f05033',
   },
 }
 

@@ -62,6 +62,13 @@ export interface ParsonsProgress {
   updatedAt: number
 }
 
+/** Git simulator missions. */
+export interface GitLevelProgress {
+  solvedAt: number
+  /** Fewest commands typed to solve it. */
+  bestCommands: number
+}
+
 export interface InterviewRecord {
   id: string
   date: number
@@ -90,6 +97,7 @@ export interface Progress {
   design: Record<string, DesignProgress>
   puzzles: Record<string, PuzzleProgress>
   parsons: Record<string, ParsonsProgress>
+  git: Record<string, GitLevelProgress>
   badges: Record<string, number>
   updatedAt: number
 }
@@ -106,6 +114,7 @@ export const emptyProgress = (): Progress => ({
   design: {},
   puzzles: {},
   parsons: {},
+  git: {},
   badges: {},
   updatedAt: 0,
 })
@@ -247,6 +256,14 @@ export const BADGES: BadgeDef[] = [
     id: 'parsons-traps', emoji: '🪤', label: 'Déjoue les pièges', description: 'Réussir 5 programmes en blocs avec indentation et pièges',
     test: (p) => Object.values(p.parsons ?? {}).filter((x) => x.indent && x.traps).length >= 5,
   },
+  {
+    id: 'git-5', emoji: '🌿', label: 'Brancheur', description: 'Réussir 5 missions Git',
+    test: (p) => Object.keys(p.git ?? {}).length >= 5,
+  },
+  {
+    id: 'git-github', emoji: '🐙', label: 'Pull request mergée', description: 'Réussir toutes les missions GitHub',
+    test: (p) => ['pull-request', 'push-rejete', 'branche-collegue', 'conflit-pr'].every((id) => p.git?.[id]),
+  },
   { id: 'xp-1000', emoji: '🏆', label: 'Millier', description: 'Atteindre 1 000 XP', test: (p) => totalXp(p) >= 1000 },
 ]
 
@@ -327,6 +344,9 @@ export function mergeProgress(local: Progress, remote: Progress): Progress {
         updatedAt: Math.max(x.updatedAt, y.updatedAt),
       }
     }),
+    git: mergeRecords(local.git ?? {}, r.git ?? {}, (x, y) =>
+      !x || !y ? x ?? y : { solvedAt: Math.min(x.solvedAt, y.solvedAt), bestCommands: Math.min(x.bestCommands, y.bestCommands) },
+    ),
     badges: mergeRecords(local.badges, r.badges, minDefined),
     updatedAt: Math.max(local.updatedAt, r.updatedAt),
   }
@@ -381,6 +401,8 @@ interface ProgressStore {
   setDesignChecked: (caseId: string, stepId: string, checked: number[]) => void
   completeDesign: (caseId: string) => void
   answerPuzzle: (id: string, guess: number, stars: number) => void
+  /** Returns the XP earned (only the first time). */
+  solveGitLevel: (id: string, commands: number) => number
   attemptParsons: (id: string) => void
   /** Returns the XP earned (first solve, then each harder mode solved for the first time). */
   solveParsons: (id: string, mode: { indent: boolean; traps: boolean }) => number
@@ -632,6 +654,20 @@ export const useProgress = create<ProgressStore>((set, get) => {
         40,
         'Cas de design ML terminé',
       )
+    },
+
+    solveGitLevel: (id, commands) => {
+      const prev = get().p.git?.[id]
+      const xp = prev ? 0 : 15
+      commit(
+        (p) => {
+          p.git ??= {}
+          p.git[id] = { solvedAt: prev?.solvedAt ?? Date.now(), bestCommands: Math.min(prev?.bestCommands ?? Infinity, commands) }
+        },
+        xp,
+        'Mission Git',
+      )
+      return xp
     },
 
     attemptParsons: (id) =>

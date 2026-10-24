@@ -51,7 +51,7 @@ export function toPython(item: { language?: string }, code: string): string {
 
 const DIFF_ORDER = { easy: 0, medium: 1, hard: 2 } as const
 
-export const DOMAIN_ORDER: Domain[] = ['python', 'numpy', 'pandas', 'sql', 'stats', 'ml', 'dl', 'algo']
+export const DOMAIN_ORDER: Domain[] = ['python', 'numpy', 'pandas', 'sql', 'stats', 'ml', 'dl', 'algo', 'git']
 
 export const exercises: Exercise[] = Object.values(exerciseFiles)
   .map((raw) => {
@@ -66,6 +66,9 @@ export const exercises: Exercise[] = Object.values(exerciseFiles)
   )
 
 export const exerciseById = new Map(exercises.map((e) => [e.id, e]))
+
+/** Domains that have code exercises (git is practised in its own simulator). */
+export const EXERCISE_DOMAINS: Domain[] = DOMAIN_ORDER.filter((d) => exercises.some((e) => e.domain === d))
 
 export const decks: Deck[] = Object.values(deckFiles)
   .map((raw) => {

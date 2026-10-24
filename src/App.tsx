@@ -24,6 +24,8 @@ const DesignCasePage = lazy(() => import('./pages/DesignCasePage'))
 const Stats = lazy(() => import('./pages/Stats'))
 const Blocks = lazy(() => import('./pages/Blocks'))
 const ParsonsPage = lazy(() => import('./pages/ParsonsPage'))
+const GitHome = lazy(() => import('./pages/GitHome'))
+const GitLevelPage = lazy(() => import('./pages/GitLevelPage'))
 
 function Loading() {
   return (
@@ -69,6 +71,8 @@ export default function App() {
           <Route path="/stats" element={<Stats />} />
           <Route path="/blocs" element={<Blocks />} />
           <Route path="/blocs/:id" element={<ParsonsPage />} />
+          <Route path="/git" element={<GitHome />} />
+          <Route path="/git/:id" element={<GitLevelPage />} />
           <Route path="/profil" element={<Profile />} />
           <Route path="*" element={<Dashboard />} />
         </Routes>

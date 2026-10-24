@@ -1,0 +1,103 @@
+id: git
+title: Git & GitHub, l'antisèche
+domain: git
+summary: Les commandes par situation, les trois zones, merge vs rebase, et le workflow pull request.
+body: |
+  ## Les trois zones
+
+  ```
+  répertoire de travail ──git add──▶ index (staging) ──git commit──▶ dépôt local ──git push──▶ GitHub
+                        ◀─git restore─                ◀─git restore --staged─        ◀──git pull──
+  ```
+
+  Réflexe : **`git status`** avant et après chaque commande tant que ce n'est pas automatique.
+
+  ## Démarrer
+
+  | situation | commande |
+  |---|---|
+  | récupérer un projet GitHub | `git clone git@github.com:org/projet.git` |
+  | nouveau dépôt | `git init` puis `git remote add origin <url>` |
+  | qui suis-je ? | `git config --global user.name "…"` et `user.email` |
+
+  ## Le cycle quotidien
+
+  ```bash
+  git switch main && git pull           # partir d'un main à jour
+  git switch -c feature/ma-tache        # une branche par tâche
+  # … coder …
+  git status
+  git add fichier.py                    # ou git add -p pour choisir morceau par morceau
+  git commit -m "Ajoute la validation des emails"
+  git push -u origin feature/ma-tache   # la première fois ; ensuite : git push
+  gh pr create                          # ou le bouton « Compare & pull request » sur GitHub
+  ```
+
+  ## Regarder
+
+  | commande | montre |
+  |---|---|
+  | `git status` | branche, fichiers modifiés / indexés / non suivis |
+  | `git log --oneline --graph --all` | l'historique en graphe |
+  | `git diff` / `git diff --staged` | modifs non indexées / indexées |
+  | `git show <commit>` | le contenu d'un commit |
+  | `git branch -vv` | branches locales et leur suivi distant |
+
+  ## Branches
+
+  | but | commande |
+  |---|---|
+  | créer et s'y placer | `git switch -c nom` (ancien : `git checkout -b nom`) |
+  | changer de branche | `git switch nom` |
+  | intégrer une branche | `git merge nom` (depuis la branche qui reçoit) |
+  | rejouer sa branche sur main | `git rebase main` |
+  | supprimer une branche fusionnée | `git branch -d nom` |
+  | récupérer la branche d'un collègue | `git fetch` puis `git switch nom` |
+
+  **Merge ou rebase ?** Merge garde l'historique réel (commit à deux parents) ; rebase réécrit tes commits au-dessus de `main` pour un historique linéaire. **Ne rebase jamais une branche partagée.**
+
+  ## Conflits
+
+  ```
+  <<<<<<< HEAD
+  ta version
+  =======
+  la version de l'autre branche
+  >>>>>>> feature
+  ```
+  1. éditer le fichier (garder la bonne combinaison, supprimer les marqueurs) ;
+  2. `git add fichier` ;
+  3. `git commit` (merge) ou `git rebase --continue` (rebase).
+
+  Tout annuler : `git merge --abort` / `git rebase --abort`. Garder un côté entier : `git checkout --ours fichier` ou `--theirs`.
+
+  ## Annuler (du plus doux au plus brutal)
+
+  | situation | commande |
+  |---|---|
+  | annuler mes modifs d'un fichier | `git restore fichier` ⚠️ perdues |
+  | retirer un fichier de l'index | `git restore --staged fichier` |
+  | corriger le dernier commit (pas encore poussé) | `git commit --amend` |
+  | défaire des commits **locaux** | `git reset --soft HEAD~1` (garde les modifs) / `--hard` (efface) |
+  | annuler un commit **déjà poussé** | `git revert <commit>` (nouveau commit inverse) |
+  | mettre son travail de côté | `git stash` … `git stash pop` |
+  | retrouver un commit « perdu » | `git reflog` |
+
+  ## Travailler à plusieurs
+
+  - `git fetch` télécharge sans rien modifier ; `git pull` = fetch + merge (ou rebase avec `--rebase`).
+  - Push rejeté (*fetch first*) : un collègue a poussé avant toi → `git pull --rebase`, puis `git push`.
+  - ⚠️ `git push --force` sur `main` ou une branche partagée : jamais. Sur **ta** branche de PR après un rebase : `git push --force-with-lease`.
+  - Une PR en conflit se règle **dans la branche de la PR** : `git fetch` puis `git merge origin/main` (ou rebase), résoudre, pousser.
+
+  ## Bonnes pratiques
+
+  - Un commit = un changement logique, avec un message à l'impératif qui dit *pourquoi* : « Corrige l'arrondi des prix ».
+  - `.gitignore` dès le début : `__pycache__/`, `.venv/`, `.env`, données lourdes, `*.ipynb_checkpoints`.
+  - **Jamais de secret** (clé d'API, mot de passe) dans un commit : il reste dans l'historique même après suppression. Révoque la clé.
+  - Petites PR, souvent : plus faciles à relire, moins de conflits.
+  - Les tags marquent les versions : `git tag v1.2.0` puis `git push origin v1.2.0`.
+
+  ## Entraîne-toi
+
+  Les missions de la section **Git & GitHub** reprennent chacune de ces situations dans un terminal simulé.

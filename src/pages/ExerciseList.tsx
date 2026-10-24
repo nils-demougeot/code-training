@@ -3,7 +3,7 @@ import { CheckCircle2, Circle, CircleDashed, Clock, Code2, Cpu, Mic, RotateCcw, 
 import { useMemo } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { DifficultyBadge, Empty, PageHeader, ProgressBar } from '@/components/ui'
-import { DOMAIN_ORDER, exercises } from '@/lib/content'
+import { EXERCISE_DOMAINS, exercises } from '@/lib/content'
 import { DIFFICULTY, DOMAINS } from '@/lib/domains'
 import { domainMastery, useProgress } from '@/lib/progress'
 import type { Difficulty, Domain } from '@/lib/types'
@@ -45,7 +45,7 @@ export default function ExerciseList() {
     })
   }, [p, domain, difficulty, status, quick, q])
 
-  const groups = DOMAIN_ORDER.map((d) => ({ domain: d, items: filtered.filter((e) => e.domain === d) })).filter(
+  const groups = EXERCISE_DOMAINS.map((d) => ({ domain: d, items: filtered.filter((e) => e.domain === d) })).filter(
     (g) => g.items.length,
   )
 
@@ -85,7 +85,7 @@ export default function ExerciseList() {
           <FilterButton active={!domain} onClick={() => setParam('domain', null)}>
             Tous
           </FilterButton>
-          {DOMAIN_ORDER.map((d) => {
+          {EXERCISE_DOMAINS.map((d) => {
             const Icon = DOMAINS[d].icon
             return (
               <FilterButton key={d} active={domain === d} color={DOMAINS[d].color} onClick={() => setParam('domain', domain === d ? null : d)}>

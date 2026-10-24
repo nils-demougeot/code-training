@@ -1,0 +1,141 @@
+id: git
+title: Git & GitHub au quotidien
+domain: git
+description: Les commandes Git à connaître par cœur, situation par situation. Auto-évaluées.
+cards:
+  - id: git-status-add-commit
+    kind: reveal
+    prompt: "Enregistrer uniquement app.py dans un commit « Corrige le calcul »."
+    answer: |-
+      git add app.py
+      git commit -m "Corrige le calcul"
+  - id: git-new-branch
+    kind: reveal
+    prompt: "Créer la branche feature/export et s'y placer (deux syntaxes)."
+    answer: |-
+      git switch -c feature/export
+      git checkout -b feature/export     # ancienne syntaxe
+  - id: git-first-push
+    kind: reveal
+    prompt: "Publier la nouvelle branche feature/export sur GitHub et la relier au remote."
+    answer: |-
+      git push -u origin feature/export
+    note: "`-u` (`--set-upstream`) : ensuite `git push` et `git pull` suffisent."
+  - id: git-log-graph
+    kind: reveal
+    prompt: "Afficher tout l'historique en graphe compact, toutes branches comprises."
+    answer: |-
+      git log --oneline --graph --all
+  - id: git-diff-staged
+    kind: reveal
+    prompt: "Voir ce qui va partir dans le prochain commit (les modifs indexées)."
+    answer: |-
+      git diff --staged
+    note: "`git diff` seul montre ce qui n'est **pas encore** indexé."
+  - id: git-restore
+    kind: reveal
+    prompt: "Annuler mes modifications de config.py (revenir à la version indexée)."
+    answer: |-
+      git restore config.py
+  - id: git-unstage
+    kind: reveal
+    prompt: "Retirer notes.txt de l'index sans perdre le fichier."
+    answer: |-
+      git restore --staged notes.txt
+  - id: git-amend
+    kind: reveal
+    prompt: "Ajouter tests.py oublié au dernier commit (pas encore poussé) et corriger son message."
+    answer: |-
+      git add tests.py
+      git commit --amend -m "Ajoute le tri et ses tests"
+  - id: git-merge
+    kind: reveal
+    prompt: "Intégrer la branche feature dans main."
+    answer: |-
+      git switch main
+      git merge feature
+  - id: git-rebase
+    kind: reveal
+    prompt: "Rejouer les commits de feature au-dessus du main à jour."
+    answer: |-
+      git switch feature
+      git rebase main
+    note: "Jamais sur une branche partagée : les commits sont réécrits (nouveaux hash)."
+  - id: git-conflict
+    kind: reveal
+    prompt: "Après un merge en conflit sur config.py : les étapes pour terminer."
+    answer: |-
+      # éditer config.py : garder le bon contenu, supprimer <<<<<<< ======= >>>>>>>
+      git add config.py
+      git commit
+    note: "`git merge --abort` pour tout annuler."
+  - id: git-reset-soft
+    kind: reveal
+    prompt: "Défaire le dernier commit local en gardant ses modifications."
+    answer: |-
+      git reset --soft HEAD~1
+  - id: git-reset-hard
+    kind: reveal
+    prompt: "Jeter les 2 derniers commits locaux et leurs modifications."
+    answer: |-
+      git reset --hard HEAD~2
+    note: "⚠️ Uniquement sur des commits jamais poussés. Filet de sécurité : `git reflog`."
+  - id: git-revert
+    kind: reveal
+    prompt: "Annuler un commit déjà poussé sur main (hash a1b2c3d)."
+    answer: |-
+      git revert a1b2c3d
+      git push
+  - id: git-stash
+    kind: reveal
+    prompt: "Mettre de côté un travail en cours, changer de branche, puis le récupérer."
+    answer: |-
+      git stash
+      git switch main
+      # …
+      git switch feature
+      git stash pop
+  - id: git-cherry-pick
+    kind: reveal
+    prompt: "Copier le seul commit e4f5a6b (un correctif) sur la branche courante."
+    answer: |-
+      git cherry-pick e4f5a6b
+  - id: git-pull-rebase
+    kind: reveal
+    prompt: "Push rejeté (« fetch first ») : intégrer le travail du collègue sans commit de merge, puis pousser."
+    answer: |-
+      git pull --rebase
+      git push
+  - id: git-fetch-switch
+    kind: reveal
+    prompt: "Récupérer et ouvrir la branche fix/typo qu'une collègue vient de pousser."
+    answer: |-
+      git fetch
+      git switch fix/typo
+  - id: git-tag
+    kind: reveal
+    prompt: "Marquer la version v1.0 sur le commit courant et la publier."
+    answer: |-
+      git tag v1.0
+      git push origin v1.0
+  - id: git-pr
+    kind: reveal
+    prompt: "Ouvrir puis merger une pull request depuis le terminal (GitHub CLI)."
+    answer: |-
+      gh pr create --title "Ajoute l'export CSV"
+      gh pr merge
+  - id: git-delete-branch
+    kind: reveal
+    prompt: "Supprimer la branche feature, fusionnée, en local puis sur GitHub."
+    answer: |-
+      git branch -d feature
+      git push origin --delete feature
+  - id: git-gitignore
+    kind: reveal
+    prompt: "Quoi mettre dans le .gitignore d'un projet Python / data ?"
+    answer: |-
+      __pycache__/
+      .venv/
+      .env
+      *.ipynb_checkpoints
+      data/raw/

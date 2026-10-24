@@ -28,7 +28,7 @@ sys.path.insert(0, str(ROOT / "public"))
 
 import harness  # noqa: E402
 
-DOMAINS = {"python", "numpy", "pandas", "sql", "stats", "ml", "dl", "algo"}
+DOMAINS = {"python", "numpy", "pandas", "sql", "stats", "ml", "dl", "algo", "git"}
 DIFFICULTIES = {"easy", "medium", "hard"}
 CONTENT = ROOT / "content"
 SHARED = {p.stem: p.read_text() for p in (CONTENT / "shared").glob("*.py")}
@@ -308,6 +308,19 @@ def check_parsons(items, only):
     return n
 
 
+def check_git_levels():
+    """Git simulator lessons: the reference solution reaches every goal (src/git/levels.ts)."""
+    if not shutil.which("node"):
+        warnings.append("node not found: Git lessons not checked")
+        return 0
+    report = json.loads(subprocess.run(
+        ["node", str(ROOT / "scripts" / "git-levels-check.mjs")], capture_output=True, text=True, check=True, cwd=ROOT,
+    ).stdout)
+    for e in report["errors"]:
+        errors.append(f"git {e}")
+    return report["levels"]
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--only", help="only check items whose id contains this string")
@@ -360,6 +373,7 @@ def main():
             errors.append(f"duplicate id {item.get('id')} (parsons)")
         parsons_items[item.get("id")] = item
     n_parsons = check_parsons(parsons_items, args.only)
+    n_git = 0 if args.only and not args.only.startswith("git") else check_git_levels()
 
     n_proj = 0
     for path in sorted((CONTENT / "projects").glob("*.yaml")):
@@ -396,7 +410,7 @@ def main():
             if key not in f:
                 errors.append(f"{path.name}: missing {key}")
 
-    print(f"\n{n_ex} exercices, {n_proj} projets, {n_cards} cartes, {n_quiz} questions de quiz, {n_docs} entrées de doc, {n_parsons} problèmes de blocs vérifiés.")
+    print(f"\n{n_ex} exercices, {n_proj} projets, {n_cards} cartes, {n_quiz} questions de quiz, {n_docs} entrées de doc, {n_parsons} problèmes de blocs, {n_git} missions Git vérifiés.")
     for w in warnings:
         print(f"⚠️  {w}")
     for e in errors:
