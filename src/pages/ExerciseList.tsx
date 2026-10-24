@@ -2,9 +2,11 @@ import clsx from 'clsx'
 import { CheckCircle2, Circle, CircleDashed, Clock, Code2, Cpu, Mic, RotateCcw, Search } from 'lucide-react'
 import { useMemo } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
+import { LabelChips } from '@/components/Labels'
 import { DifficultyBadge, Empty, PageHeader, ProgressBar } from '@/components/ui'
 import { EXERCISE_DOMAINS, exercises } from '@/lib/content'
 import { DIFFICULTY, DOMAINS } from '@/lib/domains'
+import { LABELS, type LabelId } from '@/lib/labels'
 import { domainMastery, useProgress } from '@/lib/progress'
 import type { Difficulty, Domain } from '@/lib/types'
 
@@ -17,6 +19,7 @@ export default function ExerciseList() {
   const difficulty = (params.get('diff') as Difficulty | null) ?? null
   const status = (params.get('status') as Status | null) ?? 'all'
   const quick = params.get('quick') === '1'
+  const label = (params.get('label') as LabelId | null) ?? null
   const q = params.get('q') ?? ''
 
   const setParam = (key: string, value: string | null) => {
@@ -34,6 +37,7 @@ export default function ExerciseList() {
       if (domain && e.domain !== domain) return false
       if (difficulty && e.difficulty !== difficulty) return false
       if (quick && e.minutes > 10) return false
+      if (label && !p.labels?.[e.id]?.ids.includes(label)) return false
       if (status === 'todo' && ep?.status === 'solved') return false
       if (status === 'solved' && ep?.status !== 'solved') return false
       if (status === 'review' && !(ep?.review && ep.review.due <= now)) return false
@@ -43,7 +47,12 @@ export default function ExerciseList() {
       }
       return true
     })
-  }, [p, domain, difficulty, status, quick, q])
+  }, [p, domain, difficulty, status, quick, label, q])
+
+  const labelCounts = useMemo(
+    () => Object.fromEntries(LABELS.map((l) => [l.id, exercises.filter((e) => p.labels?.[e.id]?.ids.includes(l.id)).length])),
+    [p.labels],
+  )
 
   const groups = EXERCISE_DOMAINS.map((d) => ({ domain: d, items: filtered.filter((e) => e.domain === d) })).filter(
     (g) => g.items.length,
@@ -73,11 +82,21 @@ export default function ExerciseList() {
           </FilterButton>
           {(['todo', 'solved', 'review'] as Status[]).map((s) => (
             <FilterButton key={s} active={status === s} onClick={() => setParam('status', status === s ? null : s)}>
-              {s === 'todo' ? 'À faire' : s === 'solved' ? 'Résolus' : (
+              {s === 'todo' ? 'Non résolus' : s === 'solved' ? 'Résolus' : (
                 <>
                   <RotateCcw className="size-3.5" />À réviser
                 </>
               )}
+            </FilterButton>
+          ))}
+        </div>
+        <div className="flex flex-wrap items-center gap-2" data-label-filters>
+          <span className="text-xs text-faint">Mes listes :</span>
+          {LABELS.map((l) => (
+            <FilterButton key={l.id} active={label === l.id} color={l.color} onClick={() => setParam('label', label === l.id ? null : l.id)}>
+              <span>{l.emoji}</span>
+              {l.label}
+              <span className="text-faint">{labelCounts[l.id]}</span>
             </FilterButton>
           ))}
         </div>
@@ -105,7 +124,9 @@ export default function ExerciseList() {
 
       {groups.length === 0 && (
         <Empty icon={<Search className="size-6" />} title="Aucun exercice ne correspond">
-          Essaie d’enlever un filtre.
+          {label && !labelCounts[label]
+            ? 'Cette liste est vide : ouvre un exercice et clique sur « Étiqueter » pour l’y ajouter.'
+            : 'Essaie d’enlever un filtre.'}
         </Empty>
       )}
 
@@ -155,6 +176,7 @@ export default function ExerciseList() {
                           <span className="truncate text-sm font-medium group-hover:text-fg">{e.title}</span>
                           {e.interview && <Mic className="size-3.5 shrink-0 text-accent" aria-label="Question d’entretien" />}
                           {e.engine === 'local' && <Cpu className="size-3.5 shrink-0 text-warn" aria-label="Runner local" />}
+                          <LabelChips ids={p.labels?.[e.id]?.ids ?? []} compact />
                         </div>
                         <div className="mt-0.5 truncate text-xs text-faint">{e.tags.join(' · ')}</div>
                       </div>

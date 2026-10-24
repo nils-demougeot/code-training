@@ -7,12 +7,14 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { DocBrowser, docLibForDomain } from '@/components/DocBrowser'
+import { LabelPicker, useLabels } from '@/components/Labels'
 import { CodeBlock, Markdown } from '@/components/Markdown'
 import { DifficultyBadge, DomainChip, Empty, Tabs } from '@/components/ui'
 import { SplitPane, Workspace } from '@/components/Workspace'
 import { cardById, exerciseById, exercises, parsonsById, setupOf, toPython } from '@/lib/content'
 import { runCode, runTests } from '@/lib/engine'
 import { diffLines, similarity } from '@/lib/diff'
+import { toggled, type LabelId } from '@/lib/labels'
 import { exerciseXp, useProgress } from '@/lib/progress'
 import { formatInterval, scheduleAfterSolve, type Grade } from '@/lib/srs'
 import type { Exercise, RunResult, TestResult } from '@/lib/types'
@@ -267,6 +269,7 @@ function ExerciseView({ ex }: { ex: Exercise }) {
               En blocs
             </Link>
           )}
+          {!recall && <LabelPicker id={ex.id} />}
           {!solved && (
             <span className="chip ml-auto text-accent-2" title="XP si tu réussis maintenant">
               <Sparkles className="size-3" />
@@ -483,11 +486,14 @@ function ExerciseView({ ex }: { ex: Exercise }) {
 
 function SolvedPanel({ ex, xp, seconds, next }: { ex: Exercise; xp: number; seconds: number; next?: Exercise }) {
   const reviewExercise = useProgress((s) => s.reviewExercise)
+  const setLabels = useProgress((s) => s.setLabels)
+  const labels = useLabels(ex.id)
   const [picked, setPicked] = useState<Grade | null>(null)
-  const options: { grade: Grade; label: string }[] = [
-    { grade: 1, label: 'Laborieux' },
+  // Grading also files the exercise in the matching list (« À retravailler » or « Facile »).
+  const options: { grade: Grade; label: string; tag?: LabelId }[] = [
+    { grade: 1, label: 'Laborieux', tag: 'rework' },
     { grade: 2, label: 'Correct' },
-    { grade: 3, label: 'Facile' },
+    { grade: 3, label: 'Facile', tag: 'easy' },
   ]
   return (
     <div className="relative overflow-hidden rounded-2xl border border-ok/30 bg-gradient-to-br from-ok/[0.12] to-accent-2/[0.05] p-5 animate-pop">
@@ -503,7 +509,9 @@ function SolvedPanel({ ex, xp, seconds, next }: { ex: Exercise; xp: number; seco
           </div>
         </div>
       </div>
-      <div className="mt-4 text-xs text-muted">Comment c’était ? (planifie la prochaine révision)</div>
+      <div className="mt-4 text-xs text-muted">
+        Comment c’était ? Planifie la prochaine révision, et range l’exercice dans « Facile » ou « À retravailler ».
+      </div>
       <div className="mt-2 flex flex-wrap gap-2">
         {options.map((o) => {
           const interval = scheduleAfterSolve(o.grade).interval
@@ -513,6 +521,8 @@ function SolvedPanel({ ex, xp, seconds, next }: { ex: Exercise; xp: number; seco
               onClick={() => {
                 setPicked(o.grade)
                 reviewExercise(ex.id, o.grade, true)
+                const others = labels.filter((l) => l !== 'rework' && l !== 'easy')
+                setLabels(ex.id, o.tag ? toggled(others, o.tag) : others)
               }}
               className={clsx('btn btn-ghost px-3 py-1.5 text-xs', picked === o.grade && 'border-ok/50 bg-ok/10')}
             >

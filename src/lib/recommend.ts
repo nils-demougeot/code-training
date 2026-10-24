@@ -26,7 +26,8 @@ export function recommendExercise(p: Progress, opts: { maxMinutes?: number; excl
   const mastery = Object.fromEntries(DOMAIN_ORDER.map((d) => [d, domainMastery(p, d).ratio]))
   return [...candidates].sort(
     (a, b) =>
-      // In-progress exercises first: finish what was started.
+      // Exercises set aside with « À faire » first, then those already started.
+      Number(!!p.labels?.[b.id]?.ids.includes('todo')) - Number(!!p.labels?.[a.id]?.ids.includes('todo')) ||
       Number(!!p.exercises[b.id]) - Number(!!p.exercises[a.id]) ||
       DIFF[a.difficulty] - DIFF[b.difficulty] ||
       mastery[a.domain] - mastery[b.domain] ||

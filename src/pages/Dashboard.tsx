@@ -9,6 +9,7 @@ import { Heatmap, Radar } from '@/components/charts'
 import { DifficultyBadge, DomainChip, ProgressBar, ProgressRing } from '@/components/ui'
 import { cards, EXERCISE_DOMAINS, exercises } from '@/lib/content'
 import { DOMAINS } from '@/lib/domains'
+import { LABELS } from '@/lib/labels'
 import { BADGES, domainMastery, levelInfo, streak, totalXp, useProgress } from '@/lib/progress'
 import { dueCards, dueExerciseReviews, inProgress, recommendExercise, todayStats } from '@/lib/recommend'
 import { useSettings } from '@/lib/settings'
@@ -260,6 +261,28 @@ export default function Dashboard() {
               <ExploreLink to="/fiches" icon={<Layers className="size-4" />} title="list vs ndarray vs DataFrame" sub="Fiches de synthèse" />
             </div>
           )}
+          <div className="mt-5" data-my-lists>
+            <div className="mb-2 text-xs font-medium text-muted">Mes listes</div>
+            <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3">
+              {LABELS.map((l) => {
+                const n = exercises.filter((e) => p.labels?.[e.id]?.ids.includes(l.id)).length
+                return (
+                  <Link
+                    key={l.id}
+                    to={`/exercices?label=${l.id}`}
+                    className="flex items-center gap-2 rounded-xl border border-line px-2.5 py-1.5 text-xs transition hover:border-line-strong hover:bg-white/[0.03]"
+                    title={l.hint}
+                  >
+                    <span>{l.emoji}</span>
+                    <span className="min-w-0 flex-1 truncate">{l.label}</span>
+                    <span className="font-medium" style={{ color: n ? l.color : undefined }}>
+                      {n}
+                    </span>
+                  </Link>
+                )
+              })}
+            </div>
+          </div>
           <div className="mt-5">
             <div className="mb-2 text-xs font-medium text-muted">Badges</div>
             <div className="flex flex-wrap gap-1.5">

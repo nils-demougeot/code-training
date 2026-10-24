@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { exerciseById, exercises, projectById } from './content'
 import { DIFFICULTY } from './domains'
+import type { LabelId } from './labels'
 import { schedule, scheduleAfterSolve, type Grade, type SrsState } from './srs'
 import type { Domain } from './types'
 
@@ -23,6 +24,12 @@ export interface ExerciseProgress {
   bestRecallSec?: number
   /** Passed the bonus (optimal complexity) tests at least once. */
   optimal?: boolean
+  updatedAt: number
+}
+
+/** Personal labels on an item (exercise id). */
+export interface LabelsEntry {
+  ids: LabelId[]
   updatedAt: number
 }
 
@@ -107,6 +114,7 @@ export interface Progress {
   }
   interviews: InterviewRecord[]
   competitions: Record<string, CompetitionProgress>
+  labels: Record<string, LabelsEntry>
   maths: Record<string, MathProgress>
   bosses: Record<string, BossProgress>
   parsons: Record<string, ParsonsProgress>
@@ -125,6 +133,7 @@ export const emptyProgress = (): Progress => ({
   quiz: { answered: 0, correct: 0, bestCombo: 0, bestScore: 0, seen: {} },
   interviews: [],
   competitions: {},
+  labels: {},
   maths: {},
   bosses: {},
   parsons: {},
@@ -356,6 +365,7 @@ export function mergeProgress(local: Progress, remote: Progress): Progress {
     },
     interviews: [...new Map([...r.interviews, ...local.interviews].map((i) => [i.id, i])).values()]
       .sort((a, b) => b.date - a.date),
+    labels: mergeRecords(local.labels ?? {}, r.labels ?? {}, (x, y) => (!x ? y : !y ? x : y.updatedAt > x.updatedAt ? y : x)),
     competitions: mergeRecords(local.competitions ?? {}, r.competitions ?? {}, (x, y) => {
       if (!x || !y) return x ?? y
       const latest = y.updatedAt > x.updatedAt ? y : x
@@ -439,6 +449,8 @@ interface ProgressStore {
   labExperiment: (lab: string, experiment: string) => void
   finishInterview: (record: InterviewRecord) => void
   grantXp: (xp: number, label: string) => void
+  /** Replaces the labels of an exercise. */
+  setLabels: (id: string, ids: LabelId[]) => void
   saveCompetitionCell: (id: string, stepId: string, code: string) => void
   /** Returns the XP earned (first time only). */
   completeCompetitionStep: (id: string, stepId: string) => number
@@ -540,6 +552,9 @@ export const useProgress = create<ProgressStore>((set, get) => {
           if (firstTime) e.review = scheduleAfterSolve(e.solutionSeen || e.hintsUsed > 1 ? 1 : 2)
           else if (isReview) e.review = schedule(e.review, 2)
           e.updatedAt = now
+          // « À faire » is done once the exercise is solved.
+          const labels = p.labels?.[id]
+          if (labels?.ids.includes('todo')) p.labels[id] = { ids: labels.ids.filter((l) => l !== 'todo'), updatedAt: now }
         },
         xp,
         def ? def.title : 'Exercice',
@@ -668,6 +683,13 @@ export const useProgress = create<ProgressStore>((set, get) => {
       ),
 
     grantXp: (xp, label) => commit(() => {}, xp, label),
+
+    setLabels: (id, ids) =>
+      commit((p) => {
+        p.labels ??= {}
+        // An empty list is kept (not deleted) so that the removal wins when syncing with another device.
+        p.labels[id] = { ids, updatedAt: Date.now() }
+      }),
 
     saveCompetitionCell: (id, stepId, code) =>
       commit((p) => {
