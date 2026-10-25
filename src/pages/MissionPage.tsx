@@ -10,7 +10,7 @@ import { missionById } from '@/lib/content'
 import { useProgress } from '@/lib/progress'
 import type { Mission, MissionChoice, MissionOption, QuestionValue } from '@/lib/types'
 import { isCorrect, parseAnswer, plain, precisionLabel, rng } from '@/maths/core'
-import { celebrate } from './ExercisePage'
+import { celebrate } from '@/lib/celebrate'
 
 // ---------------------------------------------------------------- scoring
 

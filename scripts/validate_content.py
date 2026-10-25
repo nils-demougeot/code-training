@@ -415,6 +415,28 @@ def check_git_levels():
     return report["levels"]
 
 
+def check_mental():
+    """Mental arithmetic (src/mental): every level drawn 2,000 times; each answer recomputed in Python
+    from its own expression, typing the displayed answer is accepted, and answers stay mental-sized."""
+    if not shutil.which("node"):
+        warnings.append("node not found: mental arithmetic not checked")
+        return 0
+    report = json.loads(subprocess.run(
+        ["node", str(ROOT / "scripts" / "mental-export.mjs"), "2000"], capture_output=True, text=True, check=True, cwd=ROOT,
+    ).stdout)
+    for p in report["problems"]:
+        errors.append(f"calcul mental {p}")
+    for smp in report["samples"]:
+        got = eval(smp["expr"], {"__builtins__": {}})
+        ans = smp["answer"]
+        name = f"calcul mental niv. {smp['level']} « {smp['text']} »"
+        if abs(got - ans) > 1e-9 * max(1, abs(ans)):
+            errors.append(f"{name}: Python gives {got}, the app expects {ans}")
+        elif abs(round(ans, 3) - ans) > 1e-9 or abs(ans) >= 100_000:
+            errors.append(f"{name}: answer {ans} is not a mental-arithmetic answer")
+    return len(report["samples"])
+
+
 def odd_dollars(text):
     """A lone `$` starts a formula in the Markdown renderer: amounts must be written with € or `USD`."""
     return len(re.findall(r"(?<!\\)\$", text.replace("$$", ""))) % 2 == 1
@@ -660,7 +682,9 @@ def main():
         n_explain += 1
         check_explain(path, yaml.safe_load(path.read_text()), rules)
 
-    print(f"\n{n_ex} exercices, {n_proj} projets, {n_cards} cartes, {n_quiz} questions de quiz, {n_docs} entrées de doc, {n_parsons} problèmes de blocs, {n_git} missions Git, {n_comp} compétitions, {n_maths} exercices de maths ({n_maths_inst} tirages), {n_missions} missions client, {n_explain} decks explain vérifiés.")
+    n_mental = 0 if args.only and not args.only.startswith("mental") else check_mental()
+
+    print(f"\n{n_ex} exercices, {n_proj} projets, {n_cards} cartes, {n_quiz} questions de quiz, {n_docs} entrées de doc, {n_parsons} problèmes de blocs, {n_git} missions Git, {n_comp} compétitions, {n_maths} exercices de maths ({n_maths_inst} tirages), {n_missions} missions client, {n_explain} decks explain, {n_mental} calculs mentaux vérifiés.")
     for w in warnings:
         print(f"⚠️  {w}")
     for e in errors:

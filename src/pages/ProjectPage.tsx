@@ -11,7 +11,7 @@ import { projectById, setupOf } from '@/lib/content'
 import { runCode, runTests } from '@/lib/engine'
 import { useProgress } from '@/lib/progress'
 import type { Project, RunResult, TestResult } from '@/lib/types'
-import { celebrate } from './ExercisePage'
+import { celebrate } from '@/lib/celebrate'
 
 export default function ProjectPage() {
   const { id = '' } = useParams()

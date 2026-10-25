@@ -1,9 +1,10 @@
 import clsx from 'clsx'
-import { BookMarked, BookOpen, Bot, Briefcase, Code2, CornerDownLeft, FlaskConical, Puzzle, Rocket, Search, Sigma, Trophy } from 'lucide-react'
+import { BookMarked, BookOpen, Bot, Briefcase, Calculator, Code2, CornerDownLeft, FlaskConical, Puzzle, Rocket, Search, Sigma, Trophy } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { competitions, docLibraries, exercises, explainDecks, fiches, missions, parsonsProblems, projects } from '@/lib/content'
 import { GENAI_CHAPTERS } from '@/genai'
+import { LEVELS } from '@/mental/generators'
 import { DOMAINS } from '@/lib/domains'
 import { LABS } from '@/labs/registry'
 import { CHAPTERS } from '@/maths'
@@ -13,10 +14,10 @@ interface Item {
   label: string
   sub: string
   to: string
-  kind: 'exercise' | 'fiche' | 'project' | 'lab' | 'doc' | 'competition' | 'blocks' | 'maths' | 'genai' | 'prep'
+  kind: 'exercise' | 'fiche' | 'project' | 'lab' | 'doc' | 'competition' | 'blocks' | 'maths' | 'genai' | 'prep' | 'mental'
 }
 
-const ICONS = { exercise: Code2, fiche: BookOpen, project: Rocket, lab: FlaskConical, doc: BookMarked, competition: Trophy, blocks: Puzzle, maths: Sigma, genai: Bot, prep: Briefcase }
+const ICONS = { exercise: Code2, fiche: BookOpen, project: Rocket, lab: FlaskConical, doc: BookMarked, competition: Trophy, blocks: Puzzle, maths: Sigma, genai: Bot, prep: Briefcase, mental: Calculator }
 
 function normalize(s: string) {
   return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
@@ -45,6 +46,7 @@ export function CommandPalette() {
         { id: `genai-${c.id}`, label: c.title, sub: `GenAI Academy · ${c.summary}`, to: `/genai/${c.id}`, kind: 'genai' as const },
         ...c.exercises.map((e) => ({ id: `genai-${e.id}`, label: e.title, sub: `GenAI Academy · ${c.title} · ${e.skill}`, to: `/genai/${c.id}?tab=exercices&ex=${e.id}`, kind: 'genai' as const })),
       ]),
+      ...LEVELS.map((l) => ({ id: `mental-${l.id}`, label: `Calcul mental · ${l.name}`, sub: `Calcul mental · ${l.desc}`, to: '/calcul', kind: 'mental' as const })),
       ...missions.map((m) => ({ id: `mission-${m.id}`, label: m.title, sub: `Client mission · ${m.industry} · ${m.client.role}`, to: `/missions/${m.id}`, kind: 'prep' as const })),
       ...explainDecks.map((d) => ({ id: `explain-${d.id}`, label: d.title, sub: `Explain it simply · ${d.summary}`, to: `/explain/${d.id}`, kind: 'prep' as const })),
       ...competitions.map((c) => ({ id: c.id, label: c.title, sub: `Compétition · ${c.summary}`, to: `/competitions/${c.id}`, kind: 'competition' as const })),

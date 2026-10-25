@@ -25,6 +25,7 @@ const Maths = lazy(() => import('./pages/Maths'))
 const MathChapter = lazy(() => import('./pages/MathChapter'))
 const GenAIHome = lazy(() => import('./pages/GenAIHome'))
 const Prep = lazy(() => import('./pages/Prep'))
+const Mental = lazy(() => import('./pages/Mental'))
 const MissionPage = lazy(() => import('./pages/MissionPage'))
 const ExplainPage = lazy(() => import('./pages/ExplainPage'))
 const Blocks = lazy(() => import('./pages/Blocks'))
@@ -79,6 +80,7 @@ export default function App() {
           <Route path="/genai" element={<GenAIHome />} />
           <Route path="/genai/:chapter" element={<MathChapter course="genai" />} />
           <Route path="/prep" element={<Prep />} />
+          <Route path="/calcul" element={<Mental />} />
           <Route path="/missions" element={<Navigate to="/prep#missions" replace />} />
           <Route path="/missions/:id" element={<MissionPage />} />
           <Route path="/explain" element={<Navigate to="/prep#explain" replace />} />

@@ -1,4 +1,4 @@
-import confetti from 'canvas-confetti'
+import { celebrate } from '@/lib/celebrate'
 import clsx from 'clsx'
 import {
   ArrowLeft, ArrowRight, BookMarked, BookOpenCheck, Brain, CheckCircle2, Clock, Cpu, Eye, Gauge, Lightbulb, Lock, Medal, Mic,
@@ -40,12 +40,7 @@ function useTimer(resetKey: string) {
   return { seconds, restart, label: `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}` }
 }
 
-export function celebrate() {
-  const colors = ['#8b5cf6', '#22d3ee', '#34d399', '#fbbf24']
-  confetti({ particleCount: 90, spread: 70, origin: { y: 0.7 }, colors, disableForReducedMotion: true })
-  setTimeout(() => confetti({ particleCount: 50, angle: 60, spread: 55, origin: { x: 0, y: 0.8 }, colors, disableForReducedMotion: true }), 180)
-  setTimeout(() => confetti({ particleCount: 50, angle: 120, spread: 55, origin: { x: 1, y: 0.8 }, colors, disableForReducedMotion: true }), 300)
-}
+export { celebrate }
 
 /** Builds the Python source to execute for a "Run" (SQL exercises print the query result). */
 export function runnableCode(ex: Pick<Exercise, 'language'>, code: string) {

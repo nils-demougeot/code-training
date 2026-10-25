@@ -13,7 +13,7 @@ import { runCode, runTests } from '@/lib/engine'
 import { assemble, distractorBlocks, shuffled, toBlocks, type ParsonsBlock } from '@/lib/parsons'
 import { useProgress } from '@/lib/progress'
 import type { ParsonsProblem, RunResult } from '@/lib/types'
-import { celebrate } from './ExercisePage'
+import { celebrate } from '@/lib/celebrate'
 import { ParsonsBoard, type BoardState } from './ParsonsBoard'
 
 const MODE_KEY = 'ct.parsons.mode'

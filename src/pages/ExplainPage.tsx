@@ -8,7 +8,7 @@ import { explainById } from '@/lib/content'
 import { useProgress } from '@/lib/progress'
 import type { ExplainDeck, ExplainItem, ExplainWrite } from '@/lib/types'
 import { rng } from '@/maths/core'
-import { celebrate } from './ExercisePage'
+import { celebrate } from '@/lib/celebrate'
 
 const KIND_LABEL: Record<ExplainItem['kind'], string> = {
   explain: 'Pick the clearest explanation',

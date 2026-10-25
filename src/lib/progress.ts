@@ -33,6 +33,16 @@ export interface LabelsEntry {
   updatedAt: number
 }
 
+/** Mental arithmetic, per game mode and level (key "sprint:3", "daily:2026-10-25"…). */
+export interface MentalRecord {
+  best: number
+  games: number
+  /** Correct answers over all games. */
+  correct: number
+  bestCombo: number
+  updatedAt: number
+}
+
 /** Client mission (case simulator): best score out of 100. */
 export interface MissionProgress {
   best: number
@@ -126,6 +136,7 @@ export interface Progress {
   missions: Record<string, MissionProgress>
   /** Explain-it-simply decks: best score out of 100. */
   explain: Record<string, MissionProgress>
+  mental: Record<string, MentalRecord>
   maths: Record<string, MathProgress>
   bosses: Record<string, BossProgress>
   parsons: Record<string, ParsonsProgress>
@@ -147,6 +158,7 @@ export const emptyProgress = (): Progress => ({
   labels: {},
   missions: {},
   explain: {},
+  mental: {},
   maths: {},
   bosses: {},
   parsons: {},
@@ -275,6 +287,18 @@ export const BADGES: BadgeDef[] = [
   {
     id: 'optimal-3', emoji: '⚙️', label: 'Optimiseur', description: 'Atteindre la complexité optimale sur 3 exercices',
     test: (p) => Object.values(p.exercises).filter((e) => e.optimal).length >= 3,
+  },
+  {
+    id: 'mental-1', emoji: '🧮', label: 'Calculette humaine', description: 'Terminer une partie de calcul mental',
+    test: (p) => Object.values(p.mental ?? {}).some((m) => m.games > 0),
+  },
+  {
+    id: 'mental-combo', emoji: '⚡', label: 'Combo ×20', description: 'Enchaîner 20 bonnes réponses en calcul mental',
+    test: (p) => Object.values(p.mental ?? {}).some((m) => m.bestCombo >= 20),
+  },
+  {
+    id: 'mental-500', emoji: '🧠', label: 'Cerveau d’acier', description: '500 bonnes réponses en calcul mental',
+    test: (p) => Object.values(p.mental ?? {}).reduce((a, m) => a + m.correct, 0) >= 500,
   },
   {
     id: 'mission-1', emoji: '💼', label: 'Premier client', description: 'Terminer une mission client',
@@ -407,6 +431,17 @@ export function mergeProgress(local: Progress, remote: Progress): Progress {
             updatedAt: Math.max(x.updatedAt, y.updatedAt),
           },
     ),
+    mental: mergeRecords(local.mental ?? {}, r.mental ?? {}, (x, y) =>
+      !x || !y
+        ? (x ?? y)
+        : {
+            best: Math.max(x.best, y.best),
+            games: Math.max(x.games, y.games),
+            correct: Math.max(x.correct, y.correct),
+            bestCombo: Math.max(x.bestCombo, y.bestCombo),
+            updatedAt: Math.max(x.updatedAt, y.updatedAt),
+          },
+    ),
     competitions: mergeRecords(local.competitions ?? {}, r.competitions ?? {}, (x, y) => {
       if (!x || !y) return x ?? y
       const latest = y.updatedAt > x.updatedAt ? y : x
@@ -494,6 +529,8 @@ interface ProgressStore {
   finishMission: (id: string, score: number) => number
   /** An explain-it-simply deck was played with this score (0-100); returns the XP earned. */
   finishExplain: (id: string, score: number) => number
+  /** A mental-arithmetic game ended; returns the XP earned and whether it is a new record. */
+  finishMental: (key: string, game: { score: number; correct: number; combo: number }) => { xp: number; record: boolean }
   /** Replaces the labels of an exercise. */
   setLabels: (id: string, ids: LabelId[]) => void
   saveCompetitionCell: (id: string, stepId: string, code: string) => void
@@ -767,6 +804,28 @@ export const useProgress = create<ProgressStore>((set, get) => {
         'Explain it simply',
       )
       return xp
+    },
+
+    finishMental: (key, game) => {
+      const prev = get().p.mental?.[key]
+      const record = !!prev && game.score > prev.best
+      // Half an XP per correct answer (capped), a bonus for a record or the first daily challenge of the day.
+      const xp = Math.min(25, Math.ceil(game.correct / 2)) + (record ? 5 : 0) + (key.startsWith('daily:') && !prev ? 10 : 0)
+      commit(
+        (p) => {
+          p.mental ??= {}
+          p.mental[key] = {
+            best: Math.max(game.score, prev?.best ?? 0),
+            games: (prev?.games ?? 0) + 1,
+            correct: (prev?.correct ?? 0) + game.correct,
+            bestCombo: Math.max(game.combo, prev?.bestCombo ?? 0),
+            updatedAt: Date.now(),
+          }
+        },
+        xp,
+        'Calcul mental',
+      )
+      return { xp, record }
     },
 
     setLabels: (id, ids) =>

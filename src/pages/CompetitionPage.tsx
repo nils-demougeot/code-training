@@ -13,7 +13,7 @@ import { runCode, runTests } from '@/lib/engine'
 import { MEDAL_LABEL, useProgress, type Medal } from '@/lib/progress'
 import type { Competition, CompetitionStep, RunResult } from '@/lib/types'
 import { formatScore, MEDAL_EMOJI, medalFor } from './Competitions'
-import { celebrate } from './ExercisePage'
+import { celebrate } from '@/lib/celebrate'
 
 /** The previous cells run silently before the current one, in the same namespace (like a notebook). */
 function withPreviousCells(setup: string, cells: string[]): string {

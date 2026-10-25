@@ -1,6 +1,6 @@
 import clsx from 'clsx'
 import {
-  BookMarked, BookOpen, Bot, Briefcase, Trophy, Code2, Cpu, Sigma, GitBranch, Flame, FlaskConical, Globe, LayoutDashboard, Layers, Menu, Mic, Puzzle, Rocket, Search,
+  BookMarked, BookOpen, Bot, Briefcase, Calculator, Trophy, Code2, Cpu, Sigma, GitBranch, Flame, FlaskConical, Globe, LayoutDashboard, Layers, Menu, Mic, Puzzle, Rocket, Search,
   UserCircle2, X, Zap,
 } from 'lucide-react'
 import { useEffect, useId, useMemo, useState, type ReactNode } from 'react'
@@ -27,6 +27,7 @@ const NAV: { to: string; label: string; icon: typeof Code2; badge?: 'cards' }[] 
   { to: '/memoire', label: 'Mémoire', icon: Layers, badge: 'cards' },
   { to: '/blocs', label: 'Blocs de code', icon: Puzzle },
   { to: '/quiz', label: 'Quiz éclair', icon: Zap },
+  { to: '/calcul', label: 'Calcul mental', icon: Calculator },
   { to: '/labs', label: 'Labs', icon: FlaskConical },
   { to: '/projets', label: 'Projets', icon: Rocket },
   { to: '/competitions', label: 'Compétitions', icon: Trophy },
@@ -112,7 +113,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
         <span className="flex-1 text-left">Rechercher…</span>
         <kbd className="kbd">Ctrl K</kbd>
       </button>
-      <nav className="flex-1 space-y-0.5 px-3">
+      <nav className="min-h-0 flex-1 space-y-0.5 overflow-y-auto px-3">
         {NAV.map(({ to, label, icon: Icon, badge }) => (
           <NavLink
             key={to}

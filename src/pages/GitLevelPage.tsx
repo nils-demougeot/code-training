@@ -10,7 +10,7 @@ import { exec, type GitState } from '@/git/engine'
 import { GitGraph, localRefs, remoteRefs } from '@/git/GitGraph'
 import { GitLab } from '@/git/GitLab'
 import { CHAPTERS, LEVELS, levelById, sandboxState, type GitLevel } from '@/git/levels'
-import { celebrate } from './ExercisePage'
+import { celebrate } from '@/lib/celebrate'
 
 const SANDBOX = 'bac-a-sable'
 

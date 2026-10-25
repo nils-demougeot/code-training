@@ -9,7 +9,7 @@ import { BOSS_LIVES, BOSS_ROUNDS, bossPool, rng, type Chapter } from '@/maths'
 import { COURSES, type Course } from '@/maths/courses'
 import { t } from '@/maths/i18n'
 import { MathPlayer, Stars, type Outcome } from '@/maths/MathPlayer'
-import { celebrate } from './ExercisePage'
+import { celebrate } from '@/lib/celebrate'
 import { FormulaSheet } from './Maths'
 
 type Tab = 'cours' | 'exercices' | 'boss'
