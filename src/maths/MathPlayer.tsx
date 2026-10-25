@@ -1,6 +1,7 @@
 import clsx from 'clsx'
 import { Check, Eye, Lightbulb, RefreshCw, Send, Star, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useAskContext } from '@/lib/askClaude'
 import { Markdown } from '@/components/Markdown'
 import { isCorrect, parseAnswer, plain, precisionLabel, rng, type Lang, type MathExercise, type MathInstance } from './core'
 import { t } from './i18n'
@@ -49,6 +50,33 @@ export function MathPlayer({
   const [wrong, setWrong] = useState(0)
   const [hint, setHint] = useState(false)
   const [done, setDone] = useState<Outcome | null>(null)
+
+  // Context for "Ask Claude" (not during a boss fight).
+  useAskContext(
+    useMemo(() => {
+      if (boss) return null
+      const en = lang === 'en'
+      const answer = inst.choice
+        ? choice !== null
+          ? inst.choice.options[choice]
+          : ''
+        : inst.fields.map((f, i) => `${f.label} : ${values[i] || '?'}`).join('\n')
+      return {
+        kind: en ? 'GenAI Academy exercise' : 'Exercice de maths',
+        title: exercise.title,
+        english: en,
+        sections: [
+          { label: en ? 'Statement' : 'Énoncé', content: inst.statement },
+          ...(inst.choice ? [{ label: 'Options', content: inst.choice.options.map((o) => `- ${o}`).join('\n') }] : []),
+          { label: en ? 'My answer' : 'Ma réponse', content: answer },
+          ...(done ? [{ label: en ? 'Correction shown' : 'Correction affichée', content: inst.solution }] : []),
+        ],
+        suggestions: en
+          ? ['Give me a hint', 'Explain the concept behind it', 'Why is my answer wrong?']
+          : ['Donne-moi un indice', 'Explique-moi la formule', 'Pourquoi ma réponse est fausse ?'],
+      }
+    }, [boss, lang, inst, choice, values, done, exercise.title]),
+  )
   const first = useRef<HTMLInputElement>(null)
 
   useEffect(() => {

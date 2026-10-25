@@ -1,6 +1,6 @@
 import clsx from 'clsx'
 import {
-  BookMarked, BookOpen, Bot, Briefcase, Calculator, Trophy, Code2, Cpu, Sigma, GitBranch, Flame, FlaskConical, Globe, LayoutDashboard, Layers, Menu, Mic, Puzzle, Rocket, Search,
+  BookMarked, BookOpen, Bot, Briefcase, Calculator, ChevronDown, MessageSquareText, Trophy, Users, Code2, Cpu, Sigma, GitBranch, Flame, FlaskConical, Globe, LayoutDashboard, Layers, Menu, Mic, Puzzle, Rocket, Search,
   UserCircle2, X, Zap,
 } from 'lucide-react'
 import { useEffect, useId, useMemo, useState, type ReactNode } from 'react'
@@ -9,6 +9,7 @@ import { cards } from '@/lib/content'
 import { useEngine } from '@/lib/engine'
 import { levelInfo, streak, totalXp, useProgress } from '@/lib/progress'
 import { useSettings } from '@/lib/settings'
+import { AskClaude } from './AskClaude'
 import { CommandPalette } from './CommandPalette'
 import { RewardToasts } from './RewardToasts'
 
@@ -20,24 +21,75 @@ export function useDueCards(): number {
   }, [p])
 }
 
-const NAV: { to: string; label: string; icon: typeof Code2; badge?: 'cards' }[] = [
-  { to: '/', label: 'Accueil', icon: LayoutDashboard },
-  { to: '/prep', label: 'Prépa BCG X', icon: Briefcase },
-  { to: '/exercices', label: 'Exercices', icon: Code2 },
-  { to: '/memoire', label: 'Mémoire', icon: Layers, badge: 'cards' },
-  { to: '/blocs', label: 'Blocs de code', icon: Puzzle },
-  { to: '/quiz', label: 'Quiz éclair', icon: Zap },
-  { to: '/calcul', label: 'Calcul mental', icon: Calculator },
-  { to: '/labs', label: 'Labs', icon: FlaskConical },
-  { to: '/projets', label: 'Projets', icon: Rocket },
-  { to: '/competitions', label: 'Compétitions', icon: Trophy },
-  { to: '/maths', label: 'Maths', icon: Sigma },
-  { to: '/genai', label: 'GenAI Academy', icon: Bot },
-  { to: '/git', label: 'Git & GitHub', icon: GitBranch },
-  { to: '/fiches', label: 'Fiches', icon: BookOpen },
-  { to: '/doc', label: 'Documentation', icon: BookMarked },
-  { to: '/entretien', label: 'Entretien blanc', icon: Mic },
+type NavItem = { to: string; label: string; icon: typeof Code2; badge?: 'cards' }
+
+/** The menu, grouped by purpose. Groups can be folded; the one holding the current page stays open. */
+const NAV_GROUPS: { id: string; label: string; items: NavItem[] }[] = [
+  {
+    id: 'bcg',
+    label: 'Prépa BCG X',
+    items: [
+      { to: '/prep', label: 'Vue d’ensemble', icon: Briefcase },
+      { to: '/missions', label: 'Missions client', icon: Users },
+      { to: '/explain', label: 'Explain it simply', icon: MessageSquareText },
+      { to: '/genai', label: 'GenAI Academy', icon: Bot },
+      { to: '/calcul', label: 'Calcul mental', icon: Calculator },
+    ],
+  },
+  {
+    id: 'code',
+    label: 'Coder',
+    items: [
+      { to: '/exercices', label: 'Exercices', icon: Code2 },
+      { to: '/blocs', label: 'Blocs de code', icon: Puzzle },
+      { to: '/memoire', label: 'Mémoire', icon: Layers, badge: 'cards' },
+      { to: '/quiz', label: 'Quiz éclair', icon: Zap },
+      { to: '/entretien', label: 'Entretien blanc', icon: Mic },
+    ],
+  },
+  {
+    id: 'learn',
+    label: 'Apprendre',
+    items: [
+      { to: '/maths', label: 'Maths', icon: Sigma },
+      { to: '/labs', label: 'Labs', icon: FlaskConical },
+      { to: '/fiches', label: 'Fiches', icon: BookOpen },
+      { to: '/git', label: 'Git & GitHub', icon: GitBranch },
+      { to: '/doc', label: 'Documentation', icon: BookMarked },
+    ],
+  },
+  {
+    id: 'practice',
+    label: 'Mettre en pratique',
+    items: [
+      { to: '/projets', label: 'Projets', icon: Rocket },
+      { to: '/competitions', label: 'Compétitions', icon: Trophy },
+    ],
+  },
 ]
+
+const isActive = (to: string, path: string) => (to === '/' ? path === '/' : path === to || path.startsWith(`${to}/`))
+
+function useFolded() {
+  const [folded, setFolded] = useState<string[]>(() => {
+    try {
+      return JSON.parse(localStorage.getItem('nav-folded') ?? '[]')
+    } catch {
+      return []
+    }
+  })
+  const toggle = (id: string) =>
+    setFolded((f) => {
+      const next = f.includes(id) ? f.filter((x) => x !== id) : [...f, id]
+      try {
+        localStorage.setItem('nav-folded', JSON.stringify(next))
+      } catch {
+        /* ignore */
+      }
+      return next
+    })
+  return [folded, toggle] as const
+}
 
 function Logo() {
   // Each instance needs its own gradient id: the sidebar copy is hidden on mobile, and a
@@ -93,8 +145,35 @@ export function EnginePill({ compact }: { compact?: boolean }) {
   )
 }
 
+function NavItemLink({ item: { to, label, icon: Icon, badge }, due, onNavigate }: { item: NavItem; due: number; onNavigate?: () => void }) {
+  return (
+    <NavLink
+      to={to}
+      end={to === '/'}
+      onClick={onNavigate}
+      className={({ isActive }) =>
+        clsx(
+          'group relative flex items-center gap-3 rounded-xl px-3 py-1.5 text-sm font-medium transition',
+          isActive ? 'bg-white/[0.07] text-fg' : 'text-muted hover:bg-white/[0.035] hover:text-fg',
+        )
+      }
+    >
+      {({ isActive }) => (
+        <>
+          {isActive && <span className="absolute top-1/2 left-0 h-5 w-[3px] -translate-y-1/2 rounded-full bg-gradient-to-b from-accent to-accent-2" />}
+          <Icon className={clsx('size-[18px]', isActive ? 'text-accent' : 'text-faint group-hover:text-muted')} />
+          <span className="flex-1">{label}</span>
+          {badge === 'cards' && due > 0 && <span className="rounded-full bg-accent/20 px-2 py-0.5 text-[10px] font-semibold text-accent">{due}</span>}
+        </>
+      )}
+    </NavLink>
+  )
+}
+
 function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const p = useProgress((s) => s.p)
+  const location = useLocation()
+  const [folded, toggleFolded] = useFolded()
   const due = useDueCards()
   const xp = totalXp(p)
   const lvl = levelInfo(xp)
@@ -102,7 +181,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="px-4 pt-5 pb-6">
+      <div className="px-4 pt-5 pb-5">
         <Logo />
       </div>
       <button
@@ -113,34 +192,31 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
         <span className="flex-1 text-left">Rechercher…</span>
         <kbd className="kbd">Ctrl K</kbd>
       </button>
-      <nav className="min-h-0 flex-1 space-y-0.5 overflow-y-auto px-3">
-        {NAV.map(({ to, label, icon: Icon, badge }) => (
-          <NavLink
-            key={to}
-            to={to}
-            end={to === '/'}
-            onClick={onNavigate}
-            className={({ isActive }) =>
-              clsx(
-                'group relative flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition',
-                isActive ? 'bg-white/[0.07] text-fg' : 'text-muted hover:bg-white/[0.035] hover:text-fg',
-              )
-            }
-          >
-            {({ isActive }) => (
-              <>
-                {isActive && (
-                  <span className="absolute top-1/2 left-0 h-5 w-[3px] -translate-y-1/2 rounded-full bg-gradient-to-b from-accent to-accent-2" />
-                )}
-                <Icon className={clsx('size-[18px]', isActive ? 'text-accent' : 'text-faint group-hover:text-muted')} />
-                <span className="flex-1">{label}</span>
-                {badge === 'cards' && due > 0 && (
-                  <span className="rounded-full bg-accent/20 px-2 py-0.5 text-[10px] font-semibold text-accent">{due}</span>
-                )}
-              </>
-            )}
-          </NavLink>
-        ))}
+      <nav className="min-h-0 flex-1 overflow-y-auto px-3 pb-2" aria-label="Navigation">
+        <NavItemLink item={{ to: '/', label: 'Accueil', icon: LayoutDashboard }} due={due} onNavigate={onNavigate} />
+        {NAV_GROUPS.map((g) => {
+          const holdsCurrent = g.items.some((i) => isActive(i.to, location.pathname))
+          const open = holdsCurrent || !folded.includes(g.id)
+          return (
+            <div key={g.id} className="mt-3" data-nav-group={g.id}>
+              <button
+                onClick={() => !holdsCurrent && toggleFolded(g.id)}
+                className="flex w-full items-center gap-1 px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-faint hover:text-muted"
+                aria-expanded={open}
+              >
+                <span className="flex-1 text-left">{g.label}</span>
+                <ChevronDown className={clsx('size-3.5 transition', !open && '-rotate-90', holdsCurrent && 'opacity-0')} />
+              </button>
+              {open && (
+                <div className="mt-0.5 space-y-0.5">
+                  {g.items.map((item) => (
+                    <NavItemLink key={item.to} item={item} due={due} onNavigate={onNavigate} />
+                  ))}
+                </div>
+              )}
+            </div>
+          )
+        })}
       </nav>
       <div className="space-y-2 p-3">
         <EnginePill />
@@ -229,6 +305,7 @@ export function Layout({ children }: { children?: ReactNode }) {
       </div>
       <RewardToasts />
       <CommandPalette />
+      <AskClaude />
     </div>
   )
 }

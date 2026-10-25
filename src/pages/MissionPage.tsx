@@ -7,6 +7,7 @@ import { Link, useParams } from 'react-router-dom'
 import { Markdown } from '@/components/Markdown'
 import { DifficultyBadge, Empty } from '@/components/ui'
 import { missionById } from '@/lib/content'
+import { useAskContext, type AskContext } from '@/lib/askClaude'
 import { useProgress } from '@/lib/progress'
 import type { Mission, MissionChoice, MissionOption, QuestionValue } from '@/lib/types'
 import { isCorrect, parseAnswer, plain, precisionLabel, rng } from '@/maths/core'
@@ -60,6 +61,27 @@ export default function MissionPage() {
   return <MissionGame key={mission.id} mission={mission} />
 }
 
+interface ChoiceState {
+  index: number
+  shares: number[]
+  picked: number[]
+  locked: boolean
+}
+
+interface PlanState {
+  order: number[]
+  checked: boolean
+}
+
+interface ValueState {
+  values: string[]
+  tries: number
+  status: (boolean | null)[]
+  done: boolean
+  earned: number
+}
+
+/** Everything about a run, saved at each answer so that it can be resumed (also on another device). */
 interface Run {
   seed: number
   step: number
@@ -67,16 +89,40 @@ interface Run {
   trust: number
   /** Points earned per section (in section points). */
   points: Partial<Record<Section, number>>
+  /** State of the current step, reset when moving on. */
+  choice?: ChoiceState
+  plan?: PlanState
+  value?: ValueState
+  /** XP earned, once the debrief is reached. */
+  xp?: number
 }
 
 const newRun = (): Run => ({ seed: (Date.now() ^ Math.floor(Math.random() * 1e9)) >>> 0, step: 0, asked: [], trust: 50, points: {} })
 
+/** The saved run of a mission, if it is unfinished. */
+export function savedMissionRun(caseRuns: Record<string, { state: unknown }> | undefined, id: string) {
+  const r = caseRuns?.[`mission:${id}`]?.state as Run | null | undefined
+  return r && typeof r.step === 'number' && r.step < STEPS.length - 1 ? r : null
+}
+
 function MissionGame({ mission }: { mission: Mission }) {
-  const [run, setRun] = useState<Run>(newRun)
+  const key = `mission:${mission.id}`
+  const [resumed] = useState(() => savedMissionRun(useProgress.getState().p.caseRuns, mission.id))
+  const [run, setRun] = useState<Run>(() => resumed ?? newRun())
+  const [showResumed, setShowResumed] = useState(!!resumed)
   const finishMission = useProgress((s) => s.finishMission)
+  const saveCaseRun = useProgress((s) => s.saveCaseRun)
   const best = useProgress((s) => s.p.missions?.[mission.id]?.best)
-  const [saved, setSaved] = useState<{ xp: number } | null>(null)
   const top = useRef<HTMLDivElement>(null)
+  const update = (patch: Partial<Run>) => setRun((r) => ({ ...r, ...patch }))
+
+  useAskContext(useMemo(() => missionAskContext(mission, run), [mission, run]))
+
+  // Save at every change; nothing to save before the first question.
+  useEffect(() => {
+    if (STEPS[run.step] === 'Debrief' || (run.step === 0 && !run.asked.length)) return
+    saveCaseRun(key, run)
+  }, [run, key, saveCaseRun])
 
   const facts = useMemo(() => {
     const revealed = new Set(mission.discovery.questions.filter((q) => run.asked.includes(q.id)).flatMap((q) => q.reveals ?? []))
@@ -84,31 +130,34 @@ function MissionGame({ mission }: { mission: Mission }) {
   }, [mission, run.asked])
 
   const next = () => {
-    setRun((r) => ({ ...r, step: r.step + 1 }))
+    setRun((r) => ({ ...r, step: r.step + 1, choice: undefined, plan: undefined, value: undefined }))
     setTimeout(() => top.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50)
   }
   const award = (section: Section, share: number) => setRun((r) => ({ ...r, points: { ...r.points, [section]: Math.round(SECTION_POINTS[section] * Math.max(0, Math.min(1, share)) * 10) / 10 } }))
   const score = Math.round(Object.values(run.points).reduce((a, b) => a + (b ?? 0), 0))
 
-  // Save once, when the debrief is reached.
+  // Record the result once, when the debrief is reached, and close the saved run.
   useEffect(() => {
-    if (STEPS[run.step] === 'Debrief' && !saved) {
+    if (STEPS[run.step] === 'Debrief' && run.xp === undefined) {
       const xp = finishMission(mission.id, score)
-      setSaved({ xp })
+      setRun((r) => ({ ...r, xp }))
+      saveCaseRun(key, null)
       if (score >= 75) celebrate()
     }
-  }, [run.step, saved, score, mission.id, finishMission])
+  }, [run.step, run.xp, score, mission.id, finishMission, saveCaseRun, key])
 
   const restart = () => {
     setRun(newRun())
-    setSaved(null)
+    setShowResumed(false)
+    saveCaseRun(key, null)
+    setTimeout(() => top.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50)
   }
 
   return (
     <div className="mx-auto max-w-6xl" lang="en" ref={top}>
-      <Link to="/prep" className="mb-3 inline-flex scroll-mt-4 items-center gap-1 text-xs text-faint hover:text-fg">
+      <Link to="/missions" className="mb-3 inline-flex scroll-mt-4 items-center gap-1 text-xs text-faint hover:text-fg">
         <ArrowLeft className="size-3.5" />
-        BCG X prep
+        Client missions
       </Link>
       <div className="mb-4 flex flex-wrap items-center gap-4">
         <span className="flex size-14 items-center justify-center rounded-2xl bg-white/[0.04] text-4xl">{mission.emoji}</span>
@@ -122,6 +171,19 @@ function MissionGame({ mission }: { mission: Mission }) {
           </div>
         </div>
       </div>
+
+      {showResumed && (
+        <div className="mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-accent/30 bg-accent/[0.06] px-4 py-2.5 text-sm" data-resumed>
+          <RotateCcw className="size-4 text-accent" />
+          <span className="flex-1">Welcome back: you are where you left off ({STEPS[run.step]}).</span>
+          <button className="text-xs text-muted underline hover:text-fg" onClick={restart}>
+            Start over
+          </button>
+          <button className="text-muted hover:text-fg" onClick={() => setShowResumed(false)} aria-label="Dismiss">
+            <X className="size-4" />
+          </button>
+        </div>
+      )}
 
       <ol className="mb-6 flex flex-wrap gap-1 rounded-xl border border-line bg-white/[0.02] p-1 text-xs" aria-label="Mission steps">
         {STEPS.map((s, i) => (
@@ -158,6 +220,8 @@ function MissionGame({ mission }: { mission: Mission }) {
           {STEPS[run.step] === 'Framing' && (
             <ChoiceSequence
               key="framing"
+              state={run.choice}
+              onState={(choice) => update({ choice })}
               title="Frame the problem"
               intro="Turn what you heard into a clear problem statement. Use your notes."
               choices={mission.framing}
@@ -170,6 +234,8 @@ function MissionGame({ mission }: { mission: Mission }) {
           {STEPS[run.step] === 'Approach' && (
             <ChoiceSequence
               key="approach"
+              state={run.choice}
+              onState={(choice) => update({ choice })}
               title="Choose the approach"
               intro="Several approaches are possible. Pick the one you would recommend for a first version."
               choices={[mission.approach]}
@@ -183,6 +249,8 @@ function MissionGame({ mission }: { mission: Mission }) {
             <Plan
               mission={mission}
               seed={run.seed}
+              state={run.plan}
+              onState={(plan) => update({ plan })}
               onDone={(share) => {
                 award('plan', share)
                 next()
@@ -192,6 +260,8 @@ function MissionGame({ mission }: { mission: Mission }) {
           {STEPS[run.step] === 'Value' && (
             <Value
               mission={mission}
+              state={run.value}
+              onState={(value) => update({ value })}
               onDone={(share) => {
                 award('value', share)
                 next()
@@ -201,6 +271,8 @@ function MissionGame({ mission }: { mission: Mission }) {
           {STEPS[run.step] === 'Pitch' && (
             <ChoiceSequence
               key="pitch"
+              state={run.choice}
+              onState={(choice) => update({ choice })}
               title="Write back to the client"
               intro="Your manager asks you to send the follow-up email. Which summary do you send?"
               choices={[mission.pitch]}
@@ -210,7 +282,7 @@ function MissionGame({ mission }: { mission: Mission }) {
               }}
             />
           )}
-          {STEPS[run.step] === 'Debrief' && <Debrief mission={mission} run={run} score={score} xp={saved?.xp ?? 0} onReplay={restart} />}
+          {STEPS[run.step] === 'Debrief' && <Debrief mission={mission} run={run} score={score} xp={run.xp ?? 0} onReplay={restart} />}
         </div>
 
         <aside className="space-y-4 lg:sticky lg:top-4 lg:self-start">
@@ -247,6 +319,34 @@ function MissionGame({ mission }: { mission: Mission }) {
       </div>
     </div>
   )
+}
+
+// ---------------------------------------------------------------- ask Claude
+
+/** What Claude sees about the case: brief, conversation, notes and the question being answered. */
+function missionAskContext(mission: Mission, run: Run): AskContext {
+  const step = STEPS[run.step]
+  const asked = mission.discovery.questions.filter((q) => run.asked.includes(q.id))
+  const revealed = new Set(asked.flatMap((q) => q.reveals ?? []))
+  const choice = step === 'Framing' ? mission.framing[Math.min(run.choice?.index ?? 0, mission.framing.length - 1)] : step === 'Approach' ? mission.approach : step === 'Pitch' ? mission.pitch : null
+  let current = ''
+  if (step === 'Discovery') current = `Questions I can ask (${mission.discovery.budget - run.asked.length} left):\n${mission.discovery.questions.filter((q) => !run.asked.includes(q.id)).map((q) => `- ${q.text}`).join('\n')}`
+  else if (choice) current = `${choice.question}${choice.multi ? ' (several answers)' : ''}\n${choice.options.map((o) => `- ${o.text}`).join('\n')}`
+  else if (step === 'Plan') current = `${mission.plan.question}\n${mission.plan.steps.map((s) => `- ${s}`).join('\n')}`
+  else if (step === 'Value') current = `${mission.value.intro}\n${mission.value.fields.map((f, i) => `- ${f.label}: my answer ${run.value?.values[i] || '?'}`).join('\n')}`
+  return {
+    kind: 'BCG X client mission (case simulator)',
+    title: `${mission.title} (${mission.industry})`,
+    english: true,
+    sections: [
+      { label: 'Client brief', content: `${mission.client.name}, ${mission.client.role}, ${mission.client.company}:\n${mission.brief}\n${mission.context}` },
+      { label: 'Current step', content: `${run.step + 1}/${STEPS.length}: ${step}` },
+      { label: 'What the client told me', content: asked.map((q) => `Me: ${q.text}\nClient: ${q.answer}`).join('\n\n') },
+      { label: 'My notes', content: mission.facts.filter((f) => revealed.has(f.id)).map((f) => `- ${f.text}`).join('\n') },
+      { label: 'Question I am working on', content: current },
+    ],
+    suggestions: ['How would a consultant approach this step?', 'What should I ask the client?', 'Compare these options for me', 'Help me say my answer out loud'],
+  }
 }
 
 // ---------------------------------------------------------------- pieces
@@ -413,11 +513,23 @@ function Discovery({
 }
 
 /** A series of single or multiple choice questions with immediate feedback. Reports the average share of points. */
-function ChoiceSequence({ title, intro, choices, onDone }: { title: string; intro: string; choices: MissionChoice[]; onDone: (share: number) => void }) {
-  const [index, setIndex] = useState(0)
-  const [shares, setShares] = useState<number[]>([])
-  const [picked, setPicked] = useState<number[]>([])
-  const [locked, setLocked] = useState(false)
+function ChoiceSequence({
+  title,
+  intro,
+  choices,
+  state,
+  onState,
+  onDone,
+}: {
+  title: string
+  intro: string
+  choices: MissionChoice[]
+  state?: ChoiceState
+  onState: (s: ChoiceState) => void
+  onDone: (share: number) => void
+}) {
+  const { index, shares, picked, locked } = state ?? { index: 0, shares: [], picked: [], locked: false }
+  const set = (patch: Partial<ChoiceState>) => onState({ index, shares, picked, locked, ...patch })
   const choice = choices[index]
   const order = useMemo(() => rng(index * 7919 + choice.options.length + choice.question.length).sample(choice.options.map((_, i) => i), choice.options.length), [choice, index])
 
@@ -431,17 +543,11 @@ function ChoiceSequence({ title, intro, choices, onDone }: { title: string; intr
     return o.verdict ? VERDICT_SHARE[o.verdict] : o.correct ? 1 : 0
   }
 
-  const lock = (sel: number[]) => {
-    setPicked(sel)
-    setLocked(true)
-    setShares((s) => [...s, scoreOf(sel)])
-  }
+  const lock = (sel: number[]) => set({ picked: sel, locked: true, shares: [...shares, scoreOf(sel)] })
 
   const advance = () => {
     if (index + 1 < choices.length) {
-      setIndex(index + 1)
-      setPicked([])
-      setLocked(false)
+      set({ index: index + 1, picked: [], locked: false })
     } else {
       onDone(shares.reduce((a, b) => a + b, 0) / shares.length)
     }
@@ -473,7 +579,7 @@ function ChoiceSequence({ title, intro, choices, onDone }: { title: string; intr
                 <button
                   disabled={locked}
                   data-option={i}
-                  onClick={() => (choice.multi ? setPicked((p) => (p.includes(i) ? p.filter((x) => x !== i) : [...p, i])) : lock([i]))}
+                  onClick={() => (choice.multi ? set({ picked: picked.includes(i) ? picked.filter((x) => x !== i) : [...picked, i] }) : lock([i]))}
                   className={clsx(
                     'flex w-full items-start gap-3 rounded-xl border px-4 py-3 text-left text-sm transition',
                     locked
@@ -529,21 +635,34 @@ function ChoiceSequence({ title, intro, choices, onDone }: { title: string; intr
   )
 }
 
-function Plan({ mission, seed, onDone }: { mission: Mission; seed: number; onDone: (share: number) => void }) {
-  const [order, setOrder] = useState<number[]>(() => {
-    const idx = mission.plan.steps.map((_, i) => i)
-    let s = rng(seed).sample(idx, idx.length)
-    // Never start already sorted.
-    if (s.every((v, i) => v === i)) s = [...s.slice(1), s[0]]
-    return s
-  })
-  const [checked, setChecked] = useState(false)
+function initialOrder(n: number, seed: number) {
+  const idx = Array.from({ length: n }, (_, i) => i)
+  const s = rng(seed).sample(idx, idx.length)
+  // Never start already sorted.
+  return s.every((v, i) => v === i) ? [...s.slice(1), s[0]] : s
+}
+
+function Plan({
+  mission,
+  seed,
+  state,
+  onState,
+  onDone,
+}: {
+  mission: Mission
+  seed: number
+  state?: PlanState
+  onState: (s: PlanState) => void
+  onDone: (share: number) => void
+}) {
+  const { order, checked } = state ?? { order: initialOrder(mission.plan.steps.length, seed), checked: false }
+  const setChecked = (c: boolean) => onState({ order, checked: c })
   const move = (i: number, d: number) => {
     const j = i + d
     if (j < 0 || j >= order.length) return
     const o = order.slice()
     ;[o[i], o[j]] = [o[j], o[i]]
-    setOrder(o)
+    onState({ order: o, checked })
   }
   const share = orderScore(order)
   return (
@@ -601,27 +720,30 @@ function Plan({ mission, seed, onDone }: { mission: Mission; seed: number; onDon
   )
 }
 
-function Value({ mission, onDone }: { mission: Mission; onDone: (share: number) => void }) {
+function Value({
+  mission,
+  state,
+  onState,
+  onDone,
+}: {
+  mission: Mission
+  state?: ValueState
+  onState: (s: ValueState) => void
+  onDone: (share: number) => void
+}) {
   const fields = mission.value.fields
-  const [values, setValues] = useState(() => fields.map(() => ''))
-  const [tries, setTries] = useState(0)
-  const [status, setStatus] = useState<(boolean | null)[]>(() => fields.map(() => null))
-  const [done, setDone] = useState(false)
-  const [earned, setEarned] = useState(0)
+  const st = state ?? { values: fields.map(() => ''), tries: 0, status: fields.map(() => null), done: false, earned: 0 }
+  const { values, tries, status, done, earned } = st
   const check = () => {
     const res = fields.map((f, i) => {
       const v = parseAnswer(values[i])
       return v !== null && isCorrect(v, { label: f.label, answer: f.answer, decimals: f.decimals })
     })
     const attempt = tries + 1
-    setTries(attempt)
-    setStatus(res)
-    if (res.every(Boolean) || attempt >= 2) {
-      // Full points per field right at the first try, half at the second.
-      const share = res.reduce((a, ok) => a + (ok ? (attempt === 1 ? 1 : 0.5) : 0), 0) / fields.length
-      setEarned(share)
-      setDone(true)
-    }
+    const finished = res.every(Boolean) || attempt >= 2
+    // Full points per field right at the first try, half at the second.
+    const share = res.reduce((a, ok) => a + (ok ? (attempt === 1 ? 1 : 0.5) : 0), 0) / fields.length
+    onState({ ...st, tries: attempt, status: res, done: finished, earned: finished ? share : 0 })
   }
   return (
     <div className="space-y-4">
@@ -649,7 +771,7 @@ function Value({ mission, onDone }: { mission: Mission; onDone: (share: number) 
                   disabled={done}
                   data-value-field={i}
                   inputMode="decimal"
-                  onChange={(e) => setValues((vs) => vs.map((v, j) => (j === i ? e.target.value : v)))}
+                  onChange={(e) => onState({ ...st, values: values.map((v, j) => (j === i ? e.target.value : v)) })}
                   onKeyDown={(e) => e.key === 'Enter' && check()}
                   className="min-w-0 flex-1 bg-transparent py-2 font-mono outline-none"
                   placeholder="e.g. 3000*0.7"
@@ -768,7 +890,7 @@ function Debrief({ mission, run, score, xp, onReplay }: { mission: Mission; run:
           <RotateCcw className="size-4" />
           Replay this mission
         </button>
-        <Link to="/prep" className="btn btn-primary px-4 py-2 text-sm">
+        <Link to="/missions" className="btn btn-primary px-4 py-2 text-sm">
           Other missions
           <ArrowRight className="size-4" />
         </Link>

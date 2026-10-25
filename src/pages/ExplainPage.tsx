@@ -5,6 +5,7 @@ import { Link, useParams } from 'react-router-dom'
 import { Markdown } from '@/components/Markdown'
 import { Empty } from '@/components/ui'
 import { explainById } from '@/lib/content'
+import { useAskContext, type AskContext } from '@/lib/askClaude'
 import { useProgress } from '@/lib/progress'
 import type { ExplainDeck, ExplainItem, ExplainWrite } from '@/lib/types'
 import { rng } from '@/maths/core'
@@ -76,15 +77,75 @@ export default function ExplainPage() {
 
 type Phase = { kind: 'items'; index: number } | { kind: 'write'; index: number } | { kind: 'results' }
 
+/** Everything about a deck run, saved at each answer so that it can be resumed. */
+interface ExplainRun {
+  seed: number
+  phase: Phase
+  points: number[]
+  streak: number
+  bestStreak: number
+  /** Option picked on the current situation. */
+  picked?: number
+  /** Draft of the current writing drill. */
+  write?: WriteState
+  /** XP earned once the multiple-choice part is over. */
+  xp: number | null
+}
+
+const newExplainRun = (): ExplainRun => ({
+  seed: (Date.now() ^ Math.floor(Math.random() * 1e9)) >>> 0,
+  phase: { kind: 'items', index: 0 },
+  points: [],
+  streak: 0,
+  bestStreak: 0,
+  xp: null,
+})
+
+export function savedExplainRun(caseRuns: Record<string, { state: unknown }> | undefined, id: string) {
+  const r = caseRuns?.[`explain:${id}`]?.state as ExplainRun | null | undefined
+  return r && r.phase && r.phase.kind !== 'results' ? r : null
+}
+
 function ExplainGame({ deck }: { deck: ExplainDeck }) {
-  const [seed, setSeed] = useState(() => (Date.now() ^ Math.floor(Math.random() * 1e9)) >>> 0)
+  const key = `explain:${deck.id}`
+  const [resumed] = useState(() => savedExplainRun(useProgress.getState().p.caseRuns, deck.id))
+  const [run, setRun] = useState<ExplainRun>(() => resumed ?? newExplainRun())
+  const [showResumed, setShowResumed] = useState(!!resumed)
+  const { seed, phase, points, streak, bestStreak, xp } = run
+  const update = (patch: Partial<ExplainRun>) => setRun((r) => ({ ...r, ...patch }))
   const items = useMemo(() => rng(seed).sample(deck.items, deck.items.length), [deck, seed])
-  const [phase, setPhase] = useState<Phase>({ kind: 'items', index: 0 })
-  const [points, setPoints] = useState<number[]>([])
-  const [streak, setStreak] = useState(0)
-  const [bestStreak, setBestStreak] = useState(0)
-  const [xp, setXp] = useState<number | null>(null)
+
+  useAskContext(
+    useMemo((): AskContext => {
+      const sections =
+        phase.kind === 'items'
+          ? [
+              { label: 'Audience', content: items[phase.index].audience },
+              { label: 'Situation', content: items[phase.index].prompt },
+              { label: 'Options', content: items[phase.index].options.map((o) => `- ${o.text}`).join('\n') },
+              { label: 'My pick', content: run.picked !== undefined ? items[phase.index].options[run.picked].text : '' },
+            ]
+          : phase.kind === 'write'
+            ? [
+                { label: 'Audience', content: deck.write[phase.index].audience },
+                { label: 'Exercise', content: deck.write[phase.index].prompt },
+                { label: 'My draft', content: run.write?.text ?? '' },
+              ]
+            : []
+      return {
+        kind: 'BCG X communication drill (explain to a non-technical audience)',
+        title: deck.title,
+        english: true,
+        sections,
+        suggestions:
+          phase.kind === 'write'
+            ? ['Give feedback on my draft', 'Rewrite it more simply', 'What would a partner say?']
+            : ['Why is this the best answer?', 'Give me an analogy for this', 'How would you say it in one sentence?'],
+      }
+    }, [deck, items, phase, run.picked, run.write]),
+  )
   const finishExplain = useProgress((s) => s.finishExplain)
+  const saveCaseRun = useProgress((s) => s.saveCaseRun)
   const best = useProgress((s) => s.p.explain?.[deck.id]?.best)
   const top = useRef<HTMLDivElement>(null)
   const score = Math.round((points.reduce((a, b) => a + b, 0) / (deck.items.length * 2)) * 100)
@@ -93,29 +154,33 @@ function ExplainGame({ deck }: { deck: ExplainDeck }) {
   const mcqDone = points.length === deck.items.length
   useEffect(() => {
     if (mcqDone && xp === null) {
-      setXp(finishExplain(deck.id, score))
+      setRun((r) => ({ ...r, xp: finishExplain(deck.id, score) }))
       if (score >= 80) celebrate()
     }
   }, [mcqDone, xp, finishExplain, deck.id, score])
 
+  // Save at every answer (and while writing); the results screen closes the run.
+  useEffect(() => {
+    if (run.phase.kind === 'results') saveCaseRun(key, null)
+    else if (run.points.length || run.picked !== undefined) saveCaseRun(key, run)
+  }, [run, key, saveCaseRun])
+
   const go = (p: Phase) => {
-    setPhase(p)
+    setRun((r) => ({ ...r, phase: p, picked: undefined, write: undefined }))
     setTimeout(() => top.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50)
   }
   const restart = () => {
-    setSeed((s) => s + 1)
-    setPoints([])
-    setStreak(0)
-    setBestStreak(0)
-    setXp(null)
-    go({ kind: 'items', index: 0 })
+    setRun({ ...newExplainRun(), seed: seed + 1 })
+    setShowResumed(false)
+    saveCaseRun(key, null)
+    setTimeout(() => top.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50)
   }
 
   return (
     <div className="mx-auto max-w-3xl" lang="en" ref={top}>
-      <Link to="/prep" className="mb-3 inline-flex scroll-mt-4 items-center gap-1 text-xs text-faint hover:text-fg">
+      <Link to="/explain" className="mb-3 inline-flex scroll-mt-4 items-center gap-1 text-xs text-faint hover:text-fg">
         <ArrowLeft className="size-3.5" />
-        BCG X prep
+        Explain it simply
       </Link>
       <div className="mb-5 flex flex-wrap items-center gap-4">
         <span className="flex size-12 items-center justify-center rounded-2xl bg-white/[0.04] text-3xl">{deck.emoji}</span>
@@ -130,6 +195,19 @@ function ExplainGame({ deck }: { deck: ExplainDeck }) {
           </span>
         </div>
       </div>
+
+      {showResumed && phase.kind !== 'results' && (
+        <div className="mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-accent/30 bg-accent/[0.06] px-4 py-2.5 text-sm" data-resumed>
+          <RotateCcw className="size-4 text-accent" />
+          <span className="flex-1">Welcome back: you are where you left off.</span>
+          <button className="text-xs text-muted underline hover:text-fg" onClick={restart}>
+            Start over
+          </button>
+          <button className="text-muted hover:text-fg" onClick={() => setShowResumed(false)} aria-label="Dismiss">
+            <X className="size-4" />
+          </button>
+        </div>
+      )}
 
       {phase.kind === 'items' && (
         <>
@@ -149,11 +227,10 @@ function ExplainGame({ deck }: { deck: ExplainDeck }) {
             item={items[phase.index]}
             seed={seed + phase.index}
             last={phase.index + 1 === items.length}
-            onAnswer={(pts) => {
-              setPoints((p) => [...p, pts])
+            picked={run.picked ?? null}
+            onAnswer={(i, pts) => {
               const s = pts === 2 ? streak + 1 : 0
-              setStreak(s)
-              setBestStreak((b) => Math.max(b, s))
+              update({ picked: i, points: [...points, pts], streak: s, bestStreak: Math.max(bestStreak, s) })
             }}
             onNext={() => go(phase.index + 1 < items.length ? { kind: 'items', index: phase.index + 1 } : deck.write.length ? { kind: 'write', index: 0 } : { kind: 'results' })}
           />
@@ -165,6 +242,8 @@ function ExplainGame({ deck }: { deck: ExplainDeck }) {
           key={deck.write[phase.index].id}
           write={deck.write[phase.index]}
           step={`${phase.index + 1} / ${deck.write.length}`}
+          state={run.write}
+          onState={(write) => update({ write })}
           onNext={() => go(phase.index + 1 < deck.write.length ? { kind: 'write', index: phase.index + 1 } : { kind: 'results' })}
           onSkip={() => go({ kind: 'results' })}
         />
@@ -201,7 +280,7 @@ function ExplainGame({ deck }: { deck: ExplainDeck }) {
             <button className="btn btn-ghost px-4 py-2 text-sm" onClick={restart}>
               <RotateCcw className="size-4" /> Replay
             </button>
-            <Link to="/prep" className="btn btn-primary px-4 py-2 text-sm">
+            <Link to="/explain" className="btn btn-primary px-4 py-2 text-sm">
               Other decks <ArrowRight className="size-4" />
             </Link>
           </div>
@@ -211,13 +290,25 @@ function ExplainGame({ deck }: { deck: ExplainDeck }) {
   )
 }
 
-function ItemCard({ item, seed, last, onAnswer, onNext }: { item: ExplainItem; seed: number; last: boolean; onAnswer: (points: number) => void; onNext: () => void }) {
+function ItemCard({
+  item,
+  seed,
+  last,
+  picked,
+  onAnswer,
+  onNext,
+}: {
+  item: ExplainItem
+  seed: number
+  last: boolean
+  picked: number | null
+  onAnswer: (option: number, points: number) => void
+  onNext: () => void
+}) {
   const order = useMemo(() => rng(seed * 31 + 7).sample(item.options.map((_, i) => i), item.options.length), [item, seed])
-  const [picked, setPicked] = useState<number | null>(null)
   const pick = (i: number) => {
     if (picked !== null) return
-    setPicked(i)
-    onAnswer(VERDICT_POINTS[item.options[i].verdict])
+    onAnswer(i, VERDICT_POINTS[item.options[i].verdict])
   }
   return (
     <div className="card p-5 animate-fade-up" data-item={item.id}>
@@ -283,10 +374,32 @@ function ItemCard({ item, seed, last, onAnswer, onNext }: { item: ExplainItem; s
   )
 }
 
-function WriteCard({ write, step, onNext, onSkip }: { write: ExplainWrite; step: string; onNext: () => void; onSkip: () => void }) {
-  const [text, setText] = useState('')
-  const [revealed, setRevealed] = useState(false)
-  const [ticks, setTicks] = useState<boolean[]>(() => write.checklist.map(() => false))
+interface WriteState {
+  text: string
+  revealed: boolean
+  ticks: boolean[]
+}
+
+function WriteCard({
+  write,
+  step,
+  state,
+  onState,
+  onNext,
+  onSkip,
+}: {
+  write: ExplainWrite
+  step: string
+  state?: WriteState
+  onState: (s: WriteState) => void
+  onNext: () => void
+  onSkip: () => void
+}) {
+  const st = state ?? { text: '', revealed: false, ticks: write.checklist.map(() => false) }
+  const { text, revealed, ticks } = st
+  const setText = (t: string) => onState({ ...st, text: t })
+  const setRevealed = (r: boolean) => onState({ ...st, revealed: r })
+  const setTicks = (f: (t: boolean[]) => boolean[]) => onState({ ...st, ticks: f(ticks) })
   const stats = textStats(text)
   const jargon = jargonIn(text)
   const max = write.maxWords ?? 120

@@ -44,7 +44,7 @@ export function RewardToasts() {
   // Small per-card XP gains are frequent: only show meaningful rewards.
   const visible = rewards.filter((r) => r.badge || r.xp >= 10)
   return (
-    <div className="pointer-events-none fixed right-4 bottom-4 z-[60] flex flex-col items-end gap-2">
+    <div className="pointer-events-none fixed right-4 bottom-20 z-[60] flex flex-col items-end gap-2">
       {visible.map((r) => (
         <Toast key={r.id} r={r} />
       ))}

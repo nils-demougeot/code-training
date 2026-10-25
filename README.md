@@ -31,6 +31,9 @@ Fonctions transverses :
 
 - Les exercices résolus **reviennent en révision** quelques jours plus tard, pour les re-résoudre de mémoire.
 - XP, niveaux et badges.
+- **Demander à Claude** : un bouton flottant ouvre un panneau qui prépare un prompt avec le contexte de la page (énoncé, ton code, résultats des tests ; pour une mission : le brief, ce que le client a dit, tes notes et la question en cours ; pour un deck : la situation et ton brouillon), plus ta question ou une question rapide (« Donne-moi un indice »…). « Ouvrir dans Claude » ouvre claude.ai avec la question pré-remplie et copie aussi le prompt : la conversation utilise ton forfait Claude, sans clé ni frais d'API.
+- Les missions client et les decks Explain it simply sont **sauvegardés à chaque réponse** (synchronisés avec le compte) : on reprend exactement où on s'était arrêté, y compris sur un autre appareil.
+- Menu latéral rangé en sections repliables : Prépa BCG X, Coder, Apprendre, Mettre en pratique.
 - Recherche globale avec `Ctrl+K` (exercices, doc, blocs, compétitions, chapitres de maths et de GenAI, missions client, niveaux de calcul mental…).
 - `Ctrl+Entrée` ou `Ctrl+S` **exécute sans valider** : chaque expression de premier niveau est affichée (pas besoin de `print`), et les exemples de l'énoncé sont appelés sur ton code. `Ctrl+Maj+Entrée` soumet.
 

@@ -1,4 +1,3 @@
-import { celebrate } from '@/lib/celebrate'
 import clsx from 'clsx'
 import {
   ArrowLeft, ArrowRight, BookMarked, BookOpenCheck, Brain, CheckCircle2, Clock, Cpu, Eye, Gauge, Lightbulb, Lock, Medal, Mic,
@@ -11,9 +10,12 @@ import { LabelPicker, useLabels } from '@/components/Labels'
 import { CodeBlock, Markdown } from '@/components/Markdown'
 import { DifficultyBadge, DomainChip, Empty, Tabs } from '@/components/ui'
 import { SplitPane, Workspace } from '@/components/Workspace'
+import { describeResult, useAskContext } from '@/lib/askClaude'
+import { celebrate } from '@/lib/celebrate'
 import { cardById, exerciseById, exercises, parsonsById, setupOf, toPython } from '@/lib/content'
 import { runCode, runTests } from '@/lib/engine'
 import { diffLines, similarity } from '@/lib/diff'
+import { DOMAINS } from '@/lib/domains'
 import { toggled, type LabelId } from '@/lib/labels'
 import { exerciseXp, useProgress } from '@/lib/progress'
 import { formatInterval, scheduleAfterSolve, type Grade } from '@/lib/srs'
@@ -86,6 +88,23 @@ function ExerciseView({ ex }: { ex: Exercise }) {
   const [hintsShown, setHintsShown] = useState(() => ep?.hintsUsed ?? 0)
   const [solutionOpen, setSolutionOpen] = useState(false)
   const [bonus, setBonus] = useState<{ passed: boolean; failures: TestResult[] } | null>(null)
+
+  useAskContext(
+    useMemo(
+      () => ({
+        kind: `Exercice ${DOMAINS[ex.domain].label}`,
+        title: ex.title,
+        english: ex.domain === 'genai',
+        sections: [
+          { label: 'Énoncé', content: ex.statement },
+          { label: 'Mon code', content: code, code: ex.language === 'sql' ? 'sql' : 'python' },
+          { label: 'Dernière exécution', content: describeResult(result) },
+        ],
+        suggestions: ['Donne-moi un indice', 'Pourquoi mon code échoue ?', 'Explique le concept de l’exercice', 'Quelle complexité vise-t-on ?'],
+      }),
+      [ex, code, result],
+    ),
+  )
   const timer = useTimer(ex.id)
 
   const setup = useMemo(() => setupOf(ex), [ex])

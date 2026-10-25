@@ -8,7 +8,8 @@ import { DifficultyBadge, PageHeader, ProgressBar } from '@/components/ui'
 import { GENAI_CHAPTERS } from '@/genai'
 import { explainDecks, exercises, missions } from '@/lib/content'
 import { useProgress } from '@/lib/progress'
-import { rankFor } from './MissionPage'
+import { savedExplainRun } from './ExplainPage'
+import { rankFor, savedMissionRun } from './MissionPage'
 
 /** What the interviews typically assess, and where to train each part. */
 const PILLARS: { title: string; icon: ReactNode; what: string; train: { to: string; label: string }[] }[] = [
@@ -131,50 +132,7 @@ export default function Prep() {
           <div className="section-title">Client missions</div>
           <span className="text-xs text-faint">Case simulator: discovery, framing, approach, plan, value, pitch</span>
         </div>
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {missions.map((m, i) => {
-            const mp = p.missions?.[m.id]
-            return (
-              <Link
-                key={m.id}
-                to={`/missions/${m.id}`}
-                className="card card-hover flex flex-col p-5 animate-fade-up"
-                style={{ animationDelay: `${i * 40}ms` }}
-                data-mission={m.id}
-              >
-                <div className="flex items-center gap-3">
-                  <span className="flex size-11 items-center justify-center rounded-xl bg-white/[0.04] text-2xl">{m.emoji}</span>
-                  <div className="min-w-0">
-                    <div className="text-[11px] uppercase tracking-wider text-faint">
-                      {i + 1}. {m.industry}
-                    </div>
-                    <h3 className="font-semibold">{m.title}</h3>
-                  </div>
-                  {mp?.completedAt && <CheckCircle2 className="ml-auto size-5 shrink-0 text-ok" />}
-                </div>
-                <p className="mt-3 flex-1 text-sm text-muted">
-                  {m.client.role}, {m.client.company}.
-                </p>
-                <div className="mt-3 flex flex-wrap gap-1.5">
-                  {m.skills.slice(0, 3).map((s) => (
-                    <span key={s} className="chip text-[11px]">
-                      {s}
-                    </span>
-                  ))}
-                </div>
-                <div className="mt-3 flex items-center gap-2 text-xs text-muted">
-                  <DifficultyBadge difficulty={m.difficulty} lang="en" />
-                  <span>~{m.minutes} min</span>
-                  {mp && (
-                    <span className="ml-auto text-warn">
-                      {rankFor(mp.best).emoji} {mp.best}/100
-                    </span>
-                  )}
-                </div>
-              </Link>
-            )
-          })}
-        </div>
+        <MissionGrid />
       </section>
 
       <section id="explain" className="mb-10 scroll-mt-4">
@@ -182,25 +140,7 @@ export default function Prep() {
           <div className="section-title">Explain it simply</div>
           <span className="text-xs text-faint">Pick the clearest answer, then write your own</span>
         </div>
-        <div className="grid gap-4 md:grid-cols-2">
-          {explainDecks.map((d) => {
-            const dp = p.explain?.[d.id]
-            return (
-              <Link key={d.id} to={`/explain/${d.id}`} className="card card-hover flex items-start gap-4 p-5" data-deck={d.id}>
-                <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-white/[0.04] text-2xl">{d.emoji}</span>
-                <div className="min-w-0 flex-1">
-                  <h3 className="font-semibold">{d.title}</h3>
-                  <p className="mt-1 text-sm text-muted">{d.summary}</p>
-                  <div className="mt-2 flex items-center gap-3 text-xs text-faint">
-                    <span>{d.items.length} situations</span>
-                    <span>{d.write.length} writing drills</span>
-                    {dp && <span className="ml-auto text-warn">Best {dp.best}/100</span>}
-                  </div>
-                </div>
-              </Link>
-            )
-          })}
-        </div>
+        <DeckGrid />
       </section>
 
       <section className="mb-10">
@@ -301,6 +241,122 @@ export default function Prep() {
           <Resource to="/maths" icon={<Sigma className="size-5" />} title="Maths & stats" text="Probabilities, tests and metrics behind the business cases (in French)." />
         </div>
       </section>
+    </div>
+  )
+}
+
+/** The client missions, with the best score or the step reached in an unfinished run. */
+export function MissionGrid() {
+  const p = useProgress((s) => s.p)
+  return (
+    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+      {missions.map((m, i) => {
+        const mp = p.missions?.[m.id]
+        const run = savedMissionRun(p.caseRuns, m.id)
+        return (
+          <Link
+            key={m.id}
+            to={`/missions/${m.id}`}
+            className="card card-hover flex flex-col p-5 animate-fade-up"
+            style={{ animationDelay: `${i * 40}ms` }}
+            data-mission={m.id}
+          >
+            <div className="flex items-center gap-3">
+              <span className="flex size-11 items-center justify-center rounded-xl bg-white/[0.04] text-2xl">{m.emoji}</span>
+              <div className="min-w-0">
+                <div className="text-[11px] uppercase tracking-wider text-faint">
+                  {i + 1}. {m.industry}
+                </div>
+                <h3 className="font-semibold">{m.title}</h3>
+              </div>
+              {run ? (
+                <span className="ml-auto shrink-0 rounded-full bg-accent/15 px-2 py-0.5 text-[11px] text-accent" data-in-progress>
+                  Step {run.step + 1}/8
+                </span>
+              ) : (
+                mp?.completedAt && <CheckCircle2 className="ml-auto size-5 shrink-0 text-ok" />
+              )}
+            </div>
+            <p className="mt-3 flex-1 text-sm text-muted">
+              {m.client.role}, {m.client.company}.
+            </p>
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              {m.skills.slice(0, 3).map((s) => (
+                <span key={s} className="chip text-[11px]">
+                  {s}
+                </span>
+              ))}
+            </div>
+            <div className="mt-3 flex items-center gap-2 text-xs text-muted">
+              <DifficultyBadge difficulty={m.difficulty} lang="en" />
+              <span>~{m.minutes} min</span>
+              {mp && (
+                <span className="ml-auto text-warn">
+                  {rankFor(mp.best).emoji} {mp.best}/100
+                </span>
+              )}
+            </div>
+          </Link>
+        )
+      })}
+    </div>  )
+}
+
+export function DeckGrid() {
+  const p = useProgress((s) => s.p)
+  return (
+    <div className="grid gap-4 md:grid-cols-2">
+      {explainDecks.map((d) => {
+        const dp = p.explain?.[d.id]
+        const run = savedExplainRun(p.caseRuns, d.id)
+        return (
+          <Link key={d.id} to={`/explain/${d.id}`} className="card card-hover flex items-start gap-4 p-5" data-deck={d.id}>
+            <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-white/[0.04] text-2xl">{d.emoji}</span>
+            <div className="min-w-0 flex-1">
+              <h3 className="font-semibold">{d.title}</h3>
+              <p className="mt-1 text-sm text-muted">{d.summary}</p>
+              <div className="mt-2 flex items-center gap-3 text-xs text-faint">
+                <span>{d.items.length} situations</span>
+                <span>{d.write.length} writing drills</span>
+                {run ? (
+                  <span className="ml-auto rounded-full bg-accent/15 px-2 py-0.5 text-accent" data-in-progress>
+                    In progress
+                  </span>
+                ) : (
+                  dp && <span className="ml-auto text-warn">Best {dp.best}/100</span>
+                )}
+              </div>
+            </div>
+          </Link>
+        )
+      })}
+    </div>  )
+}
+
+/** /missions: the list of client missions. */
+export function MissionsPage() {
+  return (
+    <div lang="en">
+      <PageHeader
+        icon={<Briefcase className="size-6" />}
+        title="Client missions"
+        subtitle="Case simulator: ask the client the right questions, frame the problem, choose an approach, plan the work, size the value and write the summary. Your progress is saved at every answer."
+      />
+      <MissionGrid />
+    </div>
+  )
+}
+
+/** /explain: the list of explain-it-simply decks. */
+export function ExplainListPage() {
+  return (
+    <div lang="en">
+      <PageHeader
+        icon={<MessageSquareText className="size-6" />}
+        title="Explain it simply"
+        subtitle="Pick the clearest way to explain a model, a metric or a limitation to a non-technical audience, then write your own answer. Your progress is saved at every answer."
+      />
+      <DeckGrid />
     </div>
   )
 }

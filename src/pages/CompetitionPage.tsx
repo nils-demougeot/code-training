@@ -8,12 +8,13 @@ import { CodeEditor } from '@/components/CodeEditor'
 import { CodeBlock, Markdown } from '@/components/Markdown'
 import { OutputPanel } from '@/components/OutputPanel'
 import { DifficultyBadge, Empty } from '@/components/ui'
+import { describeResult, useAskContext } from '@/lib/askClaude'
+import { celebrate } from '@/lib/celebrate'
 import { competitionById, setupOf } from '@/lib/content'
 import { runCode, runTests } from '@/lib/engine'
 import { MEDAL_LABEL, useProgress, type Medal } from '@/lib/progress'
 import type { Competition, CompetitionStep, RunResult } from '@/lib/types'
 import { formatScore, MEDAL_EMOJI, medalFor } from './Competitions'
-import { celebrate } from '@/lib/celebrate'
 
 /** The previous cells run silently before the current one, in the same namespace (like a notebook). */
 function withPreviousCells(setup: string, cells: string[]): string {
@@ -70,6 +71,26 @@ function CompetitionView({ comp }: { comp: Competition }) {
   const [showStory, setShowStory] = useState(!saved?.stepsDone.length)
   const done = new Set(saved?.stepsDone ?? [])
   const firstOpen = comp.steps.findIndex((s) => !done.has(s.id))
+
+  // "Ask Claude" sees the first unfinished step of the notebook (or the last one).
+  const askStep = comp.steps[firstOpen >= 0 ? firstOpen : comp.steps.length - 1]
+  useAskContext(
+    useMemo(
+      () => ({
+        kind: 'Compétition façon Kaggle',
+        title: `${comp.title} · étape « ${askStep.title} »`,
+        english: comp.id === 'rag',
+        sections: [
+          { label: 'Le problème', content: comp.summary },
+          { label: 'Consignes de l’étape', content: `${askStep.goal}\n\n${askStep.instructions}` },
+          { label: 'Ma cellule', content: codes[askStep.id] ?? '', code: 'python' },
+          { label: 'Dernière exécution', content: describeResult(cells[askStep.id]?.result ?? null) },
+        ],
+        suggestions: ['Donne-moi un indice', 'Pourquoi ma cellule échoue ?', 'Comment améliorer mon score ?'],
+      }),
+      [comp, askStep, codes, cells],
+    ),
+  )
   const unlocked = (i: number) => i === 0 || done.has(comp.steps[i - 1].id)
   const refs = useRef<Record<string, HTMLElement | null>>({})
   const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({})

@@ -43,6 +43,13 @@ export interface MentalRecord {
   updatedAt: number
 }
 
+/** An unfinished client mission or explain deck (key "mission:<id>" / "explain:<id>"), saved at each
+ * answer so that it can be resumed on any device. `state: null` marks a finished or abandoned run. */
+export interface CaseRun {
+  state: unknown
+  updatedAt: number
+}
+
 /** Client mission (case simulator): best score out of 100. */
 export interface MissionProgress {
   best: number
@@ -137,6 +144,7 @@ export interface Progress {
   /** Explain-it-simply decks: best score out of 100. */
   explain: Record<string, MissionProgress>
   mental: Record<string, MentalRecord>
+  caseRuns: Record<string, CaseRun>
   maths: Record<string, MathProgress>
   bosses: Record<string, BossProgress>
   parsons: Record<string, ParsonsProgress>
@@ -159,6 +167,7 @@ export const emptyProgress = (): Progress => ({
   missions: {},
   explain: {},
   mental: {},
+  caseRuns: {},
   maths: {},
   bosses: {},
   parsons: {},
@@ -431,6 +440,7 @@ export function mergeProgress(local: Progress, remote: Progress): Progress {
             updatedAt: Math.max(x.updatedAt, y.updatedAt),
           },
     ),
+    caseRuns: mergeRecords(local.caseRuns ?? {}, r.caseRuns ?? {}, (x, y) => (!x ? y : !y ? x : y.updatedAt > x.updatedAt ? y : x)),
     mental: mergeRecords(local.mental ?? {}, r.mental ?? {}, (x, y) =>
       !x || !y
         ? (x ?? y)
@@ -529,6 +539,8 @@ interface ProgressStore {
   finishMission: (id: string, score: number) => number
   /** An explain-it-simply deck was played with this score (0-100); returns the XP earned. */
   finishExplain: (id: string, score: number) => number
+  /** Saves (or clears, with null) the in-progress state of a mission or explain deck. */
+  saveCaseRun: (key: string, state: unknown) => void
   /** A mental-arithmetic game ended; returns the XP earned and whether it is a new record. */
   finishMental: (key: string, game: { score: number; correct: number; combo: number }) => { xp: number; record: boolean }
   /** Replaces the labels of an exercise. */
@@ -805,6 +817,12 @@ export const useProgress = create<ProgressStore>((set, get) => {
       )
       return xp
     },
+
+    saveCaseRun: (key, state) =>
+      commit((p) => {
+        p.caseRuns ??= {}
+        p.caseRuns[key] = { state, updatedAt: Date.now() }
+      }),
 
     finishMental: (key, game) => {
       const prev = get().p.mental?.[key]
