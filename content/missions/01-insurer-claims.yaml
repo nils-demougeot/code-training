@@ -98,39 +98,39 @@ framing:
   - id: objective
     question: "What is the real business objective of the project?"
     options:
-      - text: "Cut the time to first contact from 8 days to 48 hours by removing the manual sorting bottleneck"
+      - text: "Cut the time to first contact from 8 days to 48 hours by removing the manual sorting step"
         correct: true
         feedback: "Yes: it is measurable, tied to the board KPI, and it targets where the delay really comes from."
-      - text: "Deploy a generative AI that writes answers to all claim emails"
-        feedback: "That is a solution, not an objective; and most emails do not need a written answer, they need routing. Automatic answers on claims are also restricted by compliance."
-      - text: "Replace the claims handlers with AI"
-        feedback: "Not what Claire asked, legally impossible for reimbursement decisions, and a sure way to lose the team's support."
-      - text: "Use AI to improve the company's image"
-        feedback: "Too vague to be steered or measured."
+      - text: "Deploy a generative AI that drafts and sends a reply to every claim email within the hour"
+        feedback: "That is a solution, not an objective; and most emails do not need a written reply, they need routing. Automatic answers on claims are also restricted by compliance."
+      - text: "Lower claims costs by letting AI approve simple reimbursements without waiting for a handler"
+        feedback: "Not what Claire asked, and not allowed: reimbursement decisions must be validated by a licensed handler. It also misses where the delay comes from."
+      - text: "Raise the NPS with an AI chat assistant that customers can use instead of sending emails"
+        feedback: "It does not touch the email backlog, which is where customers wait, and its effect on NPS would be hard to attribute."
   - id: task
     question: "Which ML/GenAI task is at the core of a first version?"
     options:
-      - text: "Classify each email (type, existing vs new claim) and extract key fields (claim number, policy number) to route it and attach it to the right file"
+      - text: "Classify each email and extract the claim number, so it is routed and attached to the right file"
         correct: true
         feedback: "Right: classification + extraction is where the time goes, and it is measurable on the email history."
-      - text: "Generate full answers to customers"
-        feedback: "Possible later for simple information questions, with human validation. It does not address the routing bottleneck."
-      - text: "Forecast the number of emails per day"
+      - text: "Generate a complete answer to each email, which a handler then reviews and sends to the customer"
+        feedback: "Most emails are documents or new declarations that need routing, not an answer. Drafting answers can come later, for simple questions."
+      - text: "Summarise each email in two lines so that the coordinators can read and forward it faster"
+        feedback: "A small gain, but the coordinators still route every email by hand: the bottleneck stays."
+      - text: "Forecast the daily email volume so that extra coordinators can be scheduled on peak days"
         feedback: "Useful for staffing, but it does not reduce the delay of each email."
-      - text: "Cluster customers into segments"
-        feedback: "Unrelated to the bottleneck."
   - id: metric
     question: "How would you measure the model itself before going live?"
     options:
-      - text: "Routing accuracy and per-class precision/recall on a held-out sample of past emails, compared with the current keyword rules"
+      - text: "Precision and recall per email type on past emails it never saw, compared with the keyword rules"
         correct: true
-        feedback: "Yes: offline evaluation on real historical data, against the existing baseline, per class (a rare class can be badly handled while overall accuracy looks fine)."
-      - text: "How impressive the demo looks to the board"
-        feedback: "Demos show the best cases, not the error rate."
-      - text: "The number of tokens used"
-        feedback: "A cost indicator, not a quality metric."
-      - text: "Customer satisfaction in the first week"
-        feedback: "A business outcome to track after go-live, too slow and noisy to evaluate the model."
+        feedback: "Yes: offline evaluation on real, unseen historical data, against the existing baseline, per class (a rare class can be badly handled while overall accuracy looks fine)."
+      - text: "Overall accuracy on the emails we used to write and tune the prompt, compared with the keyword rules"
+        feedback: "Measured on the emails used to build it, the score is optimistic. You need emails the system never saw, and per type: one global accuracy hides the rare urgent cases."
+      - text: "Customer satisfaction in the first weeks after go-live, compared with the same weeks last year"
+        feedback: "A business outcome to track after go-live, but too slow and noisy to judge the model, and only known once it is too late."
+      - text: "The share of emails handled without any visible error during a live demo in front of the board"
+        feedback: "Demos show a few chosen cases, not the error rate on thousands of real emails."
   - id: data
     question: "Which data do you need for the first version? (select all that apply)"
     multi: true
@@ -144,10 +144,10 @@ framing:
       - text: "The list of open claims with their numbers and customers"
         correct: true
         feedback: "Yes: to attach an email to the right existing file, you need to match it against open claims."
-      - text: "Customers' social media profiles"
-        feedback: "Not needed, and a privacy problem."
-      - text: "The salaries of the claims handlers"
-        feedback: "Not needed for the model (an average cost per hour is enough for the business case)."
+      - text: "Customers' full call-centre recordings for the last three years"
+        feedback: "Not needed for routing emails, heavy to process, and sensitive personal data to collect without a clear use."
+      - text: "Each handler's individual productivity figures, to rank them"
+        feedback: "Not needed for the model (an average cost per hour is enough for the business case), and it would turn the project against the team."
   - id: risks
     question: "Which risks must the design handle? (select all that apply)"
     multi: true
@@ -161,22 +161,22 @@ framing:
       - text: "No automatic commitment on reimbursements"
         correct: true
         feedback: "Yes: reimbursement decisions stay with licensed handlers."
-      - text: "The model becoming conscious"
-        feedback: "Not a real project risk."
+      - text: "Emails written in English instead of French confusing the model"
+        feedback: "A minor point: modern models handle both languages well, and it can be checked on the test set. Not one of the design risks here."
 approach:
   id: approach
   question: "What do you recommend for the first version?"
   options:
-    - text: "An LLM (hosted under an agreement approved by the DPO) classifies each email and extracts the claim number; high-confidence emails are routed and attached automatically, low-confidence ones go to the coordinators. No automatic answers to customers in phase 1."
+    - text: "An LLM, hosted under a DPO-approved agreement, classifies emails and extracts the claim number; confident cases are routed automatically, the rest go to the coordinators. No automatic replies in phase 1."
       verdict: best
       feedback: "Targets the bottleneck, uses the history to measure, keeps humans for uncertain and sensitive cases, and respects compliance. A classic ML classifier trained on the million labelled emails is also a credible option: compare both on the same test set."
-    - text: "A chatbot on the website that answers customers' claim questions"
+    - text: "An LLM drafts and sends a reply to every email automatically, with a disclaimer that answers may contain mistakes; handlers only step in when a customer complains, which frees the whole team for complex claims."
+      verdict: bad
+      feedback: "Breaks the compliance constraint, risks wrong commitments, and most emails do not need an answer anyway. A disclaimer does not make a wrong reimbursement promise acceptable."
+    - text: "A chatbot on the website that answers customers' questions about their ongoing claims, so that fewer customers need to email the claims team in the first place."
       verdict: bad
       feedback: "It does not touch the email backlog, and claim answers involve commitments that need handlers."
-    - text: "An LLM that writes and sends answers to all emails automatically"
-      verdict: bad
-      feedback: "Breaks the compliance constraint, risks wrong commitments, and most emails do not need an answer anyway."
-    - text: "Improve the keyword rules with more keywords"
+    - text: "Extend the existing keyword rules with more keywords and regular expressions maintained by IT, and keep the coordinators for everything that the rules still cannot route."
       verdict: ok
       feedback: "Cheap, but the rules plateau at a third of emails; worth keeping as a baseline and fallback, not as the solution."
 plan:
@@ -211,18 +211,18 @@ pitch:
   id: pitch
   question: "Which summary do you send Claire after the meeting?"
   options:
-    - text: "The delay comes from manually routing 3,000 emails a day, not from writing answers. We propose an AI that classifies and routes emails and attaches documents to the right claim, with humans keeping uncertain cases and all reimbursement decisions. Target: first contact in 48 hours. Next step: a 4-week test on 2,000 past emails to measure accuracy against your current rules."
+    - text: "The delay comes from routing 3,000 emails a day by hand, not from writing answers. We propose AI that sorts emails and attaches documents to the right claim; uncertain cases and all reimbursement decisions stay with your team. Target: first contact in 48 hours. Next step: a 4-week test on 2,000 past emails."
       verdict: best
       feedback: "Answer first, the reason, the solution in plain words, the safeguards, the target KPI and a concrete next step. That is the pyramid principle."
-    - text: "We will deploy a state-of-the-art large language model with retrieval-augmented generation, fine-tuned on your data, with agentic workflows and a vector database."
+    - text: "We will deploy a state-of-the-art large language model with retrieval-augmented generation, fine-tuned on your claims data and orchestrated by agentic workflows over a vector database, to automate your end-to-end claims communication, cut handling costs and transform your customer experience within three months."
       verdict: bad
-      feedback: "Jargon without a link to Claire's problem or KPI. She cannot take a decision on this."
-    - text: "Thanks for the meeting. We learned a lot. We will come back with ideas."
+      feedback: "Jargon without a link to Claire's problem or KPI, and it promises to automate answers that compliance forbids. She cannot take a decision on this."
+    - text: "Thank you for a very rich meeting. We learned a lot about your organisation, your teams and your systems, and we now have many ideas. We will analyse everything carefully with our experts and come back to you with a detailed proposal in the coming weeks."
       verdict: bad
-      feedback: "No insight, no proposal, no next step: a wasted follow-up."
-    - text: "We think AI can probably help with your emails, and we would like to run a large study of all your processes over the next 6 months."
+      feedback: "Polite but empty: no insight, no proposal, no number, no next step. A wasted follow-up."
+    - text: "AI can probably help with your emails. Before choosing a solution, we would like to run a six-month study of all your claims processes, interview every team and benchmark your competitors, so that we can build a complete transformation roadmap for the board."
       verdict: ok
-      feedback: "Not wrong, but too vague and too slow for a client who needs visible progress in 3 months."
+      feedback: "Not wrong, but too vague and too slow for a client who needs visible progress in 3 months, while a focused test could start now."
 debrief: |
   **What a strong candidate does in this case**
 

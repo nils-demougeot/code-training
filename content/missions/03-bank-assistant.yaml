@@ -98,39 +98,39 @@ framing:
   - id: objective
     question: "What is the business objective?"
     options:
-      - text: "Help advisors find correct, current procedure answers in under a minute, cutting hotline calls by a third without compliance incidents"
+      - text: "Advisors get correct, current procedure answers in under a minute, with a third fewer hotline calls and no compliance incidents"
         correct: true
         feedback: "Yes: speed, volume and safety, all measurable."
-      - text: "Build a ChatGPT for the bank that can answer any question"
-        feedback: "Unbounded scope cannot be evaluated or secured. Narrow it to procedures."
-      - text: "Replace the hotline team"
-        feedback: "The experts remain necessary for complex cases, and for maintaining the knowledge."
-      - text: "Digitise all paper documents"
-        feedback: "Possibly a step, but not the objective."
+      - text: "Give every employee a ChatGPT-like assistant that can answer any question about the bank, its products, its customers and its rules"
+        feedback: "Unbounded scope cannot be evaluated or secured, and customer data is not needed. Narrow it to procedures for advisors."
+      - text: "Cut the cost of the back-office hotline by half within a year by replacing most of its experts with an AI assistant"
+        feedback: "The experts remain necessary for complex and sensitive cases, and for maintaining the knowledge. Fewer calls is the goal, not fewer experts."
+      - text: "Move all 4,000 procedures into a single modern intranet, with a cleaner search engine and better navigation"
+        feedback: "Possibly a useful step, but it is a means. The objective is about advisors getting correct answers fast."
   - id: task
     question: "Which GenAI pattern fits best?"
     options:
-      - text: "Retrieval-augmented generation: search the official procedures, then generate a short answer that cites its sources"
+      - text: "Retrieval-augmented generation: find the relevant official passages, then answer briefly and cite them"
         correct: true
         feedback: "Right: answers grounded in current documents, with citations the advisor can check, and updates without retraining."
-      - text: "Fine-tune a model so that it memorises all the procedures"
-        feedback: "Fine-tuning does not reliably store facts, gives no citations, and procedures change every month."
-      - text: "Classify hotline tickets by topic"
+      - text: "Fine-tuning: further train a model on all 4,000 procedures so that it knows the bank's rules by heart"
+        feedback: "Fine-tuning does not reliably store facts, gives no citations, and procedures change every month: you would retrain constantly."
+      - text: "Prompting only: paste a long summary of the main procedures into the system prompt of a chat assistant"
+        feedback: "4,000 documents do not fit in a prompt, and a summary loses the details advisors need. Retrieval selects the right passages for each question."
+      - text: "Classification: sort the hotline tickets by topic to see which procedures cause the most questions"
         feedback: "Useful analysis to prioritise topics, but it does not answer advisors."
-      - text: "A chatbot for the bank's customers"
-        feedback: "A different, riskier project. The request is about advisors."
   - id: metric
     question: "How do you prove the assistant is good enough before rollout?"
     options:
-      - text: "Build a test set from real hotline questions with expert answers; measure whether the right document is retrieved, whether answers are correct and supported by the sources, and whether it says 'I don't know' when the answer is not in the documents"
+      - text: "Test on real hotline questions with expert answers: right passage found, answer correct and supported by it, 'I don't know' when it should"
         correct: true
         feedback: "Yes: retrieval quality, answer correctness, faithfulness to sources and refusal behaviour, on real questions."
-      - text: "Ask a few advisors whether they like it"
-        feedback: "Useful feedback, but not evidence of correctness, especially on rare sensitive questions."
-      - text: "Measure response speed"
-        feedback: "Matters, but a fast wrong answer is worse than none."
-      - text: "Check that the model scores well on public benchmarks"
-        feedback: "Public benchmarks say nothing about your bank's procedures."
+      - text: "Let 30 experienced advisors use it for two weeks, collect their satisfaction scores, and roll out to the network if the average rating is above 4 out of 5"
+        feedback: "Useful feedback, but not evidence of correctness: advisors cannot spot a subtly wrong answer on a rare, sensitive topic."
+      - text: "Ask the assistant 50 questions written by the project team and check that it answers all of them fluently and quickly"
+        feedback: "Questions written by the builders are easier than real ones, and fluency is not correctness."
+      - text: "Check that the chosen model ranks high on public benchmarks of reasoning and banking knowledge"
+        feedback: "Public benchmarks say nothing about your bank's procedures or your documents."
   - id: data
     question: "Which data do you need? (select all that apply)"
     multi: true
@@ -144,10 +144,10 @@ framing:
       - text: "Document metadata: owner, date, status"
         correct: true
         feedback: "To filter outdated documents and route corrections to the right owner."
-      - text: "Customer account data"
+      - text: "Customer account data, to personalise each answer"
         feedback: "Not needed for procedures, and it would slow approval considerably."
-      - text: "Advisors' personal emails"
-        feedback: "Not needed and not appropriate."
+      - text: "Advisors' emails to each other about procedures"
+        feedback: "Not appropriate to collect, and full of outdated or wrong answers: the official documents are the source of truth."
   - id: risks
     question: "Which risks must the design handle? (select all that apply)"
     multi: true
@@ -161,22 +161,22 @@ framing:
       - text: "Advisors trusting answers blindly"
         correct: true
         feedback: "Yes: citations and links let them check; training matters too."
-      - text: "The vector database replacing the intranet"
-        feedback: "Not a risk: it is a search index, not a replacement for document management."
+      - text: "The assistant answering too briefly for experienced advisors"
+        feedback: "A design detail to tune with users, not a risk the design must handle: short answers with sources are what advisors asked for."
 approach:
   id: approach
   question: "What do you recommend for version 1?"
   options:
-    - text: "A RAG assistant on the cleaned, current procedures: it retrieves the relevant passages, answers briefly with links to the sources, and says 'I don't know, contact the hotline' when the documents do not contain the answer; hosted in an environment approved by the bank, without customer data"
+    - text: "A RAG assistant on the cleaned, current procedures: short answers with links to sources, 'I don't know' when the documents don't say; hosted in a bank-approved environment, without customer data"
       verdict: best
       feedback: "Grounded, checkable, safe by design, and measurable on the hotline test set."
-    - text: "A better intranet search engine on cleaned documents, without generated answers"
+    - text: "A better intranet search engine on the cleaned documents, with filters by business line and date, but no generated answers: advisors read the documents it finds"
       verdict: ok
       feedback: "A solid, low-risk step, and the retrieval part of RAG anyway. But advisors still have to read long documents with a customer waiting."
-    - text: "Fine-tune an open-source model on all 4,000 documents, old versions included"
+    - text: "Fine-tune an open-source model on all 4,000 documents, old versions included so that it also knows the history of each rule, and deploy it as a chat assistant on the workstation of each of the 2,500 advisors"
       verdict: bad
       feedback: "No citations, outdated rules baked in, retraining at each update: the opposite of what compliance needs."
-    - text: "An autonomous agent with access to every system, including customer accounts"
+    - text: "An autonomous agent connected to every system of the bank, including customer accounts and the credit engine, so that it can answer procedure questions and also prepare files and decisions for advisors"
       verdict: bad
       feedback: "Far too much risk and scope for a first version; customer data is not needed."
 plan:
@@ -211,18 +211,18 @@ pitch:
   id: pitch
   question: "Which summary do you send Sophie and her Head of Compliance?"
   options:
-    - text: "Advisors lose time because answers are spread across 4,000 documents, some of them outdated. We propose an assistant that searches only the official, current procedures and answers with links to its sources, saying 'I don't know' rather than guessing. Target: a third fewer hotline calls, about €1.7M a year, with compliance validating sensitive topics. Next step: a test set of 200 real hotline questions to measure quality before any rollout."
+    - text: "Answers are spread across 4,000 documents, some outdated. We propose an assistant that searches only current procedures, cites its sources and says 'I don't know' rather than guess. Target: a third fewer hotline calls (≈ €1.7M a year), compliance validating sensitive topics. Next step: a test on 200 real questions."
       verdict: best
       feedback: "Problem, solution in plain words, safeguards for compliance, value and an evidence-first next step."
-    - text: "We will build a bank-wide GPT fine-tuned on all your data so that it knows everything."
+    - text: "We will build a bank-wide GPT fine-tuned on all your documents and data, so that it knows everything about Banque Horizon. Advisors, back office and later customers will be able to ask it anything, and it will answer instantly, 24/7, in a natural and friendly tone, without any need to maintain documents anymore."
       verdict: bad
       feedback: "Exactly what makes compliance nervous: unbounded, unverifiable, and the wrong technique."
-    - text: "Thank you for your time, the meeting was very interesting."
-      verdict: bad
-      feedback: "No content, no next step."
-    - text: "We recommend a 6-month programme to clean all documents first; we can talk about AI afterwards."
+    - text: "We recommend a 6-month programme to clean and rewrite all 4,000 documents with their owners first, then to choose a technology. Once the content is perfect, an AI assistant will be much easier to build, and we can discuss it again at that point."
       verdict: ok
       feedback: "Cleaning matters, but you can clean the most-asked topics first and deliver value much sooner."
+    - text: "Thank you for your time, the meeting was very interesting and we learned a lot about your advisors and your compliance constraints. We are confident that GenAI can bring a lot of value to Banque Horizon, and we will come back to you soon with ideas."
+      verdict: bad
+      feedback: "No content, no next step."
 debrief: |
   **What a strong candidate does in this case**
 

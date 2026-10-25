@@ -437,6 +437,33 @@ def check_mental():
     return len(report["samples"])
 
 
+def check_mcq_lengths():
+    """Multiple-choice questions (missions, Explain it simply, GenAI and maths quizzes): the right answer
+    must not be recognisable by its length. Per question, it is at most 25 % longer than the longest
+    wrong option; per collection, it is the longest option in at most 40 % of the questions (25 % by chance)."""
+    if not shutil.which("node"):
+        return 0
+    questions = json.loads(subprocess.run(
+        ["node", str(ROOT / "scripts" / "mcq-export.mjs")], capture_output=True, text=True, check=True, cwd=ROOT,
+    ).stdout)
+    longest = {}
+    for q in questions:
+        # Formulas are compared on meaning, not on length.
+        if any("$" in o["text"] for o in q["options"]):
+            continue
+        lengths = [len(o["text"]) for o in q["options"]]
+        right = [i for i, o in enumerate(q["options"]) if o["right"]][0]
+        wrong = max(n for i, n in enumerate(lengths) if i != right)
+        if lengths[right] > 1.25 * wrong:
+            errors.append(f"QCM {q['id']}: la bonne réponse ({lengths[right]} caractères) se repère à sa longueur (fausse la plus longue : {wrong})")
+        n, k = longest.get(q["source"], (0, 0))
+        longest[q["source"]] = (n + 1, k + (lengths[right] == max(lengths)))
+    for source, (n, k) in longest.items():
+        if n >= 10 and k > 0.4 * n:
+            errors.append(f"QCM {source}: la bonne réponse est la plus longue dans {k} questions sur {n} (40 % maximum)")
+    return len(questions)
+
+
 def odd_dollars(text):
     """A lone `$` starts a formula in the Markdown renderer: amounts must be written with € or `USD`."""
     return len(re.findall(r"(?<!\\)\$", text.replace("$$", ""))) % 2 == 1
@@ -522,6 +549,11 @@ def check_mission(path, m):
         errors.append(f"{mid}: framing needs questions")
     for c in m["framing"]:
         check_choice(f"{mid}/framing/{c.get('id')}", c, verdicts=False)
+        if c.get("multi"):
+            right = [len(o["text"]) for o in c["options"] if o.get("correct")]
+            wrong = [len(o["text"]) for o in c["options"] if not o.get("correct")]
+            if right and wrong and sum(right) / len(right) > 1.3 * sum(wrong) / len(wrong):
+                errors.append(f"{mid}/framing/{c['id']}: the right options are much longer than the wrong ones")
     check_choice(f"{mid}/approach", m["approach"], verdicts=True)
     check_choice(f"{mid}/pitch", m["pitch"], verdicts=True)
     steps = m["plan"].get("steps") or []
@@ -682,9 +714,10 @@ def main():
         n_explain += 1
         check_explain(path, yaml.safe_load(path.read_text()), rules)
 
+    n_mcq = 0 if args.only else check_mcq_lengths()
     n_mental = 0 if args.only and not args.only.startswith("mental") else check_mental()
 
-    print(f"\n{n_ex} exercices, {n_proj} projets, {n_cards} cartes, {n_quiz} questions de quiz, {n_docs} entrées de doc, {n_parsons} problèmes de blocs, {n_git} missions Git, {n_comp} compétitions, {n_maths} exercices de maths ({n_maths_inst} tirages), {n_missions} missions client, {n_explain} decks explain, {n_mental} calculs mentaux vérifiés.")
+    print(f"\n{n_ex} exercices, {n_proj} projets, {n_cards} cartes, {n_quiz} questions de quiz, {n_docs} entrées de doc, {n_parsons} problèmes de blocs, {n_git} missions Git, {n_comp} compétitions, {n_maths} exercices de maths ({n_maths_inst} tirages), {n_missions} missions client, {n_explain} decks explain, {n_mental} calculs mentaux, {n_mcq} QCM vérifiés.")
     for w in warnings:
         print(f"⚠️  {w}")
     for e in errors:

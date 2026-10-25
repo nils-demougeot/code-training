@@ -97,38 +97,38 @@ framing:
   - id: objective
     question: "What is the real objective?"
     options:
-      - text: "Cut 'where is my order?' contacts and improve reviews by giving customers delivery information before they need to ask"
+      - text: "Cut 'where is my order?' contacts and improve reviews by telling customers about their delivery first"
         correct: true
         feedback: "Yes: it targets the largest share of contacts at its root cause, and it is measurable."
-      - text: "Launch a generative AI chatbot within six weeks"
+      - text: "Launch a generative AI chatbot within six weeks, so the company keeps up with its two main competitors"
         feedback: "That is the CEO's proposed solution, not the objective. It may not reduce contacts if it cannot see deliveries."
-      - text: "Have an AI strategy to show the board"
-        feedback: "A real concern to address in the roadmap, but not the operational objective."
-      - text: "Halve the customer service team"
-        feedback: "Not the request, and not the right framing for the first step."
+      - text: "Give the board a credible AI strategy, with a first visible GenAI use case live before the next meeting"
+        feedback: "A real concern to address in the roadmap, but not the operational objective: the customers' problem comes first."
+      - text: "Answer every customer contact within one hour by adding chat as a new channel next to phone and email"
+        feedback: "A new channel adds volume to an overwhelmed team without removing the reason customers contact you."
   - id: task
     question: "What kind of work is at the core of the first phase?"
     options:
-      - text: "Mostly not machine learning: connect carrier tracking data and send proactive delivery updates with a tracking page; an order-status answer in the help centre can come on top"
+      - text: "Mostly not ML: connect carrier tracking data, send proactive delivery updates and show a tracking page"
         correct: true
         feedback: "Right. Recognising that the best first step needs no AI is a strength, not a weakness."
-      - text: "Fine-tune an LLM on all past customer conversations"
-        feedback: "Expensive and it does not give the bot access to delivery status, the information customers want."
-      - text: "Predict which customers will complain"
-        feedback: "Could be useful later; it does not remove the cause."
-      - text: "Generate product descriptions with GenAI"
-        feedback: "Unrelated to the contact volume."
+      - text: "Fine-tune an LLM on all past customer conversations so it answers like the best customer service agents"
+        feedback: "Expensive, and it does not give the bot access to delivery status, the information customers want."
+      - text: "Predict which customers are about to complain, so that agents can call them before they post a review"
+        feedback: "Could be useful later; it does not remove the cause, and calling 13,000 customers a month is not realistic."
+      - text: "Use GenAI to rewrite the help-centre pages and FAQ in a friendlier tone, in the brand's voice"
+        feedback: "Nicer texts do not tell customers where their sofa is."
   - id: metric
     question: "How do you measure success?"
     options:
-      - text: "'Where is my order?' contacts per 100 orders and review scores, compared between a region with the new notifications and the others"
+      - text: "'Where is my order?' contacts per 100 orders and review scores, in a test region versus the others"
         correct: true
         feedback: "Yes: normalised by order volume, tied to the objective, with a comparison group."
-      - text: "The number of chatbot conversations per day"
-        feedback: "A vanity metric: more conversations can mean more confused customers."
-      - text: "The perplexity of the language model"
-        feedback: "A technical quantity with no business meaning."
-      - text: "The number of AI features launched"
+      - text: "The number of chatbot conversations per day, and the share of them that customers rate as helpful"
+        feedback: "More conversations can mean more confused customers; ratings of a bot do not tell you if contacts went down."
+      - text: "The total number of customer contacts per month, compared with the same month of last year"
+        feedback: "Not normalised: if sales grow, contacts grow too, and seasons and promotions blur the comparison."
+      - text: "The number of AI features launched on the website and mentioned in the press during the year"
         feedback: "Output, not outcome."
   - id: data
     question: "Which data do you need? (select all that apply)"
@@ -143,10 +143,10 @@ framing:
       - text: "Customers' contact preferences and consent (email, SMS)"
         correct: true
         feedback: "Needed to send notifications legally and in the right channel."
-      - text: "Customers' social media profiles"
-        feedback: "Not needed, and intrusive."
-      - text: "Competitors' chat logs"
-        feedback: "Not available, and not needed."
+      - text: "Customers' browsing history on the website"
+        feedback: "Not needed to tell customers where their order is, and intrusive."
+      - text: "Competitors' delivery times, to compare"
+        feedback: "Interesting for benchmarking, but not needed to build the notifications."
   - id: risks
     question: "Which risks should you manage? (select all that apply)"
     multi: true
@@ -160,22 +160,22 @@ framing:
       - text: "The CEO feeling the project is not 'AI enough'"
         correct: true
         feedback: "Yes: show the phased roadmap with a GenAI phase built on reliable data, and the quick visible win."
-      - text: "The chatbot being too polite"
-        feedback: "Not a real risk."
+      - text: "Customers being annoyed by too many delivery notifications"
+        feedback: "Worth a thought (keep them few and useful), but customers asking where their order is shows the opposite problem today."
 approach:
   id: approach
   question: "What do you recommend?"
   options:
-    - text: "Phase 1 (6 weeks): proactive delivery emails and SMS with a tracking page fed by carrier data, plus an order-status answer in the help centre. Phase 2: a GenAI assistant for product advice and returns, connected to order data, measured on the same KPIs"
+    - text: "Phase 1 (6 weeks): proactive delivery emails and SMS, and a tracking page fed by carrier data. Phase 2: a GenAI assistant for product advice and returns, connected to order data"
       verdict: best
       feedback: "Fixes the root cause fast, gives the board a visible win, and positions GenAI where it adds value, on reliable data."
-    - text: "A scripted FAQ chatbot"
+    - text: "A scripted FAQ chatbot with buttons for the most common questions (delivery times, returns, payment), quick to build and safe because it never generates free text"
       verdict: ok
       feedback: "Cheap, but without order data it cannot answer the main question, 'where is my order?'."
-    - text: "A GenAI chatbot trained on the website content, live in 6 weeks"
+    - text: "A GenAI chatbot trained on all the website content and FAQ, live in six weeks on every page, able to answer any customer question in natural language, just like the chatbots your two main competitors launched"
       verdict: bad
       feedback: "It cannot see deliveries, may invent policies (like the competitor's), and leaves the root cause untouched."
-    - text: "Hire 30 more call-centre agents"
+    - text: "Hire 30 more call-centre agents for the next six months to clear the backlog and answer faster, while the IT team studies longer-term options for automation"
       verdict: bad
       feedback: "Expensive, slow, and it treats the symptom."
 plan:
@@ -209,16 +209,16 @@ pitch:
   id: pitch
   question: "Which summary do you send Julien?"
   options:
-    - text: "More than half of your contacts are customers asking where their order is, because we send no news after the order. The fastest win is proactive delivery updates and a tracking page: about 13,000 fewer contacts a month, roughly €800k a year, and better reviews. A GenAI assistant comes next, for product advice, once it can see order data. Next step: connect the carrier feeds and test in one region within 6 weeks."
+    - text: "Over half of your contacts ask where an order is, because we send no news after the order. The fastest win is proactive delivery updates and a tracking page: about 13,000 fewer contacts a month, ≈ €800k a year, and better reviews. GenAI comes next, for product advice, once it can see order data. Next step: a test in one region in 6 weeks."
       verdict: best
       feedback: "Data-driven, respectful of the CEO's goal, honest about where AI fits, with a quick win and a roadmap."
-    - text: "Sure, we will launch a GenAI chatbot in six weeks, like your competitors."
+    - text: "Absolutely, we can launch a GenAI chatbot in six weeks, just like your competitors. It will be trained on your website and FAQ, available 24/7 on every page, and it will answer your customers' questions in a friendly tone, which should quickly reduce the pressure on your customer service, improve your online reviews and reassure your board."
       verdict: bad
       feedback: "Says yes to the wrong solution; the contacts will not go down and the bot may invent answers."
-    - text: "You don't need AI. AI is overhyped."
+    - text: "Honestly, you don't need AI. Your problem is basic operations, and GenAI is mostly hype: your competitors' chatbots are marketing gadgets that will be forgotten next year. Fix your delivery process first and forget about AI for now."
       verdict: bad
       feedback: "Dismissive and wrong for phase 2. Lead with the insight, not with a lecture."
-    - text: "We recommend an 18-month digital transformation roadmap."
+    - text: "We recommend an 18-month digital transformation programme covering your website, your logistics, your customer service and your data platform, with a dedicated AI workstream. We will present a detailed roadmap and budget to the board next quarter."
       verdict: ok
       feedback: "Maybe useful later, but the CEO needs a visible result in six weeks, and you have one."
 debrief: |

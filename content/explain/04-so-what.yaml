@@ -8,108 +8,108 @@ items:
     audience: "COO, 2 minutes between two meetings"
     prompt: "Your churn analysis found that customers who wait more than 3 days for a technician are **twice as likely to leave**, and 30 % of customers wait that long. Which opening sentence do you use?"
     options:
-      - text: "\"Cutting technician waits to under 3 days is the biggest lever on churn: those who wait longer leave twice as often, and that's 30 % of customers.\""
+      - text: "\"Cutting technician waits to under 3 days is the biggest lever on churn: customers who wait longer leave twice as often, and that's 30 % of customers.\""
         verdict: best
         feedback: "Answer first (the lever), then the evidence, in one sentence."
-      - text: "\"We analysed 18 months of data with 40 variables and trained several models.\""
+      - text: "\"We analysed 18 months of customer data with 40 variables, trained several churn models and compared them, and waiting time came out among the most important factors.\""
         verdict: bad
-        feedback: "Starts with your work, not with what she should do."
-      - text: "\"There are many factors behind churn.\""
+        feedback: "Starts with your work, not with what she should do, and buries the key number."
+      - text: "\"Churn has many causes: price, network quality, technician waits, competitor offers and customer service all play a role, so a broad retention plan is needed.\""
         verdict: bad
-        feedback: "True for every company; says nothing."
-      - text: "\"Waiting time is correlated with churn.\""
+        feedback: "True for every company; it says nothing about where to act first."
+      - text: "\"Waiting time for a technician is clearly correlated with churn, and it's something the company controls directly, so it deserves a closer look by operations.\""
         verdict: ok
-        feedback: "Right direction, but no size, no action."
+        feedback: "Right direction, but no size and no clear action: 'twice as likely' and '30 % of customers' are what make it a priority."
     takeaway: "Pyramid principle: the answer first, then the 2–3 reasons, then the details if asked."
   - id: correlation
     kind: so-what
     audience: "Marketing director"
     prompt: "Customers who use the mobile app spend **40 % more**. She wants to push everyone to the app. What do you say?"
     options:
-      - text: "\"Promising, but careful: the app may attract customers who already spend more, rather than making them spend more. Let's test it: push the app to a random half of new customers and compare spending after 3 months.\""
+      - text: "\"Promising, but careful: the app may attract customers who already spend more, rather than make them spend more. Let's test it: push the app to a random half of new customers and compare spending after 3 months.\""
         verdict: best
         feedback: "Explains correlation versus causation without the words, and proposes a test that settles it."
-      - text: "\"Great idea, the data proves it.\""
+      - text: "\"Great idea: the data clearly shows that app users spend 40 % more. If we move all customers to the app, we can expect revenue per customer to grow by a similar amount within a year, which would be our best growth lever.\""
         verdict: bad
-        feedback: "The data shows a link, not that the app causes the spending."
-      - text: "\"Correlation is not causation.\""
+        feedback: "The data shows a link, not that the app causes the spending: the forecast could be completely wrong."
+      - text: "\"Correlation is not causation, so we can't conclude anything from this number. App users and other customers are different populations, and comparing them directly is statistically invalid.\""
         verdict: ok
-        feedback: "Correct, but a slogan: say what it means here and what to do."
-      - text: "\"We need more data before saying anything.\""
+        feedback: "Correct, but a slogan that stops at 'we can't conclude': say what it means here and how to find out."
+      - text: "\"We need much more data before saying anything: at least another year of history, ideally with demographic information on every customer, to separate the effect of the app from everything else.\""
         verdict: bad
-        feedback: "Paralysis. A simple test is the useful next step."
+        feedback: "Paralysis. A simple randomised test answers the question faster than a year of extra data."
     takeaway: "When a link might not be a cause, say who might be behind it and propose a test with a random comparison group."
   - id: recommendation
     kind: so-what
     audience: "Board member"
     prompt: "Your pilot of an AI routing tool cut the time to first contact from **8 days to 3** in 2 regions. Error rate is stable. Which conclusion do you present?"
     options:
-      - text: "\"We recommend rolling out to all regions over the next quarter: the pilot cut first contact from 8 to 3 days with no rise in errors. The main risk is adoption in the larger regions, so we will train team leads first.\""
+      - text: "\"We recommend rolling out to all regions next quarter: the pilot cut first contact from 8 to 3 days with no rise in errors. The main risk is adoption in larger regions, so we'll train team leads first.\""
         verdict: best
         feedback: "Recommendation, evidence, risk and mitigation: everything a board needs to decide."
-      - text: "\"The pilot was a success.\""
+      - text: "\"The pilot was a clear success in both regions: teams adopted the tool quickly, feedback was very positive, and the results exceeded what we all expected at the start of the project, so we are very proud of the team.\""
         verdict: ok
-        feedback: "Positive but not actionable: what do you want them to decide?"
-      - text: "\"Here are 25 slides of results by week and by region.\""
+        feedback: "Positive but not actionable: no number, and no decision asked of the board."
+      - text: "\"Here are the detailed results week by week and region by region, with the full methodology in the appendix, so that you can form your own view on the next steps.\""
         verdict: bad
-        feedback: "Detail without a message: the board will ask 'so what?'"
-      - text: "\"The model achieved strong performance metrics.\""
+        feedback: "Detail without a message: the board will ask 'so what?', because deciding is what they need you to propose."
+      - text: "\"The routing model achieved strong performance in production, with high precision and recall on every email category, and a stable error rate across the two pilot regions.\""
         verdict: bad
-        feedback: "Technical and vague."
+        feedback: "Technical and vague: no business result, no recommendation."
     takeaway: "End with a recommendation the audience can approve, the key evidence, and the main risk with its mitigation."
   - id: bad-news
     kind: so-what
     audience: "Client sponsor"
     prompt: "After 4 weeks, you found the data **cannot support** the forecasting model the client wanted: store sales were only recorded monthly. How do you open?"
     options:
-      - text: "\"We can't build a reliable daily forecast with the current data: sales are only recorded monthly. We have two options: a monthly forecast in 4 weeks, which already helps purchasing, or daily tracking from next month so a daily model is possible by summer. I recommend doing both.\""
+      - text: "\"We can't build a reliable daily forecast yet: sales are only recorded monthly. Options: a monthly forecast in 4 weeks, which already helps purchasing, or daily tracking from next month for a daily model by summer. I'd do both.\""
         verdict: best
         feedback: "Bad news first and clearly, the reason, then options and a recommendation: the meeting moves forward."
-      - text: "\"We've done a lot of interesting work on the data.\""
+      - text: "\"We've done a lot of interesting work on the data over the past four weeks, and we've learned a great deal about your sales patterns. There are a few challenges we'd like to walk you through today.\""
         verdict: bad
-        feedback: "Buries the bad news; she will feel misled when it comes out."
-      - text: "\"The project failed because of your data.\""
+        feedback: "Buries the bad news; she will feel misled when it comes out at the end of the meeting."
+      - text: "\"Unfortunately the project failed because your stores only record sales monthly. With data of this quality, no team could have built the daily forecast you asked for in this timeframe.\""
         verdict: bad
         feedback: "Blame without a way forward."
-      - text: "\"We need more time.\""
+      - text: "\"We need more time: the data turned out to be more complex than we expected, so we'd like to extend the project by four to six weeks to explore other approaches and models before concluding anything.\""
         verdict: ok
-        feedback: "Honest but incomplete: more time for what, and what will it change?"
+        feedback: "Honest about a problem, but incomplete: more time for what, and what will it change?"
     takeaway: "Deliver bad news early and plainly, with the reason and concrete options."
   - id: number-overload
     kind: so-what
     audience: "Head of HR"
     prompt: "Your attrition analysis produced many numbers. Which sentence is best for the summary slide?"
     options:
-      - text: "\"One in four new hires leaves within a year, mostly in the first 3 months, and mostly in teams without onboarding. Rolling out onboarding to those teams is the first thing to do.\""
+      - text: "\"One new hire in four leaves within a year, mostly in the first 3 months and in teams without onboarding. Rolling out onboarding to those teams is the first thing to do.\""
         verdict: best
         feedback: "Few numbers, chosen for the message, ending with an action."
-      - text: "\"Attrition is 24.7 % (95 % range 22.1 %–27.3 %), with a median tenure of 7.2 months, hazard ratio of 1.8 for teams without onboarding.\""
+      - text: "\"First-year attrition is 24.7 % (range 22.1–27.3 %), median tenure 7.2 months, and teams without onboarding show a hazard ratio of 1.8 (p < 0.01).\""
         verdict: bad
         feedback: "Precise but unreadable; the message is lost in the numbers."
-      - text: "\"Attrition is high.\""
+      - text: "\"Attrition among new hires is high and has increased compared with previous years, and it is a growing concern for several departments.\""
         verdict: bad
-        feedback: "Compared with what? What to do?"
-      - text: "\"Attrition is about 25 %, and onboarding matters.\""
+        feedback: "Compared with what? How much? What should HR do?"
+      - text: "\"About a quarter of new hires leave within their first year, and onboarding seems to play an important role in whether they stay, especially in some departments.\""
         verdict: ok
-        feedback: "Close, but 'matters' is vague: say what to do."
+        feedback: "Close, but 'seems to play a role' is vague: say what to do."
     takeaway: "On a summary slide, use few numbers, rounded, that support one message and one action."
   - id: trade-off
     kind: so-what
     audience: "Store operations director"
     prompt: "Ordering less reduces waste but creates more empty shelves. Your simulation gives several options. How do you frame the choice?"
     options:
-      - text: "\"You choose the balance. Option A: −30 % waste, empty shelves +1 point. Option B: −20 % waste, empty shelves unchanged. We recommend B for the pilot: it saves €3M a year without any risk for customers, and we can move toward A once stores trust the tool.\""
+      - text: "\"You choose the balance. A: −30 % waste, +1 point of empty shelves. B: −20 % waste, shelves unchanged. We recommend B for the pilot: €3M a year with no risk for customers, then move toward A once stores trust the tool.\""
         verdict: best
         feedback: "Makes the trade-off explicit, gives the decision to the owner, and still recommends."
-      - text: "\"The model optimises the trade-off automatically.\""
+      - text: "\"You don't need to choose: the model automatically finds the optimal balance between waste and empty shelves for each store and product, so you get the best possible result without any trade-off.\""
         verdict: bad
-        feedback: "Hides a business decision inside the model."
-      - text: "\"We minimised the loss function with a weight of 0.3 on stockouts.\""
+        feedback: "Hides a business decision inside the model, and pretends the trade-off does not exist."
+      - text: "\"We minimised a combined loss with a weight of 0.3 on stockouts and 0.7 on waste, tuned on the last 6 months, which gives the best overall score according to our simulations.\""
         verdict: bad
-        feedback: "Technical translation of a business choice he should make."
-      - text: "\"There's always a trade-off between waste and availability.\""
+        feedback: "A technical translation of a business choice he should make himself."
+      - text: "\"There's always a trade-off between waste and availability: reducing one usually increases the other. It's a strategic choice for the company, so we'll let your team decide which balance is right for your stores and your customers.\""
         verdict: ok
-        feedback: "True, but you did not help him choose."
+        feedback: "True, but you did not help him choose: give the options, their consequences and a recommendation."
     takeaway: "Present trade-offs as 2–3 options with their business consequences, and recommend one."
 write:
   - id: write-exec-summary

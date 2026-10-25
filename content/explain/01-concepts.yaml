@@ -8,126 +8,126 @@ items:
     audience: "Head of Sales, no technical background"
     prompt: "She asks: **\"What is machine learning, concretely?\"** Which answer do you give?"
     options:
-      - text: "\"Instead of writing rules by hand, we show the computer thousands of past examples, for instance deals we won and lost, and it learns the patterns. Then it can score new deals the same way.\""
+      - text: "\"Instead of writing rules by hand, we show the computer thousands of past deals we won and lost; it learns the patterns and then scores new deals the same way.\""
         verdict: best
         feedback: "Short, concrete, uses her world (deals), and says what it does for her."
-      - text: "\"It is a field of AI where algorithms minimise a loss function over training data to approximate an unknown function.\""
+      - text: "\"It's a branch of AI where algorithms minimise a loss function over labelled training data, so that the fitted model approximates an unknown function on new inputs.\""
         verdict: bad
-        feedback: "Accurate but meaningless to her: loss function, approximate an unknown function."
-      - text: "\"It is like a human brain inside the computer.\""
+        feedback: "Accurate but meaningless to her: loss function, labelled data, approximate an unknown function."
+      - text: "\"Think of it as a digital brain: it thinks about your customers the way your best salespeople do, only much faster, and it keeps getting smarter on its own.\""
         verdict: ok
-        feedback: "Simple but misleading: it suggests understanding and intelligence the model does not have."
-      - text: "\"It is complicated, but our data scientists handle it.\""
+        feedback: "Simple and friendly, but misleading: it suggests understanding and self-improvement the model does not have, which sets wrong expectations."
+      - text: "\"It's quite technical, honestly; the important thing is that our data scientists handle it, and you'll simply see the scores appear in your CRM every Monday.\""
         verdict: bad
-        feedback: "Dismissive. Executives fund what they understand."
+        feedback: "Dismissive. Executives fund and trust what they understand, and she will be asked about it by her own team."
     takeaway: "Explain ML as learning patterns from past examples, using an example from the listener's own job."
   - id: what-is-llm
     kind: explain
     audience: "CFO of a manufacturing company"
     prompt: "He asks: **\"How does ChatGPT actually work? Does it understand what it says?\"**"
     options:
-      - text: "\"It has read a huge amount of text and learned to predict the next word, very well. That makes it great at writing and summarising, but it does not check facts: it produces what sounds right, which is usually, not always, what is right.\""
+      - text: "\"It has read a huge amount of text and learned to predict the next word very well. So it writes and summarises brilliantly, but it doesn't check facts: it says what sounds right, which is usually, not always, what is right.\""
         verdict: best
         feedback: "Correct mechanism in plain words, plus the practical consequence he needs: it can be fluent and wrong."
-      - text: "\"It's a transformer with billions of parameters trained with self-attention and reinforcement learning from human feedback.\""
+      - text: "\"It's a transformer network with hundreds of billions of parameters, pre-trained with self-attention on web-scale data and then aligned with reinforcement learning from human feedback, which is why its answers feel so natural.\""
         verdict: bad
-        feedback: "Jargon. He wanted to know whether he can trust it."
-      - text: "\"Yes, it understands like a person, just faster.\""
+        feedback: "Jargon. He wanted to know whether he can trust it, and he got a list of techniques."
+      - text: "\"Yes, it genuinely understands what it reads and writes, a bit like a very well-read colleague who has studied every subject; that's why it can answer questions about finance as well as an analyst would.\""
         verdict: bad
-        feedback: "False, and dangerous: it leads to blind trust."
-      - text: "\"Nobody really knows how it works.\""
+        feedback: "False, and dangerous: it leads to blind trust in confident but wrong answers."
+      - text: "\"To be honest, nobody really knows how it works inside, not even the companies that build it; it's a black box, so the only way to know if it's right is to try it and see what happens.\""
         verdict: ok
-        feedback: "There is some truth about interpretability, but it is unhelpful and sounds evasive."
+        feedback: "There is some truth about interpretability, but it is unhelpful and sounds evasive: you can explain the mechanism and its consequences."
     takeaway: "LLM in one line: it predicts the next word extremely well; fluent is not the same as correct."
   - id: rag
     kind: explain
     audience: "Head of Customer Service at a telecom company"
     prompt: "Your team proposes a RAG assistant. She asks: **\"What is the difference with just using ChatGPT?\"**"
     options:
-      - text: "\"ChatGPT answers from memory, and its memory does not contain your procedures. Our assistant first looks up the relevant pages in your own documents, then answers from them and shows which page it used, so your agents can check.\""
+      - text: "\"ChatGPT answers from memory, and its memory doesn't contain your procedures. Our assistant first looks up the right pages in your documents, then answers from them and shows which page it used, so agents can check.\""
         verdict: best
         feedback: "The key idea (look up first, then answer), the benefit (your documents, current) and the trust mechanism (sources)."
-      - text: "\"We use embeddings and a vector database to retrieve chunks, which we inject into the prompt of the LLM.\""
+      - text: "\"We embed your documents into vectors, store them in a vector database, retrieve the top-k chunks by cosine similarity for each question, and inject them into the LLM's prompt before generation, which grounds its answers.\""
         verdict: bad
-        feedback: "Five technical terms, zero benefit stated."
-      - text: "\"It's ChatGPT, but trained on your data.\""
+        feedback: "Correct but five technical terms and zero benefit stated: she still does not know why it is better for her agents."
+      - text: "\"It's basically ChatGPT, but trained on all of your company's data, so it knows your procedures, your products and your customers by heart and can answer any question about them without searching.\""
         verdict: ok
-        feedback: "Close enough to be understood, but wrong on the mechanism ('trained'), which creates false expectations about updates and privacy."
-      - text: "\"It's much better, trust us.\""
+        feedback: "Easy to grasp, but wrong on the mechanism ('trained', 'by heart'), which creates false expectations about updates, sources and privacy."
+      - text: "\"It's much more advanced than ChatGPT: it uses the latest techniques that the big tech companies use internally, so the answers are a lot more accurate. You can trust us on the technical side.\""
         verdict: bad
-        feedback: "No explanation, no reason to trust."
+        feedback: "No explanation, no reason to trust, and 'trust us' is the opposite of what a client needs."
     takeaway: "RAG = an open-book exam: the assistant looks up your documents first, then answers and cites them."
   - id: overfitting
     kind: explain
     audience: "Marketing director"
     prompt: "Your model was excellent on past data but disappointing on the new campaign. She asks why. How do you explain overfitting?"
     options:
-      - text: "\"The model memorised the past instead of learning general rules, like a student who learns last year's exam answers by heart and fails when the questions change. We now check models on data they have never seen.\""
+      - text: "\"The model memorised the past instead of learning general rules, like a student who learns last year's exam by heart and fails when the questions change. From now on, we check every model on data it has never seen.\""
         verdict: best
         feedback: "A vivid analogy, an honest admission, and what you do about it."
-      - text: "\"The model overfitted because of high variance; we need more regularisation.\""
+      - text: "\"The model overfitted the training data because of high variance: it had too many parameters for the amount of data, so we will add regularisation and cross-validation, and tune its hyperparameters before the next campaign.\""
         verdict: bad
         feedback: "Correct diagnosis in a language she cannot use."
-      - text: "\"The market changed, it is not the model's fault.\""
+      - text: "\"The market simply changed between the two campaigns: customers behave differently now, and no model can anticipate that. It is not really the model's fault; we just need to retrain it on the new campaign's data.\""
         verdict: ok
-        feedback: "Drift can happen, but blaming the market without checking sounds defensive."
-      - text: "\"Models sometimes don't work.\""
+        feedback: "Drift can happen, but blaming the market without checking sounds defensive, and here the model was never tested on unseen data."
+      - text: "\"Models sometimes don't work, that's part of the game with AI. Some campaigns go well and others don't; on average the model is still useful, so we suggest keeping it and seeing how the next campaigns go.\""
         verdict: bad
-        feedback: "Unhelpful, and it undermines trust in the whole project."
+        feedback: "Unhelpful, and it undermines trust in the whole project without fixing anything."
     takeaway: "Overfitting = learning last year's exam by heart. Prove performance on data the model never saw."
   - id: probability
     kind: explain
     audience: "Store manager"
     prompt: "The tool says a customer has a **70 % churn risk**. The manager asks: \"So will she leave or not?\""
     options:
-      - text: "\"We can't know for one person. It means that out of 10 customers like her, about 7 leave if we do nothing. So she is worth a call, but some of the customers we call would have stayed anyway.\""
+      - text: "\"We can't know for one person. Out of 10 customers like her, about 7 leave if we do nothing. So she's worth a call, even though some of the people we call would have stayed anyway.\""
         verdict: best
         feedback: "Turns a probability into frequencies (7 out of 10), which people understand far better, and links it to the action."
-      - text: "\"Yes, she will leave.\""
+      - text: "\"Yes, she's going to leave: the model is 70 % sure, which is high. You should call her today and offer her the retention discount before she goes to a competitor, otherwise we'll lose her.\""
         verdict: bad
-        feedback: "Turns a probability into a certainty; the manager will lose trust the first time she stays."
-      - text: "\"The posterior probability of the positive class is 0.7.\""
+        feedback: "Turns a probability into a certainty; the manager will lose trust the first time such a customer stays."
+      - text: "\"The model outputs a posterior probability of 0.7 for the churn class given her features, which is above our decision threshold of 0.5, so she is classified as a churner in the weekly list.\""
         verdict: bad
-        feedback: "Technically right, practically useless."
-      - text: "\"It's more likely than not.\""
+        feedback: "Technically right, practically useless for the manager."
+      - text: "\"It means it's more likely than not that she leaves, so she's in the risky group. Customers in that group are the ones we should focus on when we plan the retention calls this month.\""
         verdict: ok
-        feedback: "True but vague: '7 out of 10' is much more concrete."
+        feedback: "True and actionable, but vague: '7 out of 10' is much more concrete than 'more likely than not', and it hides that some will stay."
     takeaway: "Translate probabilities into natural frequencies: '7 out of 10 customers like her'."
   - id: training-data
     kind: explain
     audience: "Plant director"
     prompt: "He asks: **\"Why do you need two years of history? Can't the AI just start today?\"**"
     options:
-      - text: "\"The model learns from examples of what happened before a breakdown. We have only about 40 breakdowns a year, so two years gives us roughly 80 examples, which is the minimum to see a reliable pattern and to test it honestly.\""
+      - text: "\"The model learns from what happened before past breakdowns. You have about 40 a year, so two years gives roughly 80 examples: the minimum to see a reliable pattern and to test it honestly.\""
         verdict: best
         feedback: "Explains why with his own numbers, and introduces the idea of testing."
-      - text: "\"Because deep learning needs big data.\""
+      - text: "\"Because AI needs big data: modern deep learning models only become accurate with millions of examples, so the more history you give us, the better the predictions will be for your plant.\""
         verdict: bad
-        feedback: "A slogan, not an explanation, and not even the real reason here."
-      - text: "\"More data is always better.\""
+        feedback: "A slogan, not an explanation, and not even the real reason here: what matters is the number of breakdowns, not millions of rows."
+      - text: "\"More data is always better for a model: with two years we capture the seasons and the different production campaigns, and with less we would risk missing patterns that only appear once a year.\""
         verdict: ok
-        feedback: "Partly true, but it does not explain why two years is the right amount."
-      - text: "\"That's how it works.\""
+        feedback: "Partly true (seasons matter), but it misses the key point: the number of past breakdowns the model can learn from."
+      - text: "\"That's simply how these models work: they need a training period before they can predict anything. Your IT team can export the data, and we'll tell you once the model is ready to use.\""
         verdict: bad
-        feedback: "No reason given."
+        feedback: "No reason given; he cannot judge whether two years is necessary."
     takeaway: "Explain data needs in terms of examples of the event you want to predict, with the client's own numbers."
   - id: hallucination
     kind: explain
     audience: "General counsel (legal director)"
     prompt: "She read that GenAI \"hallucinates\". She asks what that means and whether it is a problem for a contract assistant."
     options:
-      - text: "\"It means the model sometimes writes confident sentences that are false, for instance a clause that is not in the contract. That's why our assistant only answers from the contract itself, quotes the exact clause, and says when it cannot find one; a lawyer still validates.\""
+      - text: "\"It means the model sometimes writes confident sentences that are false, like quoting a clause that isn't in the contract. So our assistant only answers from the contract itself, quotes the exact clause, and a lawyer still validates.\""
         verdict: best
         feedback: "Defines the risk plainly, gives a concrete legal example, and explains the safeguards."
-      - text: "\"Hallucinations are rare with the latest models, don't worry.\""
+      - text: "\"Hallucinations used to be a problem with older models, but they're rare with the latest generation, which is far more accurate. For contracts, you really don't need to worry about it anymore.\""
         verdict: bad
-        feedback: "Dismissive, and false comfort for a legal use case."
-      - text: "\"It's a known issue with stochastic decoding in autoregressive models.\""
+        feedback: "Dismissive, and false comfort for a legal use case: errors are rarer, not gone."
+      - text: "\"It's a known side effect of stochastic decoding in autoregressive language models: sampling from the token distribution can produce low-probability continuations that aren't grounded in the input context.\""
         verdict: bad
-        feedback: "Jargon that avoids the question."
-      - text: "\"Yes, it's a big problem, so we can't use GenAI for contracts.\""
+        feedback: "Jargon that avoids her actual question: is it a problem for her contracts?"
+      - text: "\"Yes, it's a serious problem: the model can invent clauses or misread obligations, and you can't predict when. For contracts, the risk is too high, so we'd advise against using generative AI for this.\""
         verdict: ok
-        feedback: "Takes the risk seriously but ignores the design choices that make it manageable."
+        feedback: "Takes the risk seriously, but ignores the design choices (sources, quotes, human review) that make it manageable."
     takeaway: "Hallucination = confident, made-up content. Answer with the mitigation: sources, quotes, 'I don't know', human review."
 write:
   - id: explain-ml-model

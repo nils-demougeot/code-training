@@ -8,16 +8,16 @@ items:
     audience: "Head of the fraud investigation team"
     prompt: "Your fraud model has a **precision of 0.8** at the chosen threshold. How do you say it?"
     options:
-      - text: "\"When the model flags a claim, it is really fraud 8 times out of 10. So your investigators will spend most of their time on real cases.\""
+      - text: "\"When the model flags a claim, it's really fraud 8 times out of 10. So your investigators will spend most of their time on real cases.\""
         verdict: best
         feedback: "Defines precision through what his team experiences, and gives the consequence."
-      - text: "\"The model has 80 % precision.\""
-        verdict: ok
-        feedback: "Correct, but he may not know what precision means, and you left out the 'so what'."
-      - text: "\"The model is 80 % accurate.\""
+      - text: "\"The model is right 8 times out of 10 overall, so it gets 80 % of claims right, fraudulent or not, which is a strong result for this kind of data.\""
         verdict: bad
-        feedback: "Wrong: precision is not accuracy. Mixing them up in front of a client is costly."
-      - text: "\"The ratio of true positives to predicted positives is 0.8.\""
+        feedback: "Wrong: that is accuracy, not precision. Precision is about the claims it flags, and mixing them up in front of a client is costly."
+      - text: "\"The model has a precision of 80 % at the threshold we chose, which is a good level compared with what we usually see on fraud projects.\""
+        verdict: ok
+        feedback: "Correct, but he may not know what precision means, and you left out what it changes for his team."
+      - text: "\"Precision is the ratio of true positives to all predicted positives, TP / (TP + FP), and at our threshold it equals 0.8 on the test set.\""
         verdict: bad
         feedback: "A formula instead of a meaning."
     takeaway: "Precision = 'when it raises a flag, how often is it right?'"
@@ -29,69 +29,69 @@ items:
       - text: "\"Out of all the fraud that really happens, the model catches about 6 cases in 10. The other 4 still need your usual checks; we can catch more, but then more flags will be false alarms.\""
         verdict: best
         feedback: "Clear meaning, honest about what is missed, and introduces the trade-off he controls."
-      - text: "\"The model catches 60 % of the claims.\""
+      - text: "\"The model catches 60 % of the claims that come in, so your team only needs to look at the remaining 40 % by hand, which should cut the workload of the investigators by more than half.\""
         verdict: bad
-        feedback: "Wrong: 60 % of the fraud, not of the claims."
-      - text: "\"Recall is 0.6, which is decent for this kind of problem.\""
+        feedback: "Wrong: it catches 60 % of the frauds, not of the claims, and that says nothing about the investigators' workload."
+      - text: "\"Recall is 0.6, which is a decent level for this kind of problem. Fraud is rare and hard to detect, so most models in the industry are in the same range, and we expect to improve it slightly over time.\""
         verdict: ok
-        feedback: "Reassuring but unexplained: he still does not know what 0.6 means for his team."
-      - text: "\"Recall is the sensitivity, or true positive rate.\""
+        feedback: "Reassuring but unexplained: he still does not know what 0.6 means for his team, nor what is missed."
+      - text: "\"Recall, also called sensitivity or true positive rate, is TP / (TP + FN). Ours is 0.6, and it moves in the opposite direction to precision as we change the decision threshold of the classifier.\""
         verdict: bad
-        feedback: "Defines jargon with more jargon."
+        feedback: "Defines jargon with more jargon, even if the trade-off is correctly mentioned."
     takeaway: "Recall = 'out of all the real cases, how many do we catch?' Mention the trade-off with false alarms."
   - id: accuracy-trap
     kind: metric
     audience: "Plant director"
     prompt: "A vendor tells him their failure model is **99 % accurate**. Failures happen on about 1 % of days. He asks your opinion."
     options:
-      - text: "\"On 100 days, about 1 has a failure. A model that always says 'no failure' is 99 % accurate and catches nothing. Ask them instead: of the real failures, how many did it catch, and how many false alarms per month?\""
+      - text: "\"On 100 days, about 1 has a failure. A model that always says 'no failure' is 99 % accurate and catches nothing. Ask them: of the real failures, how many did it catch, and how many false alarms per month?\""
         verdict: best
         feedback: "Shows the trap with his own numbers and gives him the right questions to ask."
-      - text: "\"99 % is excellent, go for it.\""
+      - text: "\"99 % is an excellent score: it's higher than most published results on predictive maintenance. If their price is reasonable, I'd go for it and run a short pilot on one machine first to confirm the results.\""
         verdict: bad
-        feedback: "Falls into the accuracy trap on rare events."
-      - text: "\"Accuracy is not a good metric for imbalanced datasets.\""
+        feedback: "Falls into the accuracy trap on rare events: 99 % is what a useless model gets here."
+      - text: "\"Accuracy isn't a good metric for imbalanced datasets like failures, because the majority class dominates it. I'd ask them for metrics that are better suited to rare events before going further.\""
         verdict: ok
-        feedback: "True, but abstract: he cannot use it in the next meeting with the vendor."
-      - text: "\"Ask for the F1 score.\""
+        feedback: "True, but abstract: he cannot use 'imbalanced datasets' in the next meeting with the vendor; give him the questions to ask."
+      - text: "\"Ask them for the F1 score and the ROC-AUC instead: those are the standard metrics for this kind of problem, and any serious vendor should be able to give them to you in the next meeting.\""
         verdict: bad
-        feedback: "Replaces one opaque number with another."
+        feedback: "Replaces one opaque number with two others he cannot interpret."
     takeaway: "On rare events, accuracy is meaningless. Ask: what share of real cases is caught, and how many false alarms?"
   - id: mae
     kind: metric
     audience: "Bakery category manager"
     prompt: "Your forecast has a **mean absolute error of 12 units** per store and day for baguettes, against 20 for the current method. The chain has 120 stores. How do you present it?"
     options:
-      - text: "\"Today, orders are off by about 20 baguettes per store and day on average. With the forecast, it's about 12: that's 8 fewer baguettes wasted or missing per store each day, roughly 1,000 a day across the chain.\""
+      - text: "\"Today orders are off by about 20 baguettes per store and day. With the forecast, it's about 12: 8 fewer baguettes wasted or missing per store each day, roughly 1,000 a day across the chain.\""
         verdict: best
         feedback: "Units the manager thinks in, the comparison with today, and the scale-up to the business."
-      - text: "\"MAE improved by 40 %.\""
+      - text: "\"The mean absolute error went from 20 to 12 units, a 40 % improvement, and the root mean squared error fell by a similar amount, so the forecast is better on both metrics across all 120 stores.\""
         verdict: ok
-        feedback: "Correct and short, but the acronym and percentage hide what it means on the shelf."
-      - text: "\"The RMSE is lower too.\""
+        feedback: "Correct and complete, but the acronyms and percentages hide what it means on the shelf and in the bin."
+      - text: "\"The new forecast is 88 % accurate, against 80 % for the current method, so we expect waste and empty shelves to fall by about 8 points across the chain from the first month.\""
         verdict: bad
-        feedback: "Another acronym, no meaning."
-      - text: "\"The forecast is 88 % accurate.\""
+        feedback: "Invents an 'accuracy' that does not exist for this metric, and derives a waste figure from it that nobody measured."
+      - text: "\"The forecast is better than the current method in most stores and on most days, especially around promotions. Some stores still need tuning, but overall the results are clearly positive.\""
         verdict: bad
-        feedback: "Invents an 'accuracy' that does not exist for this metric."
+        feedback: "No number at all: the manager cannot judge whether the improvement is worth changing how stores order."
     takeaway: "Express errors in business units (baguettes, euros, hours) and compare with today's way of working."
   - id: ab-test
     kind: metric
     audience: "E-commerce director"
     prompt: "In an A/B test, the new recommendation widget increased conversion from **3.0 % to 3.3 %**, and the difference is statistically significant. The site has 500,000 visits a month. What do you say?"
     options:
-      - text: "\"Visitors who saw the new widget bought more: 33 orders per 1,000 visits instead of 30, a 10 % increase. The test was large enough that this is very unlikely to be luck. With 500,000 visits a month, that's about 1,500 more orders.\""
+      - text: "\"Visitors who saw the new widget bought more: 33 orders per 1,000 visits instead of 30, a 10 % increase. The test was large, so this is very unlikely to be luck: about 1,500 more orders a month.\""
         verdict: best
         feedback: "Frequencies, relative uplift, what 'significant' means in plain words, and the business translation."
-      - text: "\"p < 0.05, so the result is significant.\""
+      - text: "\"Conversion went up by 0.3 %, from 3.0 to 3.3. It's a small change, but the test says it's statistically significant, so the widget probably has a small positive effect on sales.\""
         verdict: bad
-        feedback: "Jargon, and no sense of the size of the effect."
-      - text: "\"Conversion went up by 0.3 %.\""
+        feedback: "Misleading: +0.3 percentage points is a 10 % relative increase, worth about 1,500 orders a month, not a 'small change'."
+      - text: "\"The difference between the two groups is statistically significant at the 5 % level (p < 0.05) with a two-sided z-test on proportions, so we reject the null hypothesis of no effect.\""
         verdict: bad
-        feedback: "Ambiguous and misleading: it went up by 0.3 percentage points, which is a 10 % relative increase."
-      - text: "\"The new widget is better.\""
+        feedback: "Jargon, and no sense of the size of the effect or what it is worth."
+      - text: "\"The new widget performed better than the old one in the test, and the difference is significant, so we recommend switching to it for all visitors as soon as the web team can deploy it next sprint.\""
         verdict: ok
-        feedback: "Right conclusion, but without size or confidence the director cannot weigh it."
+        feedback: "Right conclusion, but without the size of the effect the director cannot weigh it against other priorities."
     takeaway: "Give the size of the effect (per 1,000, relative %), say 'unlikely to be luck', and translate into business volume."
   - id: uncertainty
     kind: metric
@@ -101,33 +101,33 @@ items:
       - text: "\"Plan on €1.5M: that's the cautious end of our range. Our central estimate is €2.1M, and the pilot will tell us within three months where we really are.\""
         verdict: best
         feedback: "Gives him a number to budget, keeps the range honest, and says how the uncertainty will shrink."
-      - text: "\"€2.1M.\""
+      - text: "\"You can count on up to €2.8M a year: that's what the model shows if the assumptions hold, and we've been conservative on most of them.\""
+        verdict: bad
+        feedback: "Selling the best case as 'conservative' sets you up for disappointment."
+      - text: "\"Our 90 % confidence interval for the yearly saving runs from €1.5M to €2.8M, centred on €2.1M, based on 1,000 simulations of the key assumptions.\""
+        verdict: bad
+        feedback: "Correct, but you did not answer his question: which number goes in the budget?"
+      - text: "\"Use €2.1M: it's our best estimate, and the range around it is fairly symmetric, so the risks on either side should roughly balance out.\""
         verdict: ok
-        feedback: "A clear number, but you hide a real risk he would want to know."
-      - text: "\"The 90 % confidence interval is 1.5 to 2.8 million.\""
-        verdict: bad
-        feedback: "Correct, but you did not answer his question."
-      - text: "\"Up to €2.8M a year!\""
-        verdict: bad
-        feedback: "Selling the best case sets you up for disappointment."
+        feedback: "A clear number, but you hide a real downside risk he would want to know about when budgeting."
     takeaway: "With a range, recommend the number to plan on, give the central estimate, and say how you will reduce the uncertainty."
   - id: llm-eval
     kind: metric
     audience: "Head of Customer Service"
     prompt: "On 200 real questions, your assistant gave a correct, sourced answer **172 times**, said \"I don't know\" **20 times**, and was wrong **8 times**. How do you report it?"
     options:
-      - text: "\"On 200 real questions from your team, it answered 172 correctly with a source. It said 'I don't know' 20 times, which is fine: those go to the experts. It was wrong 8 times, 4 %; we analysed each one, and fixed 5 by updating outdated documents.\""
+      - text: "\"Out of 200 real questions, 172 got a correct, sourced answer. 20 times it said 'I don't know', which is fine: those go to the experts. It was wrong 8 times, 4 %; we analysed each one and fixed 5.\""
         verdict: best
         feedback: "Clear counts, the meaning of each outcome, honesty about errors and what you did about them."
-      - text: "\"86 % accuracy.\""
+      - text: "\"The assistant reached 86 % accuracy on our test set of 200 questions, above the 80 % we had set as a minimum, so we consider it ready for the pilot with your agents next month.\""
         verdict: ok
-        feedback: "Compact, but it merges harmless refusals with harmful errors."
-      - text: "\"The faithfulness score is 0.96 according to our LLM judge.\""
+        feedback: "Compact and decisive, but it merges harmless refusals with harmful wrong answers, which have very different consequences."
+      - text: "\"Our LLM-as-a-judge evaluation gives a faithfulness score of 0.96 and an answer relevance of 0.91, which are above the usual benchmarks for retrieval-augmented systems in customer service.\""
         verdict: bad
-        feedback: "Opaque to her, and it hides the 8 wrong answers."
-      - text: "\"It works very well, only a few mistakes.\""
+        feedback: "Opaque to her, and it hides the 8 wrong answers she needs to know about."
+      - text: "\"It works very well: the large majority of answers were correct and only a few mistakes remain, which we are fixing. Your agents should be very happy with it.\""
         verdict: bad
-        feedback: "Vague: 'a few' could be 2 or 40."
+        feedback: "Vague: 'a few' could be 2 or 40, and she cannot judge the risk."
     takeaway: "For GenAI quality, separate correct answers, refusals and errors: they have very different consequences."
 write:
   - id: write-precision-recall

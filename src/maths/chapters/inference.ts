@@ -281,7 +281,7 @@ $$\mathrm{cov}(x, y) = \frac{1}{n-1}\sum (x_i - \bar{x})(y_i - \bar{y}) \qquad r
       {
         q: 'La **p-value** d’un test est :',
         correct: 'la probabilité, si $H_0$ est vraie, d’observer un résultat au moins aussi extrême',
-        wrong: ['la probabilité que $H_0$ soit vraie', 'la probabilité que $H_1$ soit vraie', 'la probabilité de se tromper en acceptant $H_1$'],
+        wrong: ['la probabilité que $H_0$ soit vraie, compte tenu des données observées', 'la probabilité que l’écart observé soit dû uniquement au hasard', 'la probabilité de se tromper en acceptant $H_1$'],
       },
       {
         q: 'Une **erreur de type I** consiste à :',

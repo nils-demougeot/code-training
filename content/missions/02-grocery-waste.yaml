@@ -101,55 +101,55 @@ framing:
   - id: objective
     question: "What is the business objective?"
     options:
-      - text: "Reduce fresh-food waste by about 25 % without increasing empty shelves"
+      - text: "Cut fresh-food waste by about 25 % without more empty shelves"
         correct: true
         feedback: "Yes: measurable, owned by the client, and it captures the trade-off between waste and availability."
-      - text: "Predict sales as accurately as possible"
+      - text: "Predict daily sales of every fresh product with the highest accuracy"
         feedback: "Accuracy is a means, not the goal. A forecast can be accurate on average and still lead to bad orders. Judge it on waste and availability."
-      - text: "Use generative AI in the supply chain"
+      - text: "Halve waste by ordering 20 % less of every fresh product in all stores"
+        feedback: "Ordering less everywhere cuts waste but empties shelves, losing sales that are worth more than the waste. The objective must hold both sides."
+      - text: "Use generative AI in the supply chain, as the CEO asked"
         feedback: "A technology is not an objective. Here, nothing suggests that generative AI is the right tool."
-      - text: "Reduce the number of store managers"
-        feedback: "Not the request, and the managers' local knowledge is an asset for the solution."
   - id: task
     question: "What is the core analytical task?"
     options:
-      - text: "Forecast daily demand per store and product, then turn it into a recommended order quantity"
+      - text: "Forecast daily demand per store and product, then turn it into an order quantity"
         correct: true
         feedback: "Right: a classic forecasting problem on tabular data, plus a simple ordering rule on top."
-      - text: "Generate product descriptions with an LLM"
-        feedback: "Unrelated to waste."
-      - text: "Classify products into fresh and non-fresh"
-        feedback: "That information already exists in the product catalogue."
-      - text: "Cluster stores by size"
-        feedback: "Can help the analysis, but it does not tell anyone how much to order tomorrow."
+      - text: "Detect which stores waste the most, so that their managers can be trained in priority"
+        feedback: "A useful diagnosis, but it does not tell any manager how much to order tomorrow."
+      - text: "Use an LLM to write each evening's order from the managers' notes on local events"
+        feedback: "Local events matter, but turning notes into quantities needs a numeric forecast; an LLM is not built for that."
+      - text: "Cluster stores by size and location to set one fixed order template per cluster"
+        feedback: "Fixed templates ignore promotions, weather and holidays, exactly when waste and empty shelves spike."
   - id: metric
     question: "How do you check that the solution works before going live?"
     options:
-      - text: "Measure forecast error on recent months the model never saw, and simulate the waste and empty shelves its orders would have produced, compared with the managers' actual orders"
+      - text: "Backtest on recent months the model never saw, and simulate the waste and empty shelves its orders would have caused, versus the managers' real orders"
         correct: true
         feedback: "Yes: a backtest on unseen recent data, translated into the business metrics, against the current baseline."
-      - text: "R² on the training data"
+      - text: "Measure forecast error on a random sample of days from the last three years, mixing training and test days, and compare it with the error of last year's vendor tool"
+        feedback: "A random split lets the model learn from days that come after the ones it predicts. Test on the most recent period, as in real life, and measure waste and empty shelves, not only forecast error."
+      - text: "Compare the R² of several models on all three years of data used to train them, and keep the model with the best score"
         feedback: "Training performance says nothing about the future and is easy to inflate."
-      - text: "The number of orders placed with the tool"
+      - text: "Count how many store managers open the tool each evening during the first month, and how long they spend on it"
         feedback: "Usage is worth tracking, but it does not tell you if waste goes down."
-      - text: "Ask the CEO whether the dashboard looks good"
-        feedback: "Opinions are not evidence."
   - id: data
     question: "Which data do you need for the first version? (select all that apply)"
     multi: true
     options:
-      - text: "Daily sales per store and product"
+      - text: "Daily sales per store and product, over three years"
         correct: true
         feedback: "Essential: this is what you forecast."
-      - text: "The promotions calendar"
+      - text: "The promotions calendar, with the discount levels"
         correct: true
         feedback: "Essential: promotions can double sales; without them the forecast will be wrong exactly when it matters."
-      - text: "Calendar and weather data"
+      - text: "Bank holidays, school holidays and weather data"
         correct: true
         feedback: "Yes: holidays and weather are strong drivers for fresh products."
-      - text: "Customers' names and addresses"
-        feedback: "Not needed to forecast store demand, and personal data you should not collect without reason."
-      - text: "Competitors' prices, scraped every hour"
+      - text: "Loyalty-card purchases of each individual customer"
+        feedback: "Not needed to forecast store-level demand for a first version, and personal data you should not use without a clear reason."
+      - text: "Competitors' prices, collected every hour from their websites"
         feedback: "Expensive and noisy; at most a later improvement."
   - id: risks
     question: "Which pitfalls should the design handle? (select all that apply)"
@@ -164,22 +164,22 @@ framing:
       - text: "New products have no sales history"
         correct: true
         feedback: "Yes: use similar products or category averages for them."
-      - text: "The model could replace the warehouse"
-        feedback: "Not a real risk."
+      - text: "Forecasts being too accurate, leaving no safety margin on the shelves"
+        feedback: "Not a real risk: the safety margin is a business rule added on top of the forecast, whatever its accuracy."
 approach:
   id: approach
   question: "What do you recommend for the first version?"
   options:
-    - text: "A gradient-boosted tree model trained on sales history with promotion, calendar and weather inputs, compared with a 'same day last week' baseline; the order is forecast plus a safety margin, shown to managers with a short reason ('promotion', 'bank holiday') and adjustable"
+    - text: "Gradient-boosted trees on sales history with promotion, calendar and weather inputs, checked against a 'same day last week' baseline; each order is shown to managers with a short reason and stays adjustable"
       verdict: best
       feedback: "Simple, proven on tabular retail data, explainable enough, and designed for adoption. GenAI is not needed for this problem."
-    - text: "A moving average of the last 4 weeks per product"
+    - text: "A moving average of the last four weeks for each product and store, recomputed every evening and sent to the managers as their default order"
       verdict: ok
       feedback: "A good baseline to beat, cheap to build. But it misses promotions and holidays, precisely when waste and empty shelves spike."
-    - text: "A deep neural network trained from scratch on every product of every store"
+    - text: "A deep neural network trained from scratch on every product of every store, with all available data including loyalty cards and competitor prices, to capture every possible interaction automatically"
       verdict: ok
       feedback: "Could help later at scale, but it is heavy for a first version, harder to explain to managers, and rarely better than boosted trees on this kind of data at the start."
-    - text: "An LLM that reads the sales tables each evening and decides the orders"
+    - text: "An LLM that receives the sales tables, promotions and weather each evening, reasons about local events like an experienced manager would, and writes the order for each of the 2,000 products with a short justification"
       verdict: bad
       feedback: "LLMs are not built for precise numeric forecasting on millions of rows: unreliable, slow and costly. Use the right tool for the job."
 plan:
@@ -214,16 +214,16 @@ pitch:
   id: pitch
   question: "Which summary do you send Karim?"
   options:
-    - text: "Most of the waste comes from 300 products ordered by experience each evening. We propose a forecast that recommends each order, which managers can see explained and adjust. Target: −25 % waste, about €4M a year at cost, without more empty shelves. Next step: an 8-week pilot in 10 stores compared with 10 similar stores."
+    - text: "Most of the waste comes from 300 products ordered by experience each evening. We propose a forecast that recommends each order, explained and adjustable by managers. Target: −25 % waste, about €4M a year at cost, without more empty shelves. Next step: an 8-week pilot in 10 stores compared with 10 similar stores."
       verdict: best
       feedback: "The cause, the solution in plain words, the respect for managers' judgement, the value and a measurable next step."
-    - text: "We will train a LightGBM model with a Tweedie loss on lagged features and use quantile regression for safety stock."
+    - text: "We will train a LightGBM model with a Tweedie loss on lagged sales features, calendar embeddings and promotion flags, use quantile regression to set safety stock at the 80th percentile, and deploy it through an MLOps pipeline with drift monitoring, feature stores and automatic weekly retraining on all stores."
       verdict: bad
-      feedback: "Correct ideas, wrong audience: Karim cannot decide anything from this."
-    - text: "From next month, AI will place all fresh orders automatically in every store."
+      feedback: "Correct ideas, wrong audience: Karim cannot decide anything from this, and it says nothing about waste, value or managers."
+    - text: "Good news: our analysis shows AI can eliminate food waste. From next month, an algorithm will place all fresh orders automatically in every store, so your managers will no longer need to spend their evenings on orders and can focus on customers instead."
       verdict: bad
       feedback: "Overpromises, skips the pilot and removes the managers, which is what killed the previous tool."
-    - text: "AI could probably reduce waste. Let us discuss it again next quarter."
+    - text: "Thanks for the meeting. AI could probably reduce part of your waste, but it depends on many factors such as data quality and adoption. We suggest discussing it again next quarter, once your teams have had time to think about their priorities."
       verdict: ok
       feedback: "Not wrong, but no insight, no number, no next step."
 debrief: |

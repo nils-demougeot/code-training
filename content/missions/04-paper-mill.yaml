@@ -97,39 +97,39 @@ framing:
   - id: objective
     question: "What is the business objective?"
     options:
-      - text: "Reduce unplanned downtime from bearing failures by turning emergency stops into short planned stops"
+      - text: "Turn emergency stops caused by bearing failures into short planned stops, to cut unplanned downtime"
         correct: true
         feedback: "Yes: one failure mode, one action, one measurable outcome."
-      - text: "Predict every possible failure in the plant"
-        feedback: "Impossible to deliver: most failure types have too few examples and different signals."
-      - text: "Install more sensors"
-        feedback: "A means, and maybe not needed: start with what exists."
-      - text: "Maximise the model's accuracy"
+      - text: "Predict every type of failure on all 12 machines, so that no breakdown ever surprises the plant again"
+        feedback: "Impossible to deliver: most failure types have too few examples and different signals. Start where the cost is."
+      - text: "Reach 99 % accuracy in predicting, for every machine and every day, whether a failure will happen"
         feedback: "Failures are rare: a model that never raises an alert would be more than 99 % accurate and completely useless."
+      - text: "Replace the fixed 6-week preventive maintenance with maintenance driven entirely by the AI's alerts"
+        feedback: "Too early and too risky: alerts must first prove themselves alongside the current schedule."
   - id: task
     question: "What should the model do?"
     options:
-      - text: "Estimate for each cylinder the risk of a bearing failure in the coming days from vibration and temperature trends, and alert when it is high"
+      - text: "Estimate each cylinder's risk of a bearing failure in the coming days from vibration and temperature trends"
         correct: true
         feedback: "Right: a risk score per asset, with a horizon that matches the 48-hour lead time."
-      - text: "Generate maintenance reports with an LLM"
-        feedback: "Possibly useful one day, unrelated to predicting failures."
-      - text: "Forecast production volumes"
-        feedback: "A different problem."
-      - text: "Cluster the machines into groups"
-        feedback: "Does not produce a warning."
+      - text: "Detect a bearing failure as soon as it starts, from a sudden jump in vibration, and stop the machine at once"
+        feedback: "Detecting a failure as it happens is too late: the team needs 48 hours of notice to plan a short stop."
+      - text: "Forecast tomorrow's vibration level of each cylinder as precisely as possible, minute by minute"
+        feedback: "An intermediate quantity: a precise vibration forecast does not say whether a failure is coming, nor when to act."
+      - text: "Read the technicians' free-text work orders with an LLM and generate a monthly maintenance report"
+        feedback: "Useful to rebuild the failure history, but it does not warn anyone before a failure."
   - id: metric
     question: "How do you evaluate the model?"
     options:
-      - text: "On a later period than the training data: the share of past failures caught at least 48 hours ahead, and the share of alerts that were real failures"
+      - text: "On a later period than the training data: share of failures caught 48 h ahead, and share of alerts that were real"
         correct: true
         feedback: "Yes: recall and precision in business terms, with a time-based split so that the model is tested on the future, as in real life."
-      - text: "Overall accuracy on all time windows, with a random split"
+      - text: "Accuracy over all time windows, with a random split of the two years so that both years are equally represented in training and test"
         feedback: "Accuracy is meaningless on rare events, and a random split leaks information from the future into training."
-      - text: "The number of alerts per day"
-        feedback: "Useful to monitor, but it does not say whether alerts are right."
-      - text: "How well it predicts tomorrow's vibration level"
-        feedback: "An intermediate quantity, not the decision that matters."
+      - text: "The number of alerts per day during a test month, which should stay below what the team can handle"
+        feedback: "Useful to monitor, but it does not say whether alerts are right or failures are caught."
+      - text: "How many of the 80 past failures the model flags when it is trained and tested on all of them"
+        feedback: "Testing on the failures used for training measures memory, not prediction: you need a later period."
   - id: data
     question: "Which data do you need? (select all that apply)"
     multi: true
@@ -143,10 +143,10 @@ framing:
       - text: "Maintenance actions, such as bearing replacement dates"
         correct: true
         feedback: "Yes: a replaced bearing resets the clock; ignoring it confuses the model."
-      - text: "Operators' personal data"
-        feedback: "Not needed."
-      - text: "Energy prices"
-        feedback: "Unrelated to bearing wear."
+      - text: "Operators' shift schedules, names and overtime hours"
+        feedback: "Not needed to predict bearing wear, and personal data you should not collect without reason."
+      - text: "The plant's hourly energy consumption and electricity bills"
+        feedback: "Too indirect: it reflects production levels, not bearing wear on a given cylinder."
   - id: risks
     question: "Which pitfalls must you handle? (select all that apply)"
     multi: true
@@ -163,22 +163,22 @@ framing:
       - text: "Data leakage: using readings from after the failure, or mixing past and future in a random split"
         correct: true
         feedback: "Yes: a classic cause of models that look great offline and fail in production."
-      - text: "The model damaging the machines"
-        feedback: "The model only raises alerts; people decide."
+      - text: "Sensor readings arriving every second being too much data to store"
+        feedback: "Two years at one reading per second is large but ordinary for a plant historian; it is an engineering detail, not a design risk."
 approach:
   id: approach
   question: "What do you recommend?"
   options:
-    - text: "Start with bearing failures: build signals from vibration and temperature trends, label the days before past failures, train a simple model, validate it on a later period, and set the alert threshold with the maintenance team from the cost of a missed failure versus a false alarm"
+    - text: "Start with bearings: signals from vibration and temperature trends, the days before past failures as labels, a simple model validated on a later period, and an alert threshold set with the team from the costs of misses and false alarms"
       verdict: best
       feedback: "Focused, honest about rare labels, validated like real life, and tuned to the business trade-off."
-    - text: "Tune the vendor's fixed thresholds machine by machine"
+    - text: "Tune the vendor's fixed vibration thresholds machine by machine with the technicians, so that each cylinder raises an alarm only when its own normal level is clearly exceeded"
       verdict: ok
       feedback: "A cheap baseline worth trying, and the bar your model must beat. Fixed thresholds miss slow trends, though."
-    - text: "A deep learning model on all raw sensor data of the plant to predict any failure"
+    - text: "Train a deep learning model on all raw sensor data of the plant, every sensor at one reading per second, so that it learns by itself to predict any type of failure on any of the 12 machines, without anyone having to choose a failure mode first"
       verdict: bad
       feedback: "Too broad for 80 labelled failures; it will overfit and be impossible to explain to the team."
-    - text: "An LLM that reads the sensor data and decides when to stop the machines"
+    - text: "Give an LLM agent live access to the sensor data and the maintenance system, so that it watches the machines around the clock, explains what it sees and decides by itself when to stop a machine"
       verdict: bad
       feedback: "Wrong tool for numeric time series, and a dangerous level of autonomy."
 plan:
@@ -217,16 +217,16 @@ pitch:
   id: pitch
   question: "Which summary do you send Thomas?"
   options:
-    - text: "Bearing failures on the drying cylinders cost about €4.8M a year in unplanned stops. We propose alerts that warn the team at least 2 days before a likely failure, so they can plan a short stop instead. A first version catching 60 % of failures, with half of the alerts real, would save about €2M a year net of inspections. Next step: rebuild the failure history with your technicians and test on the last 6 months."
+    - text: "Bearing failures on the drying cylinders cost about €4.8M a year. We propose alerts 2 days before a likely failure, so the team plans a short stop instead. Catching 60 % of failures, with half the alerts real, saves about €2M a year net. Next step: rebuild the failure history with your technicians and test on the last 6 months."
       verdict: best
       feedback: "Focused, quantified, honest about imperfect alerts, with a concrete next step."
-    - text: "We will predict all failures in the plant with 99 % accuracy using deep learning."
+    - text: "Great news: with deep learning on your millions of sensor readings, we will predict all failures in the plant with 99 % accuracy. Your maintenance team will never be surprised again, and you will be able to drop the fixed preventive schedule entirely within the first year of the project."
       verdict: bad
       feedback: "An impossible promise, and 99 % accuracy is meaningless when failures are rare."
-    - text: "Our gradient boosting model achieves an F1 of 0.55 at the optimal threshold on the validation fold."
+    - text: "Our gradient boosting model, trained on 2-hour aggregated vibration features with a 7-day positive window, achieves an F1 of 0.55 and a PR-AUC of 0.48 at the optimal threshold on the validation fold, outperforming the vendor's static thresholds on every metric we computed, including recall at a fixed false-positive rate."
       verdict: bad
       feedback: "Thomas cannot decide anything from an F1 score: translate it into failures caught, false alarms and euros."
-    - text: "Before any AI, we should install new sensors on all machines."
+    - text: "Before any AI project, we recommend installing new high-frequency sensors on all 12 machines and building a central data platform for the plant. Once a year of clean data is collected on this platform, predictive maintenance will be much more accurate and easier to scale."
       verdict: ok
       feedback: "Maybe later, but the existing vibration sensors are probably enough to start on bearings."
 debrief: |
