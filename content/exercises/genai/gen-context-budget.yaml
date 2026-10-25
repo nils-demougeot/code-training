@@ -1,0 +1,96 @@
+id: gen-context-budget
+title: Fit retrieved chunks into a token budget
+domain: genai
+difficulty: easy
+minutes: 6
+tags: [rag, context window, tokens]
+statement: |
+  The retriever returns chunks sorted from most to least relevant. Only `budget` tokens of context are allowed. Write:
+
+  1. `count_tokens(text)`: estimate tokens with the rule of thumb **1 token ≈ 0.75 words**, i.e. `ceil(number_of_words / 0.75)` (0 for an empty text);
+  2. `fit_chunks(chunks, budget)`: go through `chunks` **in order** and keep each chunk whose tokens still fit in the remaining budget; a chunk that does not fit is **skipped** (a later, smaller one may still fit). Return the list of kept chunks, in their original order.
+starter: |
+  import math
+
+
+  def count_tokens(text):
+      pass
+
+
+  def fit_chunks(chunks, budget):
+      pass
+solution: |
+  import math
+
+
+  def count_tokens(text):
+      return math.ceil(len(text.split()) / 0.75)
+
+
+  def fit_chunks(chunks, budget):
+      kept, used = [], 0
+      for chunk in chunks:
+          cost = count_tokens(chunk)
+          if used + cost <= budget:
+              kept.append(chunk)
+              used += cost
+      return kept
+setup: |
+  def words(n, tag):
+      return " ".join(f"{tag}{i}" for i in range(n))
+tests:
+  - call: count_tokens("one two three")
+    expected: "4"
+  - call: count_tokens("")
+    expected: "0"
+  - call: count_tokens(words(300, "w"))
+    expected: "400"
+  - call: "[c[:3] for c in fit_chunks([words(75, 'a'), words(150, 'b'), words(30, 'c')], 150)]"
+    expected: "['a0 ', 'c0 ']"
+  - call: "fit_chunks([words(30, 'x')], 39)"
+    expected: "[]"
+  - call: "len(fit_chunks([words(30, 'x')] * 5, 200))"
+    expected: "5"
+  - call: "len(fit_chunks([words(30, 'x')] * 5, 199))"
+    expected: "4"
+wrong:
+  - |
+    import math
+
+
+    def count_tokens(text):
+        return math.ceil(len(text.split()) / 0.75)
+
+
+    def fit_chunks(chunks, budget):
+        kept, used = [], 0
+        for chunk in chunks:
+            cost = count_tokens(chunk)
+            if used + cost > budget:
+                break
+            kept.append(chunk)
+            used += cost
+        return kept
+  - |
+    import math
+
+
+    def count_tokens(text):
+        return math.ceil(len(text.split()) * 0.75)
+
+
+    def fit_chunks(chunks, budget):
+        kept, used = [], 0
+        for chunk in chunks:
+            cost = count_tokens(chunk)
+            if used + cost <= budget:
+                kept.append(chunk)
+                used += cost
+        return kept
+hints:
+  - "There are **more** tokens than words: divide by 0.75, and round up with `math.ceil`."
+  - "Keep a running total `used`; skip (do not stop at) a chunk that does not fit."
+explanation: |
+  - The context window is shared by instructions, chunks, history and the answer: budgeting the retrieved context is a routine part of RAG.
+  - Real systems count tokens exactly with the model's tokenizer; the 0.75 rule is for estimates.
+  - Skipping instead of stopping keeps a small, relevant chunk that comes after a huge one; whether to prefer that (or truncate the big chunk) is a design choice to evaluate.

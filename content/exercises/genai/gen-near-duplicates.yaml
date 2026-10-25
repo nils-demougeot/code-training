@@ -1,0 +1,116 @@
+id: gen-near-duplicates
+title: Remove near-duplicate documents before indexing
+domain: genai
+difficulty: medium
+minutes: 12
+tags: [rag, data cleaning, jaccard, shingles]
+statement: |
+  Client knowledge bases are full of near-duplicates (the same procedure copied with a new date). Duplicates waste the context window and the top-k results. Write:
+
+  1. `shingles(text, n=3)`: the **set** of word n-grams of the lowercased text (words from `text.lower().split()`), each n-gram being a tuple of `n` words. A text with fewer than `n` words gives a set containing the single tuple of all its words (empty set for an empty text).
+  2. `jaccard(a, b)`: $|a \cap b| / |a \cup b|$ for two sets (1.0 if both are empty).
+  3. `near_duplicates(docs, threshold=0.8, n=3)`: the list of index pairs `(i, j)` with `i < j` whose shingle Jaccard similarity is **at least** `threshold`, sorted.
+setup: |
+  DOCS = [
+      "To reset your password open the settings page and click on reset password",
+      "To reset your password, open the settings page and click on reset password",
+      "To reset your password open the settings page and click on reset password today",
+      "Refunds are processed within fourteen days after we receive the parcel",
+      "refunds are processed within fourteen days after we receive the parcel",
+  ]
+starter: |
+  def shingles(text, n=3):
+      pass
+
+
+  def jaccard(a, b):
+      pass
+
+
+  def near_duplicates(docs, threshold=0.8, n=3):
+      pass
+solution: |
+  def shingles(text, n=3):
+      words = text.lower().split()
+      if not words:
+          return set()
+      if len(words) < n:
+          return {tuple(words)}
+      return {tuple(words[i:i + n]) for i in range(len(words) - n + 1)}
+
+
+  def jaccard(a, b):
+      if not a and not b:
+          return 1.0
+      return len(a & b) / len(a | b)
+
+
+  def near_duplicates(docs, threshold=0.8, n=3):
+      sets = [shingles(d, n) for d in docs]
+      pairs = []
+      for i in range(len(docs)):
+          for j in range(i + 1, len(docs)):
+              if jaccard(sets[i], sets[j]) >= threshold:
+                  pairs.append((i, j))
+      return pairs
+tests:
+  - call: sorted(shingles("a b c d"))
+    expected: "[('a', 'b', 'c'), ('b', 'c', 'd')]"
+  - call: shingles("Hello World", 3)
+    expected: "{('hello', 'world')}"
+  - call: shingles("")
+    expected: set()
+  - call: jaccard({1, 2, 3}, {2, 3, 4})
+    expected: "0.5"
+  - call: jaccard(set(), set())
+    expected: "1.0"
+  - call: near_duplicates(DOCS, threshold=0.8)
+  - call: near_duplicates(DOCS, threshold=0.6)
+  - call: "near_duplicates(['a b c d e', 'a b c d e'], threshold=1.0)"
+    expected: "[(0, 1)]"
+wrong:
+  - |
+    def shingles(text, n=3):
+        words = text.split()
+        if not words:
+            return set()
+        if len(words) < n:
+            return {tuple(words)}
+        return {tuple(words[i:i + n]) for i in range(len(words) - n + 1)}
+
+
+    def jaccard(a, b):
+        if not a and not b:
+            return 1.0
+        return len(a & b) / len(a | b)
+
+
+    def near_duplicates(docs, threshold=0.8, n=3):
+        sets = [shingles(d, n) for d in docs]
+        return [(i, j) for i in range(len(docs)) for j in range(i + 1, len(docs)) if jaccard(sets[i], sets[j]) >= threshold]
+  - |
+    def shingles(text, n=3):
+        words = text.lower().split()
+        if not words:
+            return set()
+        if len(words) < n:
+            return {tuple(words)}
+        return {tuple(words[i:i + n]) for i in range(len(words) - n)}
+
+
+    def jaccard(a, b):
+        if not a and not b:
+            return 1.0
+        return len(a & b) / len(a | b)
+
+
+    def near_duplicates(docs, threshold=0.8, n=3):
+        sets = [shingles(d, n) for d in docs]
+        return [(i, j) for i in range(len(docs)) for j in range(i + 1, len(docs)) if jaccard(sets[i], sets[j]) >= threshold]
+hints:
+  - "There are `len(words) - n + 1` n-grams in a text of `len(words)` words."
+  - "Compare every pair once with two loops `for i ... for j in range(i + 1, ...)`."
+explanation: |
+  - Shingles + Jaccard detect texts that share most of their word sequences, even with small edits. Note how the comma in document 1 changes a few shingles: normalising punctuation would make the detection stronger.
+  - Comparing all pairs is O(n²): for millions of documents, **MinHash + locality-sensitive hashing** estimates Jaccard similarities without comparing every pair.
+  - Deduplicating before indexing improves RAG answers (more diverse top-k) and reduces cost.

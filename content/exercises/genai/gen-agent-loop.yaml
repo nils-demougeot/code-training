@@ -1,0 +1,118 @@
+id: gen-agent-loop
+title: A minimal tool-calling agent loop
+domain: genai
+difficulty: medium
+minutes: 15
+interview: true
+tags: [agents, tools, function calling]
+statement: |
+  Implement the core loop of a tool-calling agent: `run_agent(model, tools, question, max_steps=5)`.
+
+  - `messages` starts as `[{"role": "user", "content": question}]`.
+  - At each step, call `model(messages)`. It returns either `{"answer": "..."}` or `{"tool": name, "args": {...}}`.
+  - If it is an **answer**, return the answer string.
+  - If it is a **tool call**: append `{"role": "assistant", "tool": name, "args": args}` to `messages`, then
+    - if `name` is a key of `tools`, call `tools[name](**args)` and append `{"role": "tool", "content": str(result)}`;
+    - otherwise append `{"role": "tool", "content": "error: unknown tool <name>"}`;
+    - if the tool raises an exception, append `{"role": "tool", "content": "error: <exception message>"}`.
+  - After `max_steps` calls to the model without an answer, return `"max steps reached"`.
+
+  The tests use fake models that follow a script, so no real LLM is needed.
+setup: |
+  def scripted(*replies):
+      """A fake model that returns the given replies in order and records what it saw."""
+      seen = []
+      def model(messages):
+          seen.append([dict(m) for m in messages])
+          return replies[min(len(seen) - 1, len(replies) - 1)]
+      model.seen = seen
+      return model
+
+  ORDERS = {"A-1": {"status": "shipped", "amount": 59.9}}
+  TOOLS = {
+      "get_order": lambda order_id: ORDERS[order_id],
+      "add": lambda a, b: a + b,
+  }
+starter: |
+  def run_agent(model, tools, question, max_steps=5):
+      pass
+solution: |
+  def run_agent(model, tools, question, max_steps=5):
+      messages = [{"role": "user", "content": question}]
+      for _ in range(max_steps):
+          reply = model(messages)
+          if "answer" in reply:
+              return reply["answer"]
+          name, args = reply["tool"], reply.get("args", {})
+          messages.append({"role": "assistant", "tool": name, "args": args})
+          if name not in tools:
+              content = f"error: unknown tool {name}"
+          else:
+              try:
+                  content = str(tools[name](**args))
+              except Exception as exc:
+                  content = f"error: {exc}"
+          messages.append({"role": "tool", "content": content})
+      return "max steps reached"
+tests:
+  - name: Direct answer
+    check: |
+      m = scripted({"answer": "Hello"})
+      assert run_agent(m, TOOLS, "Hi") == "Hello"
+      assert m.seen == [[{"role": "user", "content": "Hi"}]]
+  - name: One tool call, then the answer
+    check: |
+      m = scripted({"tool": "get_order", "args": {"order_id": "A-1"}}, {"answer": "Your order is shipped."})
+      assert run_agent(m, TOOLS, "Where is A-1?") == "Your order is shipped."
+      assert m.seen[1] == [
+          {"role": "user", "content": "Where is A-1?"},
+          {"role": "assistant", "tool": "get_order", "args": {"order_id": "A-1"}},
+          {"role": "tool", "content": "{'status': 'shipped', 'amount': 59.9}"},
+      ], m.seen[1]
+  - name: Unknown tool and failing tool are reported to the model
+    check: |
+      m = scripted({"tool": "delete_db", "args": {}}, {"tool": "get_order", "args": {"order_id": "Z-9"}}, {"answer": "Sorry"})
+      assert run_agent(m, TOOLS, "?") == "Sorry"
+      assert m.seen[1][-1] == {"role": "tool", "content": "error: unknown tool delete_db"}
+      assert m.seen[2][-1] == {"role": "tool", "content": "error: 'Z-9'"}, m.seen[2][-1]
+  - name: The loop is bounded
+    check: |
+      m = scripted({"tool": "add", "args": {"a": 1, "b": 2}})
+      assert run_agent(m, TOOLS, "loop", max_steps=4) == "max steps reached"
+      assert len(m.seen) == 4
+wrong:
+  - |
+    def run_agent(model, tools, question, max_steps=5):
+        messages = [{"role": "user", "content": question}]
+        for _ in range(max_steps):
+            reply = model(messages)
+            if "answer" in reply:
+                return reply["answer"]
+            result = tools[reply["tool"]](**reply.get("args", {}))
+            messages.append({"role": "assistant", "tool": reply["tool"], "args": reply.get("args", {})})
+            messages.append({"role": "tool", "content": str(result)})
+        return "max steps reached"
+  - |
+    def run_agent(model, tools, question, max_steps=5):
+        messages = [{"role": "user", "content": question}]
+        for _ in range(max_steps):
+            reply = model(messages)
+            if "answer" in reply:
+                return reply["answer"]
+            name, args = reply["tool"], reply.get("args", {})
+            if name in tools:
+                try:
+                    messages.append({"role": "tool", "content": str(tools[name](**args))})
+                except Exception as exc:
+                    messages.append({"role": "tool", "content": f"error: {exc}"})
+            else:
+                messages.append({"role": "tool", "content": f"error: unknown tool {name}"})
+        return "max steps reached"
+hints:
+  - "A `for _ in range(max_steps)` loop bounds the agent; the `return` inside it handles the answer case."
+  - "Record the model's tool call in `messages` **before** the tool result, so the model sees what it asked for."
+  - "`str(exc)` of a `KeyError('Z-9')` is `\"'Z-9'\"`."
+explanation: |
+  - This is the heart of every agent framework: the model **proposes** a tool call, **your code** executes it, and the result goes back into the conversation.
+  - Errors are sent back to the model as text, so it can correct itself (ask for another order id, try another tool).
+  - The step limit is essential in production, together with token and time budgets, logging of every step, and permission checks before running a tool.

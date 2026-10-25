@@ -1,0 +1,87 @@
+id: gen-judge-kappa
+title: Can we trust the LLM judge?
+domain: genai
+difficulty: medium
+minutes: 10
+interview: true
+tags: [evaluation, llm-as-a-judge, cohen kappa]
+statement: |
+  An LLM judge and a human expert both graded the same answers as `"good"` or `"bad"`. Raw agreement is misleading when one label dominates, so we also compute **Cohen's kappa**, which corrects for chance agreement.
+
+  Write `judge_agreement(judge, human)` returning a tuple `(agreement, kappa)`:
+
+  - `agreement` $p_o$ = share of items where both labels are equal;
+  - expected chance agreement $p_e = \sum_{\ell} P_{\text{judge}}(\ell) \times P_{\text{human}}(\ell)$, summing over all labels $\ell$ that appear, where $P(\ell)$ is the share of items with label $\ell$ for that rater;
+  - $\kappa = \dfrac{p_o - p_e}{1 - p_e}$; if $p_e = 1$, return kappa = 1.0.
+
+  Both lists have the same non-zero length.
+starter: |
+  from collections import Counter
+
+
+  def judge_agreement(judge, human):
+      pass
+solution: |
+  from collections import Counter
+
+
+  def judge_agreement(judge, human):
+      n = len(judge)
+      p_o = sum(a == b for a, b in zip(judge, human)) / n
+      cj, ch = Counter(judge), Counter(human)
+      p_e = sum(cj[label] / n * ch[label] / n for label in set(judge) | set(human))
+      kappa = 1.0 if p_e == 1 else (p_o - p_e) / (1 - p_e)
+      return p_o, kappa
+tests:
+  - call: "judge_agreement(['good', 'good', 'bad', 'bad'], ['good', 'bad', 'bad', 'bad'])"
+    expected: "(0.75, 0.5)"
+  - call: "judge_agreement(['good'] * 4, ['good'] * 4)"
+    expected: "(1.0, 1.0)"
+  - name: High agreement can hide a useless judge
+    check: |
+      human = ['good'] * 18 + ['bad'] * 2
+      judge = ['good'] * 20
+      agreement, kappa = judge_agreement(judge, human)
+      assert abs(agreement - 0.9) < 1e-12 and abs(kappa) < 1e-12, (agreement, kappa)
+  - name: Same as scikit-learn on random grades
+    check: |
+      import random
+      from sklearn.metrics import cohen_kappa_score
+      rng = random.Random(3)
+      for _ in range(100):
+          n = rng.randint(5, 40)
+          a = [rng.choice(['good', 'bad', 'partial']) for _ in range(n)]
+          b = [x if rng.random() < 0.7 else rng.choice(['good', 'bad', 'partial']) for x in a]
+          if len(set(a) | set(b)) == 1:
+              continue
+          agreement, kappa = judge_agreement(a, b)
+          assert abs(agreement - sum(x == y for x, y in zip(a, b)) / n) < 1e-12
+          assert abs(kappa - cohen_kappa_score(a, b)) < 1e-9, (a, b)
+    hidden: true
+wrong:
+  - |
+    from collections import Counter
+
+
+    def judge_agreement(judge, human):
+        n = len(judge)
+        p_o = sum(a == b for a, b in zip(judge, human)) / n
+        return p_o, p_o
+  - |
+    from collections import Counter
+
+
+    def judge_agreement(judge, human):
+        n = len(judge)
+        p_o = sum(a == b for a, b in zip(judge, human)) / n
+        labels = set(judge) | set(human)
+        p_e = 1 / len(labels)
+        kappa = 1.0 if p_e == 1 else (p_o - p_e) / (1 - p_e)
+        return p_o, kappa
+hints:
+  - "`Counter(judge)['good'] / n` is the share of 'good' given by the judge."
+  - "Chance agreement multiplies the two raters' shares for each label, then sums over labels."
+explanation: |
+  - A judge that says "good" every time agrees 90 % with a human when 90 % of answers are good, yet it is useless: kappa = 0 reveals it.
+  - Rough reading: kappa above 0.6 is substantial agreement, above 0.8 almost perfect. Below that, refine the rubric or the judge prompt before trusting automated scores.
+  - The same check applies between two human graders: if experts disagree, the task definition itself is ambiguous.

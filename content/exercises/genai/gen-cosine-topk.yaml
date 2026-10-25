@@ -1,0 +1,87 @@
+id: gen-cosine-topk
+title: Semantic search with cosine similarity
+domain: genai
+difficulty: easy
+minutes: 6
+interview: true
+tags: [embeddings, cosine, numpy, retrieval]
+statement: |
+  `doc_vectors` is a NumPy array of shape `(n_docs, dim)` holding one embedding per chunk, and `query` a vector of shape `(dim,)`.
+
+  1. `cosine_scores(query, doc_vectors)` returns an array of shape `(n_docs,)` with the cosine similarity between the query and each document.
+  2. `top_k(query, doc_vectors, k)` returns the **indices** of the `k` most similar documents, most similar first, as a Python list. If two scores are equal, the smaller index comes first.
+
+  Use vectorised NumPy (no Python loop over documents).
+setup: |
+  import numpy as np
+  DOCS = np.array([[1.0, 0.0, 0.0], [0.9, 0.1, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 2.0], [2.0, 0.0, 0.0]])
+starter: |
+  import numpy as np
+
+
+  def cosine_scores(query, doc_vectors):
+      pass
+
+
+  def top_k(query, doc_vectors, k):
+      pass
+solution: |
+  import numpy as np
+
+
+  def cosine_scores(query, doc_vectors):
+      dots = doc_vectors @ query
+      norms = np.linalg.norm(doc_vectors, axis=1) * np.linalg.norm(query)
+      return dots / norms
+
+
+  def top_k(query, doc_vectors, k):
+      scores = cosine_scores(query, doc_vectors)
+      order = np.argsort(-scores, kind="stable")
+      return order[:k].tolist()
+tests:
+  - call: np.round(cosine_scores(np.array([1.0, 0.0, 0.0]), DOCS), 4)
+  - call: top_k(np.array([1.0, 0.0, 0.0]), DOCS, 3)
+    expected: "[0, 4, 1]"
+  - call: top_k(np.array([0.0, 0.1, 1.0]), DOCS, 2)
+  - name: Length does not matter, only direction
+    check: |
+      q = np.array([3.0, 4.0, 0.0])
+      assert np.allclose(cosine_scores(q, DOCS), cosine_scores(10 * q, DOCS))
+  - name: Random embeddings
+    check: |
+      rng = np.random.default_rng(0)
+      docs = rng.normal(size=(200, 16))
+      q = rng.normal(size=16)
+      expected = np.array([d @ q / (np.linalg.norm(d) * np.linalg.norm(q)) for d in docs])
+      assert np.allclose(cosine_scores(q, docs), expected)
+      assert top_k(q, docs, 5) == list(np.argsort(-expected, kind="stable")[:5])
+    hidden: true
+wrong:
+  - |
+    import numpy as np
+
+
+    def cosine_scores(query, doc_vectors):
+        return doc_vectors @ query
+
+
+    def top_k(query, doc_vectors, k):
+        return np.argsort(-cosine_scores(query, doc_vectors), kind="stable")[:k].tolist()
+  - |
+    import numpy as np
+
+
+    def cosine_scores(query, doc_vectors):
+        return doc_vectors @ query / (np.linalg.norm(doc_vectors, axis=1) * np.linalg.norm(query))
+
+
+    def top_k(query, doc_vectors, k):
+        return np.argsort(cosine_scores(query, doc_vectors))[:k].tolist()
+hints:
+  - "`doc_vectors @ query` gives all the dot products at once; `np.linalg.norm(doc_vectors, axis=1)` all the document norms."
+  - "`np.argsort(-scores, kind='stable')` sorts from the highest score, keeping the original order for ties."
+explanation: |
+  - This is exactly what a vector database does, with an approximate index (ANN) to avoid scoring millions of vectors one by one.
+  - Without the normalisation, the plain dot product favours long vectors (document 4 has norm 2): many embedding models return normalised vectors, so that cosine = dot product.
+  - Sorting the **negative** scores is the usual trick for "descending order".

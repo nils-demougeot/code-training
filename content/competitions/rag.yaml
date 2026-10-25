@@ -1,0 +1,378 @@
+id: rag
+title: Nimbus Mobile help centre
+emoji: 🔎
+difficulty: medium
+task: Retrieval (the R of RAG)
+metric: recall@3
+metric_label: Recall@3
+higher_is_better: true
+shared: comp_rag
+summary: Build the retriever of a customer-service assistant. For each customer question, find the right help article among 36, so that the LLM can answer from it. In English.
+story: |
+  **Nimbus Mobile**, a telecom operator, wants a GenAI assistant that answers customer questions from its **help centre**. Before any LLM writes an answer, a **retriever** must find the right article: if it fails, the best model in the world will answer from the wrong page (or invent).
+
+  You get:
+
+  - `articles`: the 36 help articles (`article_id`, `category`, `title`, `body`);
+  - `train`: 36 real customer questions with the id of the article that answers them;
+  - `test`: 72 other questions, **without** the answer.
+
+  For each test question, submit your **3 best articles**. The score is **recall@3**: the share of test questions whose correct article is in your top 3 (the 3 passages that would be sent to the LLM).
+
+  Customers do not use the words of the help centre ("reimbursement" vs "refund", "router" vs "box"): that is the whole difficulty.
+data: |
+  | Variable | Content |
+  |---|---|
+  | `articles` | `article_id` (`a01`…`a36`), `category`, `title`, `body` |
+  | `train` | `question_id`, `question`, `article_id` (the correct article) |
+  | `test` | `question_id`, `question` (correct article hidden) |
+  | `STOPWORDS` | a set of very common English words to ignore |
+
+  No embedding model is available in the browser, so you will build the retriever with **keyword** and **TF-IDF** techniques (scikit-learn), exactly like the keyword half of a hybrid search.
+medals:
+  bronze: 0.8
+  silver: 0.85
+  gold: 0.9
+leaderboard:
+  - { name: semantic_sam, score: 0.9444 }
+  - { name: hybrid_hannah, score: 0.9167 }
+  - { name: bm25_bob, score: 0.8889 }
+  - { name: tfidf_tom, score: 0.8611 }
+  - { name: keyword_kate, score: 0.8333 }
+  - { name: title_only, score: 0.7222 }
+  - { name: always_billing, score: 0.0833 }
+submission:
+  id: question_id
+  target: top1
+steps:
+  - id: explore
+    title: Explore the help centre
+    goal: Look at the articles and the questions before building anything.
+    instructions: |
+      Display a few articles and questions, then compute:
+
+      - `n_articles`: the number of articles;
+      - `n_train`: the number of labelled questions;
+      - `category_counts`: the number of articles per category (a Series, as returned by `value_counts()`);
+      - `mean_body_words`: the average number of words in an article `body` (use `.str.split().str.len()`).
+    starter: |
+      articles.head()
+
+      n_articles = None
+      n_train = None
+      category_counts = None
+      mean_body_words = None
+    solution: |
+      articles.head()
+
+      n_articles = len(articles)
+      n_train = len(train)
+      category_counts = articles['category'].value_counts()
+      mean_body_words = articles['body'].str.split().str.len().mean()
+      train.head()
+    hints:
+      - "`len(df)` counts rows; `df['category'].value_counts()` counts each category."
+      - "`articles['body'].str.split()` gives the list of words of each body; `.str.len()` its length."
+    tests:
+      - name: Counts
+        check: |
+          assert n_articles == 36 and n_train == len(_train0), (n_articles, n_train)
+      - name: Articles per category
+        check: |
+          assert category_counts is not None and category_counts.to_dict() == _articles0['category'].value_counts().to_dict()
+      - name: Average article length
+        check: |
+          expected = _articles0['body'].str.split().str.len().mean()
+          assert mean_body_words is not None and abs(mean_body_words - expected) < 1e-9, mean_body_words
+    explanation: |
+      Articles are short (about 35 words): one article is one natural **chunk**, no need to split them.
+
+      Read a few questions next to their article: customers use their own words ("reimbursement", "router", "handset"), not the help centre's ("refund", "box", "phone"). This **vocabulary mismatch** is the core problem of retrieval.
+  - id: clean
+    title: Normalise the text
+    goal: Make "Wi-Fi", "wi-fi" and "WIFI!" comparable.
+    instructions: |
+      1. Write `normalize(text)`: lowercase, replace every character that is not a letter `a-z` or a digit by a space, collapse repeated spaces, strip the ends.
+      2. Build `docs`: the list of normalised `title + " " + body` of each article, in the order of `articles`.
+      3. Build `ARTICLE_IDS`: the list of `article_id`, in the same order.
+    starter: |
+      import re
+
+
+      def normalize(text):
+          pass
+
+
+      docs = None
+      ARTICLE_IDS = None
+    solution: |
+      import re
+
+
+      def normalize(text):
+          text = re.sub(r"[^a-z0-9]+", " ", text.lower())
+          return re.sub(r"\s+", " ", text).strip()
+
+
+      docs = [normalize(t + " " + b) for t, b in zip(articles["title"], articles["body"])]
+      ARTICLE_IDS = articles["article_id"].tolist()
+      docs[0]
+    wrong:
+      - |
+        import re
+
+
+        def normalize(text):
+            return re.sub(r"[^a-z0-9]", " ", text.lower()).strip()
+
+
+        docs = [normalize(t + " " + b) for t, b in zip(articles["title"], articles["body"])]
+        ARTICLE_IDS = articles["article_id"].tolist()
+      - |
+        import re
+
+
+        def normalize(text):
+            text = re.sub(r"[^a-z0-9]+", " ", text.lower())
+            return re.sub(r"\s+", " ", text).strip()
+
+
+        docs = [normalize(b) for b in articles["body"]]
+        ARTICLE_IDS = articles["article_id"].tolist()
+    hints:
+      - "`re.sub(r\"[^a-z0-9]+\", \" \", text.lower())` replaces every run of other characters by one space."
+      - "`zip(articles['title'], articles['body'])` walks through titles and bodies together."
+    tests:
+      - name: normalize
+        check: |
+          assert normalize("Wi-Fi isn't working!!") == "wi fi isn t working", repr(normalize("Wi-Fi isn't working!!"))
+          assert normalize("  My Account > Billing  ") == "my account billing"
+          assert normalize("") == ""
+      - name: docs and ARTICLE_IDS
+        check: |
+          assert docs is not None and len(docs) == 36 and ARTICLE_IDS == _articles0['article_id'].tolist()
+          assert docs[0].startswith("understanding your monthly bill your monthly bill shows"), docs[0][:60]
+          assert all(d == d.lower() and "  " not in d for d in docs)
+    explanation: |
+      The **same** normalisation must be applied to documents and to questions; otherwise "Wi-Fi" in a question never matches "wi fi" in an article. Putting the title in the document helps: titles are short and dense in keywords.
+  - id: features
+    title: A keyword-overlap baseline
+    goal: The simplest retriever that could work.
+    instructions: |
+      Write `overlap_search(question, k=3)`:
+
+      1. take the set of words of the normalised question, **minus** `STOPWORDS`;
+      2. score each article by the number of those words that appear in its document (set of words of `docs[i]`);
+      3. return the `article_id` of the `k` best articles, best first; **ties keep the article order** (use a stable sort).
+    starter: |
+      def overlap_search(question, k=3):
+          pass
+
+
+      overlap_search("Can I get a refund?")
+    solution: |
+      DOC_WORDS = [set(d.split()) for d in docs]
+
+
+      def overlap_search(question, k=3):
+          words = set(normalize(question).split()) - STOPWORDS
+          scores = [len(words & dw) for dw in DOC_WORDS]
+          order = sorted(range(len(docs)), key=lambda i: -scores[i])
+          return [ARTICLE_IDS[i] for i in order[:k]]
+
+
+      overlap_search("Can I get a refund?")
+    wrong:
+      - |
+        DOC_WORDS = [set(d.split()) for d in docs]
+
+
+        def overlap_search(question, k=3):
+            words = set(normalize(question).split())
+            scores = [len(words & dw) for dw in DOC_WORDS]
+            order = sorted(range(len(docs)), key=lambda i: -scores[i])
+            return [ARTICLE_IDS[i] for i in order[:k]]
+      - |
+        DOC_WORDS = [set(d.split()) for d in docs]
+
+
+        def overlap_search(question, k=3):
+            words = set(question.lower().split()) - STOPWORDS
+            scores = [len(words & dw) for dw in DOC_WORDS]
+            order = sorted(range(len(docs)), key=lambda i: -scores[i])
+            return [ARTICLE_IDS[i] for i in order[:k]]
+    hints:
+      - "Precompute the set of words of each document once: `[set(d.split()) for d in docs]`."
+      - "`sorted(range(n), key=lambda i: -scores[i])` is stable: equal scores keep their original order."
+    tests:
+      - name: Simple questions
+        check: |
+          assert overlap_search("How do I activate 5G?", 1) == ["a15"], overlap_search("How do I activate 5G?", 1)
+          assert overlap_search("Where can I download my invoice as a PDF?")[0] == "a01"
+          assert len(overlap_search("refund", 5)) == 5
+      - name: Same as a reference implementation
+        check: |
+          import re
+          def ref_norm(t):
+              return re.sub(r"\s+", " ", re.sub(r"[^a-z0-9]+", " ", t.lower())).strip()
+          ref_docs = [set(ref_norm(t + " " + b).split()) for t, b in zip(_articles0['title'], _articles0['body'])]
+          for q in list(_train0['question']) + list(_test0['question'][:20]):
+              words = set(ref_norm(q).split()) - STOPWORDS
+              scores = [len(words & d) for d in ref_docs]
+              order = sorted(range(36), key=lambda i: -scores[i])
+              expected = [_articles0['article_id'][i] for i in order[:3]]
+              assert overlap_search(q) == expected, (q, overlap_search(q), expected)
+    explanation: |
+      Always start with a simple baseline: it is quick, transparent, and tells you how much the fancy methods really add. Here, counting shared words already finds many articles, but it treats every word as equally important: "phone" (in many articles) counts as much as "eSIM" (in one).
+  - id: split
+    title: Measure recall@3 on the labelled questions
+    goal: A number to compare retrievers, before touching the test set.
+    instructions: |
+      Write `recall_at_k(search, questions, gold, k=3)`: the share of `questions` for which `gold[i]` is in `search(questions[i], k)`.
+
+      Then compute `baseline_recall`: the recall@3 of `overlap_search` on the `train` questions.
+
+      There is no model to train here: the labelled questions serve as a **validation set** to compare retrievers.
+    starter: |
+      def recall_at_k(search, questions, gold, k=3):
+          pass
+
+
+      baseline_recall = None
+    solution: |
+      def recall_at_k(search, questions, gold, k=3):
+          questions, gold = list(questions), list(gold)
+          hits = sum(g in search(q, k) for q, g in zip(questions, gold))
+          return hits / len(questions)
+
+
+      baseline_recall = recall_at_k(overlap_search, train["question"], train["article_id"])
+      baseline_recall
+    wrong:
+      - |
+        def recall_at_k(search, questions, gold, k=3):
+            questions, gold = list(questions), list(gold)
+            return sum(g == search(q, k)[0] for q, g in zip(questions, gold)) / len(questions)
+
+
+        baseline_recall = recall_at_k(overlap_search, train["question"], train["article_id"])
+    hints:
+      - "Convert the Series to lists, then `sum(g in search(q, k) for q, g in zip(questions, gold))`."
+    tests:
+      - name: recall_at_k
+        check: |
+          fake = lambda q, k: ["a01", "a02", "a03"][:k]
+          assert recall_at_k(fake, ["x", "y", "z", "w"], ["a01", "a03", "a09", "a02"], 3) == 0.75
+          assert recall_at_k(fake, ["x", "y"], ["a03", "a01"], 1) == 0.5
+      - name: Baseline recall
+        check: |
+          expected = sum(g in overlap_search(q, 3) for q, g in zip(_train0['question'], _train0['article_id'])) / len(_train0)
+          assert baseline_recall is not None and abs(baseline_recall - expected) < 1e-12, baseline_recall
+    explanation: |
+      With only 36 validation questions, one question is worth almost 3 points: treat small differences with caution (see the margin of error in the GenAI Academy, chapter 5). In a real project you would collect a few hundred real questions from the support logs.
+  - id: model
+    title: A TF-IDF retriever
+    goal: Weigh words by how informative they are.
+    instructions: |
+      TF-IDF gives a high weight to words that are frequent in a document but **rare in the collection** ("esim", "rio"), and a low weight to words everywhere ("phone").
+
+      1. Create `vectorizer = TfidfVectorizer()` and `doc_matrix = vectorizer.fit_transform(docs)`.
+      2. Write `tfidf_search(question, k=3)`: transform the normalised question with the **same** vectorizer, compute the cosine similarity with every document (`cosine_similarity`), return the `k` best `article_id`, best first (stable sort for ties).
+      3. Compute `val_recall`, the recall@3 of `tfidf_search` on `train`. Target: at least **0.85**.
+    starter: |
+      from sklearn.feature_extraction.text import TfidfVectorizer
+      from sklearn.metrics.pairwise import cosine_similarity
+
+      vectorizer = None
+      doc_matrix = None
+
+
+      def tfidf_search(question, k=3):
+          pass
+
+
+      val_recall = None
+    solution: |
+      from sklearn.feature_extraction.text import TfidfVectorizer
+      from sklearn.metrics.pairwise import cosine_similarity
+
+      vectorizer = TfidfVectorizer()
+      doc_matrix = vectorizer.fit_transform(docs)
+
+
+      def tfidf_search(question, k=3):
+          scores = cosine_similarity(vectorizer.transform([normalize(question)]), doc_matrix)[0]
+          order = np.argsort(-scores, kind="stable")
+          return [ARTICLE_IDS[i] for i in order[:k]]
+
+
+      val_recall = recall_at_k(tfidf_search, train["question"], train["article_id"])
+      val_recall
+    hints:
+      - "`vectorizer.transform([text])` returns a 1-row matrix; `cosine_similarity(q, doc_matrix)[0]` gives one score per article."
+      - "`np.argsort(-scores, kind='stable')` sorts from best to worst."
+    tests:
+      - name: The index is built on the 36 documents
+        check: |
+          assert doc_matrix is not None and doc_matrix.shape[0] == 36
+      - name: tfidf_search returns article ids
+        check: |
+          r = tfidf_search("How do I switch to an eSIM?", 3)
+          assert isinstance(r, list) and len(r) == 3 and r[0] == "a24", r
+      - name: val_recall is the recall@3 on train
+        check: |
+          expected = sum(g in tfidf_search(q, 3) for q, g in zip(_train0['question'], _train0['article_id'])) / len(_train0)
+          assert val_recall is not None and abs(val_recall - expected) < 1e-12, val_recall
+      - name: At least 0.85 on the labelled questions
+        check: |
+          assert val_recall >= 0.85, f"val_recall = {val_recall:.3f}"
+    explanation: |
+      TF-IDF is the ancestor of BM25 and the simplest "real" retriever. It fixes the "all words are equal" problem of the baseline, but it still needs the **exact same word**: "reimbursement" never matches "refund", and "instalments" does not match "instalment".
+
+      To go further (and aim for gold): character n-grams (`TfidfVectorizer(analyzer="char_wb", ngram_range=(3, 5))`) match pieces of words, so "unlocking" meets "unlocked". In production, you would add an **embedding** model for synonyms and combine both scores (hybrid search).
+  - id: submit
+    title: Submit your top 3
+    goal: Retrieve 3 articles for every test question.
+    instructions: |
+      Use your best retriever (`tfidf_search`, or an improved version) to build `submission`: a DataFrame with the columns `question_id`, `top1`, `top2`, `top3`, one row per `test` question, in the order of `test`.
+    starter: |
+      submission = None
+    solution: |
+      rows = [tfidf_search(q, 3) for q in test["question"]]
+      submission = pd.DataFrame({
+          "question_id": test["question_id"],
+          "top1": [r[0] for r in rows],
+          "top2": [r[1] for r in rows],
+          "top3": [r[2] for r in rows],
+      })
+      submission.head()
+    hints:
+      - "Compute the top 3 of every question once, then build the three columns from that list."
+    tests:
+      - name: Submission format
+        check: |
+          assert isinstance(submission, pd.DataFrame), "submission must be a DataFrame"
+          assert list(submission.columns) == ["question_id", "top1", "top2", "top3"], list(submission.columns)
+          assert len(submission) == len(_test0) and (submission["question_id"].to_numpy() == _test0["question_id"].to_numpy()).all()
+      - name: Valid article ids
+        check: |
+          valid = set(_articles0["article_id"])
+          for col in ["top1", "top2", "top3"]:
+              assert submission[col].isin(valid).all(), f"unknown article id in {col}"
+    explanation: |
+      In the real assistant, these 3 articles would be inserted in the prompt with the instruction to answer only from them and to cite them. Recall@3 is therefore the **ceiling** of the whole system: whatever the LLM, it cannot answer correctly the questions whose article was not retrieved.
+gold: |
+  from sklearn.feature_extraction.text import TfidfVectorizer
+  from sklearn.metrics.pairwise import cosine_similarity
+
+  vectorizer = TfidfVectorizer(analyzer="char_wb", ngram_range=(3, 5), sublinear_tf=True)
+  doc_matrix = vectorizer.fit_transform(docs)
+
+
+  def tfidf_search(question, k=3):
+      scores = cosine_similarity(vectorizer.transform([normalize(question)]), doc_matrix)[0]
+      order = np.argsort(-scores, kind="stable")
+      return [ARTICLE_IDS[i] for i in order[:k]]
+
+
+  val_recall = recall_at_k(tfidf_search, train["question"], train["article_id"])

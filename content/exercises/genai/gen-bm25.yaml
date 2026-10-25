@@ -1,0 +1,136 @@
+id: gen-bm25
+title: Keyword search with BM25
+domain: genai
+difficulty: hard
+minutes: 15
+interview: true
+tags: [bm25, retrieval, hybrid search, tf-idf]
+statement: |
+  BM25 is the classic keyword-search score, still used in hybrid RAG systems. Implement `bm25_scores(query, docs, k1=1.5, b=0.75)`:
+
+  - `query` is a list of tokens, `docs` a list of documents, each a list of tokens;
+  - return a list with one score per document.
+
+  For a document $D$ of length $|D|$ (in tokens), with $\text{avgdl}$ the average document length and $N$ the number of documents:
+
+  $$\text{score}(D) = \sum_{t \in \text{query}} \text{idf}(t)\,\frac{f(t, D)\,(k_1 + 1)}{f(t, D) + k_1\left(1 - b + b\,\frac{|D|}{\text{avgdl}}\right)}$$
+
+  $$\text{idf}(t) = \ln\left(\frac{N - n(t) + 0.5}{n(t) + 0.5} + 1\right)$$
+
+  where $f(t, D)$ is the number of occurrences of $t$ in $D$ and $n(t)$ the number of documents containing $t$. A query token repeated twice counts twice.
+setup: |
+  DOCS = [
+      "refund for lost parcel".split(),
+      "how to change the delivery address".split(),
+      "refund policy refund delays and refund status".split(),
+      "error code E4012 when paying".split(),
+  ]
+starter: |
+  import math
+  from collections import Counter
+
+
+  def bm25_scores(query, docs, k1=1.5, b=0.75):
+      pass
+solution: |
+  import math
+  from collections import Counter
+
+
+  def bm25_scores(query, docs, k1=1.5, b=0.75):
+      n_docs = len(docs)
+      avgdl = sum(len(d) for d in docs) / n_docs
+      doc_freq = Counter(t for d in docs for t in set(d))
+      counts = [Counter(d) for d in docs]
+      scores = []
+      for d, tf in zip(docs, counts):
+          score = 0.0
+          for t in query:
+              n_t = doc_freq.get(t, 0)
+              idf = math.log((n_docs - n_t + 0.5) / (n_t + 0.5) + 1)
+              f = tf.get(t, 0)
+              score += idf * f * (k1 + 1) / (f + k1 * (1 - b + b * len(d) / avgdl))
+          scores.append(score)
+      return scores
+tests:
+  - call: "[round(s, 4) for s in bm25_scores(['refund'], DOCS)]"
+  - call: "[round(s, 4) for s in bm25_scores(['E4012'], DOCS)]"
+  - call: "[round(s, 4) for s in bm25_scores(['refund', 'parcel', 'unknown'], DOCS)]"
+  - name: The rare exact code wins
+    check: |
+      scores = bm25_scores(['error', 'E4012'], DOCS)
+      assert max(range(4), key=scores.__getitem__) == 3
+  - name: Term frequency saturates (k1)
+    check: |
+      s = bm25_scores(['refund'], DOCS)
+      # Document 2 contains "refund" 3 times but its score is far less than 3x document 0.
+      assert s[2] > s[0] and s[2] < 3 * s[0]
+  - name: Matches a reference implementation on random corpora
+    check: |
+      import random
+      rng = random.Random(1)
+      vocab = [f"t{i}" for i in range(12)]
+      for _ in range(50):
+          docs = [[rng.choice(vocab) for _ in range(rng.randint(1, 12))] for _ in range(rng.randint(1, 8))]
+          q = [rng.choice(vocab) for _ in range(rng.randint(1, 4))]
+          k1, b = rng.choice([1.2, 1.5, 2.0]), rng.choice([0.0, 0.5, 0.75, 1.0])
+          got = bm25_scores(q, docs, k1, b)
+          avg = sum(map(len, docs)) / len(docs)
+          exp = []
+          for d in docs:
+              s = 0
+              for t in q:
+                  n = sum(t in x for x in docs)
+                  f = d.count(t)
+                  s += math.log((len(docs) - n + 0.5) / (n + 0.5) + 1) * f * (k1 + 1) / (f + k1 * (1 - b + b * len(d) / avg))
+              exp.append(s)
+          assert all(abs(x - y) < 1e-9 for x, y in zip(got, exp)), (q, docs)
+    hidden: true
+wrong:
+  - |
+    import math
+    from collections import Counter
+
+
+    def bm25_scores(query, docs, k1=1.5, b=0.75):
+        n_docs = len(docs)
+        avgdl = sum(len(d) for d in docs) / n_docs
+        doc_freq = Counter(t for d in docs for t in d)
+        scores = []
+        for d in docs:
+            tf = Counter(d)
+            score = 0.0
+            for t in query:
+                n_t = doc_freq.get(t, 0)
+                idf = math.log((n_docs - n_t + 0.5) / (n_t + 0.5) + 1)
+                f = tf.get(t, 0)
+                score += idf * f * (k1 + 1) / (f + k1 * (1 - b + b * len(d) / avgdl))
+            scores.append(score)
+        return scores
+  - |
+    import math
+    from collections import Counter
+
+
+    def bm25_scores(query, docs, k1=1.5, b=0.75):
+        n_docs = len(docs)
+        doc_freq = Counter(t for d in docs for t in set(d))
+        scores = []
+        for d in docs:
+            tf = Counter(d)
+            score = 0.0
+            for t in set(query):
+                n_t = doc_freq.get(t, 0)
+                idf = math.log((n_docs - n_t + 0.5) / (n_t + 0.5) + 1)
+                f = tf.get(t, 0)
+                score += idf * f * (k1 + 1) / (f + k1)
+            scores.append(score)
+        return scores
+hints:
+  - "Precompute once: the average length, the document frequency `n(t)` (count each term once per document: `set(d)`), and a `Counter` per document."
+  - "Then loop over documents and query tokens and add up `idf * f * (k1 + 1) / (f + k1 * (1 - b + b * len(d) / avgdl))`."
+explanation: |
+  - **idf** gives more weight to rare terms ("E4012") than to common ones ("the").
+  - **k1** makes term frequency saturate: the 3rd occurrence of "refund" adds less than the 1st.
+  - **b** normalises by length: a match in a short document counts more than in a long one.
+  - BM25 is fast, transparent and great on exact words and codes; embeddings handle synonyms. **Hybrid search** combines both and is a strong default for RAG.

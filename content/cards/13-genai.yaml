@@ -1,0 +1,220 @@
+id: genai
+title: GenAI vocabulary
+domain: genai
+description: The terms and one-line definitions you need to talk about LLM projects with clients and interviewers. In English.
+cards:
+  - id: gen-card-llm
+    kind: reveal
+    prompt: "Explain what an LLM is in one sentence to a non-technical client."
+    answer: |-
+      A model trained on huge amounts of text to predict the next word (token);
+      that simple skill, done extremely well, lets it write, summarise and answer
+      questions, but it can be confidently wrong.
+  - id: gen-card-token
+    kind: reveal
+    prompt: "What is a token, and the English rule of thumb?"
+    answer: |-
+      A piece of a word from the model's vocabulary.
+      1 token ≈ 0.75 words ≈ 4 characters.
+    note: "Prices, limits and speed are all counted in tokens."
+  - id: gen-card-context-window
+    kind: reveal
+    prompt: "What is the context window?"
+    answer: |-
+      The maximum number of tokens one call can take into account:
+      system prompt + history + documents + the answer itself.
+  - id: gen-card-temperature
+    kind: reveal
+    prompt: "What does temperature do, and which value for data extraction?"
+    answer: |-
+      It rescales the next-token probabilities: low = more deterministic,
+      high = more random. Use ~0 for extraction and classification.
+  - id: gen-card-hallucination
+    kind: reveal
+    prompt: "What is a hallucination and three ways to reduce it?"
+    answer: |-
+      A fluent but false output (invented fact, source or number).
+      Reduce it with: grounding in sources (RAG), asking for citations and an
+      "I don't know" option, and evaluating / reviewing outputs.
+  - id: gen-card-training-stages
+    kind: reveal
+    prompt: "The three training stages of a chat model?"
+    answer: |-
+      1. Pre-training (next-token prediction on huge text corpora)
+      2. Instruction tuning / SFT (instruction → good answer pairs)
+      3. Preference tuning (RLHF, DPO): push towards preferred answers
+  - id: gen-card-few-shot
+    kind: reveal
+    prompt: "Zero-shot vs few-shot prompting?"
+    answer: |-
+      Zero-shot: instructions only.
+      Few-shot: instructions + a few solved examples in the prompt (no training;
+      paid in tokens on every call).
+  - id: gen-card-system-prompt
+    kind: reveal
+    prompt: "System prompt vs user message?"
+    answer: |-
+      System prompt: stable rules, role and output format sent with every request.
+      User message: the data / question of this request.
+  - id: gen-card-structured-output
+    kind: reveal
+    prompt: "How do you get reliable JSON from an LLM in production?"
+    answer: |-
+      Ask for a precise schema (use the API's JSON/schema mode if available),
+      parse defensively, validate the fields in code, retry or fall back on failure.
+  - id: gen-card-embedding
+    kind: reveal
+    prompt: "What is an embedding?"
+    answer: |-
+      A vector of numbers representing the meaning of a text, so that texts with
+      similar meaning have similar vectors (compared with cosine similarity).
+  - id: gen-card-cosine
+    kind: reveal
+    prompt: "Cosine similarity formula and range?"
+    answer: |-
+      cos(u, v) = u·v / (‖u‖ ‖v‖), between -1 and 1;
+      close to 1 = same direction = similar meaning.
+  - id: gen-card-vector-db
+    kind: reveal
+    prompt: "What does a vector database do?"
+    answer: |-
+      Stores embeddings (with metadata) and finds the nearest vectors to a query
+      quickly, using approximate nearest-neighbour (ANN) indexes.
+  - id: gen-card-bm25
+    kind: reveal
+    prompt: "BM25 in one sentence, and why keep it next to embeddings?"
+    answer: |-
+      A keyword relevance score rewarding rare query words that appear in short
+      documents. It finds exact codes and names that embeddings can miss: hybrid search.
+  - id: gen-card-chunking
+    kind: reveal
+    prompt: "The chunk size trade-off?"
+    answer: |-
+      Small chunks: precise matches but missing context.
+      Large chunks: context kept but diluted relevance and a fuller prompt.
+      Split on natural boundaries, add some overlap, keep metadata.
+  - id: gen-card-rag
+    kind: reveal
+    prompt: "RAG: what and why?"
+    answer: |-
+      Retrieval-Augmented Generation: retrieve relevant passages from the client's
+      documents, put them in the prompt, generate an answer with citations.
+      Private, up-to-date knowledge without retraining.
+  - id: gen-card-rag-pipeline
+    kind: reveal
+    prompt: "The online steps of a RAG system?"
+    answer: |-
+      (Rewrite the question) → retrieve top-k (hybrid) → (rerank) →
+      build the prompt with sources → generate with citations or "I don't know".
+  - id: gen-card-reranker
+    kind: reveal
+    prompt: "What is a reranker?"
+    answer: |-
+      A slower, more precise model that rescores the top candidates of the first
+      search, so that the best few chunks are sent to the LLM.
+  - id: gen-card-recall-k
+    kind: reveal
+    prompt: "Recall@k and MRR?"
+    answer: |-
+      Recall@k: share of questions whose correct passage is in the top k.
+      MRR: mean of 1/rank of the first correct passage (0 if absent).
+  - id: gen-card-faithfulness
+    kind: reveal
+    prompt: "Faithfulness (groundedness) of a RAG answer?"
+    answer: |-
+      Whether every claim in the answer is supported by the retrieved sources.
+      Good retrieval + unfaithful answer = generation problem.
+  - id: gen-card-rag-vs-ft
+    kind: reveal
+    prompt: "RAG or fine-tuning?"
+    answer: |-
+      RAG for knowledge (private, changing documents, citations).
+      Fine-tuning for behaviour (style, format, narrow task at scale, smaller model).
+  - id: gen-card-llm-judge
+    kind: reveal
+    prompt: "LLM-as-a-judge: what and the main caveat?"
+    answer: |-
+      Using a model with a rubric to grade answers at scale.
+      It has biases (length, style, position): validate its agreement with
+      human experts (e.g. Cohen's kappa) before trusting it.
+  - id: gen-card-test-set
+    kind: reveal
+    prompt: "What goes into a good GenAI test set?"
+    answer: |-
+      Real inputs with expert-validated expected outputs, including hard,
+      ambiguous and unanswerable cases; re-run after every change (regression).
+  - id: gen-card-prompt-injection
+    kind: reveal
+    prompt: "Prompt injection: definition and best defence?"
+    answer: |-
+      Malicious instructions hidden in user input or in content the model reads
+      (indirect injection). Best defence: least privilege on tools and data,
+      confirmation for sensitive actions, plus input/output filters.
+  - id: gen-card-guardrails
+    kind: reveal
+    prompt: "What are guardrails?"
+    answer: |-
+      Layers of checks around the model: input filters, output filters and
+      validation, business rules in code, human approval for risky actions.
+  - id: gen-card-pii
+    kind: reveal
+    prompt: "Personal data and LLM APIs: what do you check?"
+    answer: |-
+      Legal basis and agreement with the provider (GDPR), hosting region,
+      retention, redaction/pseudonymisation, access rights in retrieval.
+  - id: gen-card-tool-calling
+    kind: reveal
+    prompt: "How does tool (function) calling work?"
+    answer: |-
+      You describe tools with a schema; the model outputs a structured call;
+      your code validates and executes it and returns the result to the model.
+  - id: gen-card-agent
+    kind: reveal
+    prompt: "Agent vs workflow?"
+    answer: |-
+      Workflow: fixed steps in code (reliable, cheap, testable).
+      Agent: the model chooses the steps in a loop (flexible, less predictable).
+      Start with the simplest that works.
+  - id: gen-card-compounding
+    kind: reveal
+    prompt: "Why do long agents fail?"
+    answer: |-
+      Errors compound: n steps of reliability p succeed with probability p^n
+      (0.95^10 ≈ 0.60).
+  - id: gen-card-cost-formula
+    kind: reveal
+    prompt: "Cost of one LLM request?"
+    answer: |-
+      (input tokens × input price + output tokens × output price) / 1,000,000
+      (prices per million tokens; output is usually more expensive).
+  - id: gen-card-latency
+    kind: reveal
+    prompt: "Latency of an LLM answer, and the cheapest perceived speed-up?"
+    answer: |-
+      retrieval + time to first token + output tokens / (tokens per second).
+      Streaming makes it feel much faster.
+  - id: gen-card-routing
+    kind: reveal
+    prompt: "Model routing and caching?"
+    answer: |-
+      Routing: easy requests to a small cheap model, hard ones to a large one.
+      Caching: reuse answers or discounted repeated prompt prefixes.
+  - id: gen-card-solution-ladder
+    kind: reveal
+    prompt: "The solution ladder before reaching for GenAI?"
+    answer: |-
+      Rules / code → classic ML (tabular prediction) → prompting →
+      RAG → tools / workflows → fine-tuning → (almost never) training from scratch.
+  - id: gen-card-build-buy
+    kind: reveal
+    prompt: "Build vs buy for GenAI?"
+    answer: |-
+      Buy generic needs (writing help, meeting notes). Build where the value
+      comes from the client's own data, processes and integrations.
+  - id: gen-card-business-case
+    kind: reveal
+    prompt: "How do you size the value of a GenAI use case quickly?"
+    answer: |-
+      Volume × time per task × share of time saved × hourly cost
+      (or revenue / risk impact), minus build and run costs;
+      state assumptions and confirm them with a pilot.

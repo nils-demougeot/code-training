@@ -1,0 +1,131 @@
+id: gen-semantic-cache
+title: A semantic cache for LLM answers
+domain: genai
+difficulty: medium
+minutes: 12
+interview: true
+tags: [cost, latency, embeddings, cache]
+statement: |
+  Many users ask the same question in different words. A **semantic cache** stores past answers with the embedding of their question and reuses an answer when a new question is similar enough.
+
+  Implement the class `SemanticCache(threshold)`:
+
+  - `put(vector, answer)`: store a question embedding (a NumPy vector) and its answer;
+  - `get(vector)`: return the answer whose stored vector has the **highest cosine similarity** with `vector`, if that similarity is **at least** `threshold`; otherwise return `None` (also when the cache is empty);
+  - `hits` and `misses`: counters updated by `get`.
+setup: |
+  import numpy as np
+starter: |
+  import numpy as np
+
+
+  class SemanticCache:
+      def __init__(self, threshold):
+          pass
+
+      def put(self, vector, answer):
+          pass
+
+      def get(self, vector):
+          pass
+solution: |
+  import numpy as np
+
+
+  class SemanticCache:
+      def __init__(self, threshold):
+          self.threshold = threshold
+          self.vectors = []
+          self.answers = []
+          self.hits = 0
+          self.misses = 0
+
+      def put(self, vector, answer):
+          v = np.asarray(vector, dtype=float)
+          self.vectors.append(v / np.linalg.norm(v))
+          self.answers.append(answer)
+
+      def get(self, vector):
+          if self.vectors:
+              q = np.asarray(vector, dtype=float)
+              sims = np.stack(self.vectors) @ (q / np.linalg.norm(q))
+              best = int(np.argmax(sims))
+              if sims[best] >= self.threshold:
+                  self.hits += 1
+                  return self.answers[best]
+          self.misses += 1
+          return None
+tests:
+  - name: Empty cache
+    check: |
+      c = SemanticCache(0.9)
+      assert c.get(np.array([1.0, 0.0])) is None and c.misses == 1 and c.hits == 0
+  - name: Similar question hits, different question misses
+    check: |
+      c = SemanticCache(0.95)
+      c.put(np.array([1.0, 0.0, 0.0]), "Refunds take 14 days.")
+      c.put(np.array([0.0, 1.0, 0.0]), "Shipping takes 3 days.")
+      assert c.get(np.array([10.0, 0.5, 0.0])) == "Refunds take 14 days."
+      assert c.get(np.array([0.5, 0.5, 0.0])) is None
+      assert (c.hits, c.misses) == (1, 1)
+  - name: Returns the best match, not the first above the threshold
+    check: |
+      c = SemanticCache(0.5)
+      c.put(np.array([1.0, 1.0]), "A")
+      c.put(np.array([1.0, 0.1]), "B")
+      assert c.get(np.array([1.0, 0.0])) == "B"
+  - name: Threshold is inclusive
+    check: |
+      c = SemanticCache(0.6)
+      c.put(np.array([1.0, 0.0]), "A")
+      assert c.get(np.array([0.6, 0.8])) == "A"
+wrong:
+  - |
+    import numpy as np
+
+
+    class SemanticCache:
+        def __init__(self, threshold):
+            self.threshold = threshold
+            self.items = []
+            self.hits = 0
+            self.misses = 0
+
+        def put(self, vector, answer):
+            self.items.append((np.asarray(vector, dtype=float), answer))
+
+        def get(self, vector):
+            for v, answer in self.items:
+                if v @ vector >= self.threshold:
+                    self.hits += 1
+                    return answer
+            self.misses += 1
+            return None
+  - |
+    import numpy as np
+
+
+    class SemanticCache:
+        def __init__(self, threshold):
+            self.threshold = threshold
+            self.items = []
+            self.hits = 0
+            self.misses = 0
+
+        def put(self, vector, answer):
+            self.items.append((np.asarray(vector, dtype=float), answer))
+
+        def get(self, vector):
+            for v, answer in self.items:
+                if v @ vector / (np.linalg.norm(v) * np.linalg.norm(vector)) > self.threshold:
+                    self.hits += 1
+                    return answer
+            self.misses += 1
+            return None
+hints:
+  - "Normalise the vectors when you store them: the cosine is then a simple dot product."
+  - "`np.stack(self.vectors) @ q` scores all stored questions at once; `np.argmax` gives the best one."
+explanation: |
+  - A semantic cache can cut cost and latency a lot for FAQ-like traffic, but the threshold is a **risk**: "Can I cancel my order?" and "Can I cancel my subscription?" may be close in embedding space and need different answers. Tune it on real question pairs.
+  - Do not cache personalised answers (account balance, order status) or answers based on data that changes.
+  - Exact-match caching (same prompt, same answer) and the providers' **prompt caching** (discounted repeated prefixes) are simpler, safer complements.

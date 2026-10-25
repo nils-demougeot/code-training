@@ -1,0 +1,110 @@
+id: gen-retrieval-metrics
+title: Evaluate a retriever (recall@k, MRR)
+domain: genai
+difficulty: easy
+minutes: 6
+interview: true
+tags: [rag, evaluation, recall@k, mrr]
+statement: |
+  You evaluate a RAG retriever on a test set. For each question:
+
+  - `results[i]` is the list of document ids returned by the retriever, best first;
+  - `relevant[i]` is the **set** of ids that are correct for that question.
+
+  Write:
+
+  1. `recall_at_k(results, relevant, k)`: the share of questions for which **at least one** relevant id is in the top `k` results;
+  2. `mrr(results, relevant)`: the mean, over questions, of `1 / rank` of the **first** relevant id (rank starts at 1), or 0 if none is returned.
+
+  Both return a float between 0 and 1. An empty test set raises a `ValueError`.
+setup: |
+  RESULTS = [["d3", "d1", "d7"], ["d2", "d9", "d4"], ["d5", "d6", "d8"], ["d1", "d2", "d3"]]
+  RELEVANT = [{"d1"}, {"d4", "d9"}, {"d0"}, {"d1"}]
+starter: |
+  def recall_at_k(results, relevant, k):
+      pass
+
+
+  def mrr(results, relevant):
+      pass
+solution: |
+  def recall_at_k(results, relevant, k):
+      if not results:
+          raise ValueError("empty test set")
+      hits = sum(1 for res, rel in zip(results, relevant) if set(res[:k]) & rel)
+      return hits / len(results)
+
+
+  def mrr(results, relevant):
+      if not results:
+          raise ValueError("empty test set")
+      total = 0.0
+      for res, rel in zip(results, relevant):
+          for rank, doc in enumerate(res, start=1):
+              if doc in rel:
+                  total += 1 / rank
+                  break
+      return total / len(results)
+tests:
+  - call: recall_at_k(RESULTS, RELEVANT, 1)
+    expected: "0.25"
+  - call: recall_at_k(RESULTS, RELEVANT, 2)
+    expected: "0.75"
+  - call: recall_at_k(RESULTS, RELEVANT, 3)
+    expected: "0.75"
+  - call: mrr(RESULTS, RELEVANT)
+    expected: "(1/2 + 1/2 + 0 + 1) / 4"
+  - name: Empty test set
+    check: |
+      for f in (lambda: recall_at_k([], [], 3), lambda: mrr([], [])):
+          try:
+              f()
+          except ValueError:
+              pass
+          else:
+              raise AssertionError("ValueError expected")
+  - name: Only the first relevant document counts for MRR
+    check: |
+      assert abs(mrr([["x", "a", "b"]], [{"a", "b"}]) - 0.5) < 1e-12
+    hidden: true
+wrong:
+  - |
+    def recall_at_k(results, relevant, k):
+        if not results:
+            raise ValueError("empty test set")
+        return sum(1 for res, rel in zip(results, relevant) if set(res) & rel) / len(results)
+
+
+    def mrr(results, relevant):
+        if not results:
+            raise ValueError("empty test set")
+        total = 0.0
+        for res, rel in zip(results, relevant):
+            for rank, doc in enumerate(res, start=1):
+                if doc in rel:
+                    total += 1 / rank
+                    break
+        return total / len(results)
+  - |
+    def recall_at_k(results, relevant, k):
+        if not results:
+            raise ValueError("empty test set")
+        return sum(1 for res, rel in zip(results, relevant) if set(res[:k]) & rel) / len(results)
+
+
+    def mrr(results, relevant):
+        if not results:
+            raise ValueError("empty test set")
+        total = 0.0
+        for res, rel in zip(results, relevant):
+            for rank, doc in enumerate(res):
+                if doc in rel:
+                    total += 1 / (rank + 1)
+        return total / len(results)
+hints:
+  - "`set(res[:k]) & rel` is non-empty when the top k contains a relevant id."
+  - "For MRR, `enumerate(res, start=1)` gives the rank; stop at the first relevant id."
+explanation: |
+  - **Recall@k** answers "does the right passage reach the LLM?" (it only sees the top k). **MRR** rewards putting it first.
+  - Always evaluate retrieval separately from generation: if recall@k is low, no prompt can fix the answers.
+  - Libraries (e.g. for search evaluation) compute these too, but interviewers like to see that you know the definitions.

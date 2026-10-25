@@ -1,0 +1,93 @@
+id: gen-prompt-template
+title: Build a grounded RAG prompt
+domain: genai
+difficulty: easy
+minutes: 8
+tags: [rag, prompt, citations]
+statement: |
+  Write `build_prompt(question, chunks, max_chunks=3)` that builds the prompt sent to the LLM in a RAG assistant. `chunks` is a list of dicts `{"title": ..., "text": ...}`, best first. Keep only the first `max_chunks` chunks and return **exactly** this text (lines separated by `\n`):
+
+  ```text
+  Answer the question using only the sources below.
+  Cite sources as [1], [2]... If the answer is not in the sources, say "I don't know".
+
+  [1] <title of chunk 1>
+  <text of chunk 1>
+
+  [2] <title of chunk 2>
+  <text of chunk 2>
+
+  Question: <question>
+  ```
+
+  With no chunk at all, the sources part is simply `(no sources)` on its own line, followed by the blank line and the question.
+setup: |
+  CHUNKS = [
+      {"title": "Refund policy", "text": "Refunds are issued within 14 days."},
+      {"title": "Lost parcels", "text": "Report a lost parcel within 30 days."},
+      {"title": "Gift cards", "text": "Gift cards cannot be refunded."},
+      {"title": "Shipping", "text": "Standard shipping takes 3-5 days."},
+  ]
+starter: |
+  def build_prompt(question, chunks, max_chunks=3):
+      pass
+solution: |
+  HEADER = (
+      "Answer the question using only the sources below.\n"
+      "Cite sources as [1], [2]... If the answer is not in the sources, say \"I don't know\".\n"
+  )
+
+
+  def build_prompt(question, chunks, max_chunks=3):
+      kept = chunks[:max_chunks]
+      if kept:
+          sources = "\n\n".join(f"[{i}] {c['title']}\n{c['text']}" for i, c in enumerate(kept, start=1))
+      else:
+          sources = "(no sources)"
+      return f"{HEADER}\n{sources}\n\nQuestion: {question}"
+tests:
+  - call: build_prompt("How long do refunds take?", CHUNKS[:2])
+  - call: build_prompt("Can I refund a gift card?", CHUNKS)
+  - call: build_prompt("Anything?", [])
+  - name: Exact layout
+    check: |
+      p = build_prompt("Q?", [{"title": "T", "text": "X"}])
+      assert p == (
+          "Answer the question using only the sources below.\n"
+          "Cite sources as [1], [2]... If the answer is not in the sources, say \"I don't know\".\n"
+          "\n[1] T\nX\n\nQuestion: Q?"
+      ), repr(p)
+  - name: max_chunks is respected
+    check: |
+      p = build_prompt("Q", CHUNKS, max_chunks=2)
+      assert "[2] Lost parcels" in p and "[3]" not in p
+    hidden: true
+wrong:
+  - |
+    HEADER = (
+        "Answer the question using only the sources below.\n"
+        "Cite sources as [1], [2]... If the answer is not in the sources, say \"I don't know\".\n"
+    )
+
+
+    def build_prompt(question, chunks, max_chunks=3):
+        sources = "\n\n".join(f"[{i}] {c['title']}\n{c['text']}" for i, c in enumerate(chunks, start=1)) or "(no sources)"
+        return f"{HEADER}\n{sources}\n\nQuestion: {question}"
+  - |
+    HEADER = (
+        "Answer the question using only the sources below.\n"
+        "Cite sources as [1], [2]... If the answer is not in the sources, say \"I don't know\".\n"
+    )
+
+
+    def build_prompt(question, chunks, max_chunks=3):
+        kept = chunks[:max_chunks]
+        sources = "\n\n".join(f"[{i}] {c['title']}\n{c['text']}" for i, c in enumerate(kept)) or "(no sources)"
+        return f"{HEADER}\n{sources}\n\nQuestion: {question}"
+hints:
+  - "`enumerate(kept, start=1)` numbers the sources from 1; `\"\\n\\n\".join(...)` puts a blank line between them."
+  - "Build the three parts (header, sources, question) separately, then assemble them with an f-string."
+explanation: |
+  - Numbering the sources lets the model cite them and lets your UI turn `[2]` into a link to the right paragraph.
+  - The header contains the two key **grounding** instructions: use only the sources, and say "I don't know" otherwise.
+  - Keeping only the top chunks controls cost, latency and noise; the right number is found by evaluation.

@@ -1,0 +1,100 @@
+id: gen-parse-json
+title: Robustly parse an LLM's JSON answer
+domain: genai
+difficulty: medium
+minutes: 10
+interview: true
+tags: [structured output, json, parsing]
+statement: |
+  You asked a model to answer with a JSON object, but real outputs look like this:
+
+  ````text
+  Sure! Here is the result:
+  ```json
+  {"category": "claim", "urgent": true}
+  ```
+  ````
+
+  Write `parse_llm_json(text)` that returns the **first JSON object** found in the text as a Python `dict`, or `None` if there is none or it is invalid:
+
+  1. if the text contains a fenced block starting with ` ```json ` (or just ` ``` `), parse the content of the first block;
+  2. otherwise, parse the substring from the **first** `{` to the **last** `}`;
+  3. return `None` if parsing fails or if the result is not a dict.
+
+  Use `json.loads`.
+starter: |
+  import json
+  import re
+
+
+  def parse_llm_json(text):
+      pass
+solution: |
+  import json
+  import re
+
+
+  def parse_llm_json(text):
+      fence = re.search(r"```(?:json)?\s*\n?(.*?)```", text, re.DOTALL)
+      if fence:
+          candidate = fence.group(1)
+      else:
+          start, end = text.find("{"), text.rfind("}")
+          if start == -1 or end < start:
+              return None
+          candidate = text[start:end + 1]
+      try:
+          value = json.loads(candidate)
+      except json.JSONDecodeError:
+          return None
+      return value if isinstance(value, dict) else None
+tests:
+  - call: "parse_llm_json('Sure! Here is the result:\\n```json\\n{\"category\": \"claim\", \"urgent\": true}\\n```')"
+    expected: "{'category': 'claim', 'urgent': True}"
+  - call: "parse_llm_json('{\"a\": 1, \"b\": [1, 2]}')"
+    expected: "{'a': 1, 'b': [1, 2]}"
+  - call: "parse_llm_json('The answer is {\"total\": 42} as requested.')"
+    expected: "{'total': 42}"
+  - call: "parse_llm_json('```\\n{\"x\": {\"y\": 2}}\\n```')"
+    expected: "{'x': {'y': 2}}"
+  - call: "parse_llm_json('I cannot help with that.')"
+    expected: None
+  - call: "parse_llm_json('{\"category\": \"claim\",}')"
+    expected: None
+  - call: "parse_llm_json('```json\\n[1, 2, 3]\\n```')"
+    expected: None
+  - name: Nested objects in free text
+    check: |
+      text = 'Result: {"customer": {"name": "Ana", "tier": "gold"}, "score": 0.9} -- end'
+      assert parse_llm_json(text) == {"customer": {"name": "Ana", "tier": "gold"}, "score": 0.9}
+    hidden: true
+wrong:
+  - |
+    import json
+
+
+    def parse_llm_json(text):
+        try:
+            return json.loads(text)
+        except json.JSONDecodeError:
+            return None
+  - |
+    import json
+    import re
+
+
+    def parse_llm_json(text):
+        m = re.search(r"\{.*?\}", text, re.DOTALL)
+        if not m:
+            return None
+        try:
+            return json.loads(m.group(0))
+        except json.JSONDecodeError:
+            return None
+hints:
+  - "`re.search(r\"```(?:json)?\\s*\\n?(.*?)```\", text, re.DOTALL)` captures the content of the first fenced block (`.*?` is non-greedy)."
+  - "Without fences, `text.find('{')` and `text.rfind('}')` give the outermost braces, so nested objects are kept whole. Wrap `json.loads` in `try/except json.JSONDecodeError`."
+explanation: |
+  - Never trust a model to return clean JSON: even good models add prose, fences or a trailing comma from time to time.
+  - Production pattern: use the provider's JSON/schema mode when available, **parse defensively**, **validate** the fields, and **retry** (or fall back to a human) when parsing fails.
+  - A non-greedy `\{.*?\}` breaks on nested objects; first-`{`-to-last-`}` handles them.

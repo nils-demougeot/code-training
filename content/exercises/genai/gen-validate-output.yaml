@@ -1,0 +1,87 @@
+id: gen-validate-output
+title: Validate a model's output before using it
+domain: genai
+difficulty: medium
+minutes: 10
+tags: [structured output, validation, guardrails]
+statement: |
+  A model triages insurance emails and returns a dict. Before writing it to the CRM, write `validate_ticket(obj)` that returns the **list of error messages** (empty list if valid), checking in this order:
+
+  1. `obj` must be a dict, otherwise return `["not an object"]` immediately;
+  2. key `category` must be one of `CATEGORIES` → else error `"bad category"`;
+  3. key `policy_number` must be `None` or a string matching `POL-` followed by exactly 6 digits → else `"bad policy_number"`;
+  4. key `urgent` must be a real boolean (`True` / `False`, not `"yes"` nor `1`) → else `"bad urgent"`;
+  5. any other key → one error `"unexpected key: <name>"` per extra key, in sorted order.
+
+  A missing key counts as an invalid value for that key.
+setup: |
+  CATEGORIES = {"claim", "billing", "policy_change", "complaint", "other"}
+starter: |
+  import re
+
+
+  def validate_ticket(obj):
+      pass
+solution: |
+  import re
+
+  ALLOWED_KEYS = {"category", "policy_number", "urgent"}
+
+
+  def validate_ticket(obj):
+      if not isinstance(obj, dict):
+          return ["not an object"]
+      errors = []
+      if obj.get("category") not in CATEGORIES:
+          errors.append("bad category")
+      policy = obj.get("policy_number", "missing")
+      if policy is not None and not (isinstance(policy, str) and re.fullmatch(r"POL-\d{6}", policy)):
+          errors.append("bad policy_number")
+      if not isinstance(obj.get("urgent"), bool):
+          errors.append("bad urgent")
+      for key in sorted(set(obj) - ALLOWED_KEYS):
+          errors.append(f"unexpected key: {key}")
+      return errors
+tests:
+  - call: 'validate_ticket({"category": "claim", "policy_number": "POL-123456", "urgent": False})'
+    expected: "[]"
+  - call: 'validate_ticket({"category": "claim", "policy_number": None, "urgent": True})'
+    expected: "[]"
+  - call: 'validate_ticket({"category": "Claim", "policy_number": "POL-12345", "urgent": "yes"})'
+    expected: "['bad category', 'bad policy_number', 'bad urgent']"
+  - call: 'validate_ticket({"category": "other", "urgent": 1})'
+    expected: "['bad policy_number', 'bad urgent']"
+  - call: 'validate_ticket({"category": "billing", "policy_number": "POL-000001", "urgent": True, "reason": "x", "amount": 3})'
+    expected: "['unexpected key: amount', 'unexpected key: reason']"
+  - call: validate_ticket(["claim"])
+    expected: "['not an object']"
+  - call: 'validate_ticket({"category": "claim", "policy_number": "POL-1234567", "urgent": False})'
+    expected: "['bad policy_number']"
+    hidden: true
+wrong:
+  - |
+    import re
+
+
+    def validate_ticket(obj):
+        if not isinstance(obj, dict):
+            return ["not an object"]
+        errors = []
+        if obj.get("category") not in CATEGORIES:
+            errors.append("bad category")
+        policy = obj.get("policy_number")
+        if policy is not None and not re.match(r"POL-\d{6}", policy):
+            errors.append("bad policy_number")
+        if obj.get("urgent") not in (True, False):
+            errors.append("bad urgent")
+        for key in sorted(set(obj) - {"category", "policy_number", "urgent"}):
+            errors.append(f"unexpected key: {key}")
+        return errors
+hints:
+  - "`re.fullmatch(r'POL-\\d{6}', s)` checks the **whole** string (`re.match` would accept `POL-1234567`)."
+  - "`1 in (True, False)` is `True` in Python, because `True == 1`! Use `isinstance(x, bool)`."
+  - "Use a sentinel for missing keys: `obj.get('policy_number', 'missing')` is not `None`, so a missing key is reported."
+explanation: |
+  - Validating model outputs in code is a cheap, essential **guardrail**: the model proposes, your code decides what gets written to a business system.
+  - Return all errors at once: they can be sent back to the model ("fix these errors") for an automatic retry.
+  - In production, libraries such as `pydantic` or `jsonschema` express these rules declaratively; the logic is the same.

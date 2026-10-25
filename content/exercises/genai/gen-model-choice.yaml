@@ -1,0 +1,76 @@
+id: gen-model-choice
+title: Choose the cheapest model that is good enough
+domain: genai
+difficulty: easy
+minutes: 8
+tags: [cost, model selection]
+statement: |
+  Write:
+
+  1. `cost_per_request(model, tokens_in, tokens_out)`: the cost in dollars of one request, where `model` is a dict with `price_in` and `price_out` in dollars **per million** tokens;
+  2. `choose_model(models, tokens_in, tokens_out, min_quality, max_latency)`: among the models whose `quality` (score on your test set, between 0 and 1) is **at least** `min_quality` and whose `latency` (seconds) is **at most** `max_latency`, return the **name** of the one with the lowest cost per request. Ties: keep the first in the list. Return `None` if no model qualifies.
+setup: |
+  MODELS = [
+      {"name": "large", "price_in": 3.0, "price_out": 15.0, "quality": 0.93, "latency": 4.0},
+      {"name": "medium", "price_in": 0.8, "price_out": 4.0, "quality": 0.90, "latency": 2.0},
+      {"name": "small", "price_in": 0.15, "price_out": 0.6, "quality": 0.81, "latency": 0.8},
+      {"name": "self-hosted", "price_in": 0.4, "price_out": 0.4, "quality": 0.86, "latency": 1.5},
+  ]
+starter: |
+  def cost_per_request(model, tokens_in, tokens_out):
+      pass
+
+
+  def choose_model(models, tokens_in, tokens_out, min_quality, max_latency):
+      pass
+solution: |
+  def cost_per_request(model, tokens_in, tokens_out):
+      return (tokens_in * model["price_in"] + tokens_out * model["price_out"]) / 1e6
+
+
+  def choose_model(models, tokens_in, tokens_out, min_quality, max_latency):
+      ok = [m for m in models if m["quality"] >= min_quality and m["latency"] <= max_latency]
+      if not ok:
+          return None
+      return min(ok, key=lambda m: cost_per_request(m, tokens_in, tokens_out))["name"]
+tests:
+  - call: round(cost_per_request(MODELS[0], 2000, 500), 6)
+    expected: "0.0135"
+  - call: choose_model(MODELS, 2000, 500, 0.85, 5)
+    expected: "'self-hosted'"
+  - call: choose_model(MODELS, 2000, 500, 0.9, 5)
+    expected: "'medium'"
+  - call: choose_model(MODELS, 2000, 500, 0.9, 1.0)
+    expected: None
+  - call: choose_model(MODELS, 2000, 500, 0.8, 1.0)
+    expected: "'small'"
+  - call: choose_model(MODELS, 100, 4000, 0.85, 5)
+    expected: "'self-hosted'"
+wrong:
+  - |
+    def cost_per_request(model, tokens_in, tokens_out):
+        return (tokens_in + tokens_out) * model["price_in"] / 1e6
+
+
+    def choose_model(models, tokens_in, tokens_out, min_quality, max_latency):
+        ok = [m for m in models if m["quality"] >= min_quality and m["latency"] <= max_latency]
+        if not ok:
+            return None
+        return min(ok, key=lambda m: cost_per_request(m, tokens_in, tokens_out))["name"]
+  - |
+    def cost_per_request(model, tokens_in, tokens_out):
+        return (tokens_in * model["price_in"] + tokens_out * model["price_out"]) / 1e6
+
+
+    def choose_model(models, tokens_in, tokens_out, min_quality, max_latency):
+        ok = [m for m in models if m["quality"] > min_quality and m["latency"] < max_latency]
+        if not ok:
+            return None
+        return min(ok, key=lambda m: cost_per_request(m, tokens_in, tokens_out))["name"]
+hints:
+  - "Cost per request = (tokens_in × price_in + tokens_out × price_out) / 1,000,000."
+  - "Filter first, then `min(..., key=...)`; `min` keeps the first element in case of a tie."
+explanation: |
+  - Model choice is a **constrained optimisation**: meet the quality bar (measured on **your** test set, not a public leaderboard) and the latency limit, then minimise cost.
+  - The answer depends on the token mix: a model with cheap input but expensive output wins for RAG (long inputs) and loses for long generations.
+  - Re-run this choice regularly: prices and models change every few months.

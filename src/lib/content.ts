@@ -101,7 +101,7 @@ export const docLibraries: DocLibrary[] = Object.entries(docFiles)
   .map(([, raw]) => parse(raw) as DocLibrary)
 export const docLibraryById = new Map(docLibraries.map((l) => [l.id, l]))
 
-const COMPETITION_ORDER = ['aurora', 'apparts', 'velos']
+const COMPETITION_ORDER = ['aurora', 'apparts', 'velos', 'rag']
 export const competitions: Competition[] = Object.values(competitionFiles)
   .map((raw) => parse(raw) as Competition)
   .sort((a, b) => COMPETITION_ORDER.indexOf(a.id) - COMPETITION_ORDER.indexOf(b.id))

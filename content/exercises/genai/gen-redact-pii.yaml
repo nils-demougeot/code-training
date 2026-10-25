@@ -1,0 +1,76 @@
+id: gen-redact-pii
+title: Redact personal data before calling an API
+domain: genai
+difficulty: medium
+minutes: 10
+interview: true
+tags: [privacy, gdpr, regex, guardrails]
+statement: |
+  Before sending customer emails to an external LLM API, the client wants personal data masked. Write `redact(text)` that replaces:
+
+  - **email addresses** (`name@domain.tld`, letters, digits, `.`, `_`, `%`, `+`, `-` before the `@`) by `[EMAIL]`;
+  - **French phone numbers** by `[PHONE]`: 10 digits starting with `0` (`0612345678`), or `+33` followed by 9 digits; digits may be separated by single spaces, dots or dashes (`06 12 34 56 78`, `+33 6 12 34 56 78`, `01.23.45.67.89`);
+  - **IBANs** starting with `FR` followed by 25 characters (digits or uppercase letters), possibly grouped by 4 with spaces, by `[IBAN]`.
+
+  Replace IBANs first, then emails, then phone numbers. Everything else is unchanged.
+starter: |
+  import re
+
+
+  def redact(text):
+      pass
+solution: |
+  import re
+
+  IBAN = re.compile(r"\bFR\d{2}(?:[ ]?[0-9A-Z]{4}){5}[ ]?[0-9A-Z]{3}\b")
+  EMAIL = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}")
+  PHONE = re.compile(r"(?:\+33[ .-]?[1-9]|\b0[1-9])(?:[ .-]?\d{2}){4}\b")
+
+
+  def redact(text):
+      text = IBAN.sub("[IBAN]", text)
+      text = EMAIL.sub("[EMAIL]", text)
+      return PHONE.sub("[PHONE]", text)
+tests:
+  - call: redact("Contact me at jean.dupont+test@mail.example.fr please")
+    expected: "'Contact me at [EMAIL] please'"
+  - call: redact("Call 06 12 34 56 78 or 0612345678.")
+    expected: "'Call [PHONE] or [PHONE].'"
+  - call: 'redact("Office: +33 1 23 45 67 89, fax 01.23.45.67.89, mobile +33612345678")'
+    expected: "'Office: [PHONE], fax [PHONE], mobile [PHONE]'"
+  - call: redact("IBAN FR76 3000 6000 0112 3456 7890 189 for the refund")
+    expected: "'IBAN [IBAN] for the refund'"
+  - call: redact("IBAN FR7630006000011234567890189.")
+    expected: "'IBAN [IBAN].'"
+  - call: redact("Order 2024-0012 of 12 items costs 129 euros, ref 06123.")
+    expected: "'Order 2024-0012 of 12 items costs 129 euros, ref 06123.'"
+  - name: Mixed message
+    check: |
+      msg = "Hi, I'm Ana (ana_92@gmail.com, 07-11-22-33-44). Please refund to FR76 3000 6000 0112 3456 7890 189."
+      assert redact(msg) == "Hi, I'm Ana ([EMAIL], [PHONE]). Please refund to [IBAN]."
+    hidden: true
+wrong:
+  - |
+    import re
+
+
+    def redact(text):
+        text = re.sub(r"\S+@\S+", "[EMAIL]", text)
+        text = re.sub(r"0\d{9}", "[PHONE]", text)
+        return re.sub(r"FR\d{25}", "[IBAN]", text)
+  - |
+    import re
+
+
+    def redact(text):
+        text = re.sub(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}", "[EMAIL]", text)
+        text = re.sub(r"\d[\d .-]{8,}\d", "[PHONE]", text)
+        return re.sub(r"FR\d{2}(?: ?[0-9A-Z]{4}){5} ?[0-9A-Z]{3}", "[IBAN]", text)
+hints:
+  - "Email: `[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}`."
+  - "Phone: start with `\\+33[ .-]?[1-9]` or `\\b0[1-9]`, then four groups `(?:[ .-]?\\d{2}){4}`, and `\\b` at the end so that longer numbers are not cut."
+  - "Do IBANs first: they contain long digit runs that the phone pattern could otherwise eat."
+explanation: |
+  - Redaction (or pseudonymisation) before calling an external API is a common requirement under the GDPR; also check the provider's data agreement, retention and hosting region.
+  - Regexes catch structured data (emails, phones, IBANs) well but miss names and addresses: production systems combine them with named-entity recognition models.
+  - Order matters when patterns overlap, and over-redaction (masking order numbers) degrades the answers: test both directions.
