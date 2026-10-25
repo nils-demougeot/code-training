@@ -1,0 +1,134 @@
+id: so-what
+title: From results to decisions
+emoji: 🎯
+summary: Lead with the answer. Turn an analysis into the one sentence a busy executive needs, then the reasons.
+items:
+  - id: headline
+    kind: so-what
+    audience: "COO, 2 minutes between two meetings"
+    prompt: "Your churn analysis found that customers who wait more than 3 days for a technician are **twice as likely to leave**, and 30 % of customers wait that long. Which opening sentence do you use?"
+    options:
+      - text: "\"Cutting technician waits to under 3 days is the biggest lever on churn: those who wait longer leave twice as often, and that's 30 % of customers.\""
+        verdict: best
+        feedback: "Answer first (the lever), then the evidence, in one sentence."
+      - text: "\"We analysed 18 months of data with 40 variables and trained several models.\""
+        verdict: bad
+        feedback: "Starts with your work, not with what she should do."
+      - text: "\"There are many factors behind churn.\""
+        verdict: bad
+        feedback: "True for every company; says nothing."
+      - text: "\"Waiting time is correlated with churn.\""
+        verdict: ok
+        feedback: "Right direction, but no size, no action."
+    takeaway: "Pyramid principle: the answer first, then the 2–3 reasons, then the details if asked."
+  - id: correlation
+    kind: so-what
+    audience: "Marketing director"
+    prompt: "Customers who use the mobile app spend **40 % more**. She wants to push everyone to the app. What do you say?"
+    options:
+      - text: "\"Promising, but careful: the app may attract customers who already spend more, rather than making them spend more. Let's test it: push the app to a random half of new customers and compare spending after 3 months.\""
+        verdict: best
+        feedback: "Explains correlation versus causation without the words, and proposes a test that settles it."
+      - text: "\"Great idea, the data proves it.\""
+        verdict: bad
+        feedback: "The data shows a link, not that the app causes the spending."
+      - text: "\"Correlation is not causation.\""
+        verdict: ok
+        feedback: "Correct, but a slogan: say what it means here and what to do."
+      - text: "\"We need more data before saying anything.\""
+        verdict: bad
+        feedback: "Paralysis. A simple test is the useful next step."
+    takeaway: "When a link might not be a cause, say who might be behind it and propose a test with a random comparison group."
+  - id: recommendation
+    kind: so-what
+    audience: "Board member"
+    prompt: "Your pilot of an AI routing tool cut the time to first contact from **8 days to 3** in 2 regions. Error rate is stable. Which conclusion do you present?"
+    options:
+      - text: "\"We recommend rolling out to all regions over the next quarter: the pilot cut first contact from 8 to 3 days with no rise in errors. The main risk is adoption in the larger regions, so we will train team leads first.\""
+        verdict: best
+        feedback: "Recommendation, evidence, risk and mitigation: everything a board needs to decide."
+      - text: "\"The pilot was a success.\""
+        verdict: ok
+        feedback: "Positive but not actionable: what do you want them to decide?"
+      - text: "\"Here are 25 slides of results by week and by region.\""
+        verdict: bad
+        feedback: "Detail without a message: the board will ask 'so what?'"
+      - text: "\"The model achieved strong performance metrics.\""
+        verdict: bad
+        feedback: "Technical and vague."
+    takeaway: "End with a recommendation the audience can approve, the key evidence, and the main risk with its mitigation."
+  - id: bad-news
+    kind: so-what
+    audience: "Client sponsor"
+    prompt: "After 4 weeks, you found the data **cannot support** the forecasting model the client wanted: store sales were only recorded monthly. How do you open?"
+    options:
+      - text: "\"We can't build a reliable daily forecast with the current data: sales are only recorded monthly. We have two options: a monthly forecast in 4 weeks, which already helps purchasing, or daily tracking from next month so a daily model is possible by summer. I recommend doing both.\""
+        verdict: best
+        feedback: "Bad news first and clearly, the reason, then options and a recommendation: the meeting moves forward."
+      - text: "\"We've done a lot of interesting work on the data.\""
+        verdict: bad
+        feedback: "Buries the bad news; she will feel misled when it comes out."
+      - text: "\"The project failed because of your data.\""
+        verdict: bad
+        feedback: "Blame without a way forward."
+      - text: "\"We need more time.\""
+        verdict: ok
+        feedback: "Honest but incomplete: more time for what, and what will it change?"
+    takeaway: "Deliver bad news early and plainly, with the reason and concrete options."
+  - id: number-overload
+    kind: so-what
+    audience: "Head of HR"
+    prompt: "Your attrition analysis produced many numbers. Which sentence is best for the summary slide?"
+    options:
+      - text: "\"One in four new hires leaves within a year, mostly in the first 3 months, and mostly in teams without onboarding. Rolling out onboarding to those teams is the first thing to do.\""
+        verdict: best
+        feedback: "Few numbers, chosen for the message, ending with an action."
+      - text: "\"Attrition is 24.7 % (95 % range 22.1 %–27.3 %), with a median tenure of 7.2 months, hazard ratio of 1.8 for teams without onboarding.\""
+        verdict: bad
+        feedback: "Precise but unreadable; the message is lost in the numbers."
+      - text: "\"Attrition is high.\""
+        verdict: bad
+        feedback: "Compared with what? What to do?"
+      - text: "\"Attrition is about 25 %, and onboarding matters.\""
+        verdict: ok
+        feedback: "Close, but 'matters' is vague: say what to do."
+    takeaway: "On a summary slide, use few numbers, rounded, that support one message and one action."
+  - id: trade-off
+    kind: so-what
+    audience: "Store operations director"
+    prompt: "Ordering less reduces waste but creates more empty shelves. Your simulation gives several options. How do you frame the choice?"
+    options:
+      - text: "\"You choose the balance. Option A: −30 % waste, empty shelves +1 point. Option B: −20 % waste, empty shelves unchanged. We recommend B for the pilot: it saves €3M a year without any risk for customers, and we can move toward A once stores trust the tool.\""
+        verdict: best
+        feedback: "Makes the trade-off explicit, gives the decision to the owner, and still recommends."
+      - text: "\"The model optimises the trade-off automatically.\""
+        verdict: bad
+        feedback: "Hides a business decision inside the model."
+      - text: "\"We minimised the loss function with a weight of 0.3 on stockouts.\""
+        verdict: bad
+        feedback: "Technical translation of a business choice he should make."
+      - text: "\"There's always a trade-off between waste and availability.\""
+        verdict: ok
+        feedback: "True, but you did not help him choose."
+    takeaway: "Present trade-offs as 2–3 options with their business consequences, and recommend one."
+write:
+  - id: write-exec-summary
+    audience: "CEO, reads the first two lines only"
+    prompt: "Your analysis: 20 % of products generate 80 % of returns, mostly because product photos misrepresent colours. Fixing the photos of the top 200 products would cost €50k and cut returns by about 15 %, worth €1.2M a year. Write the **first two sentences** of your email (**at most 50 words**)."
+    maxWords: 50
+    checklist:
+      - "The first sentence contains the recommendation"
+      - "I gave the value and the cost"
+      - "I gave the reason in a few words"
+      - "A CEO could approve it from these two sentences"
+    model: "We recommend reshooting the photos of our 200 most returned products: €50k for about €1.2M a year in avoided returns. Most returns come from colours that look different in reality, and these 200 products cause most of them."
+  - id: write-bad-news
+    audience: "Client sponsor"
+    prompt: "The GenAI assistant reached only 75 % correct answers in testing, below the 90 % target, mainly because one third of the documents are outdated. Write your message in **at most 70 words**: the news, the reason, and your proposal."
+    maxWords: 70
+    checklist:
+      - "I gave the result clearly at the start"
+      - "I explained the main cause"
+      - "I proposed concrete options or a next step"
+      - "I did not blame anyone"
+    model: "The assistant is not ready yet: it answered 75 % of test questions correctly, against our 90 % target. The main cause is that a third of the documents are outdated, so it sometimes quotes old rules. We propose to update the 50 most used documents with their owners over three weeks, then test again before launch."

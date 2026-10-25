@@ -1,0 +1,151 @@
+id: pushback
+title: Handling client pushback
+emoji: 🛡️
+summary: Stay calm and useful when the client doubts the model, wants it faster, or asks for the impossible.
+items:
+  - id: not-perfect
+    kind: pushback
+    audience: "Operations director, irritated"
+    prompt: "\"Your model got three orders completely wrong last week. **How can I trust it?**\""
+    options:
+      - text: "\"You're right to check, thank you for flagging them. Let's look at those three together to understand what happened. Overall, over the last month it was closer than the manual estimate on 8 days out of 10, and we keep your team's final say for unusual cases.\""
+        verdict: best
+        feedback: "Acknowledge, investigate the concrete cases, put them in perspective with evidence, and keep the human in control."
+      - text: "\"No model is perfect, you have to accept some errors.\""
+        verdict: ok
+        feedback: "True, but it sounds defensive and ignores his concrete cases."
+      - text: "\"Those were outliers, statistically they don't matter.\""
+        verdict: bad
+        feedback: "Dismisses his experience. For him, three bad orders matter."
+      - text: "\"The model is right, your data must be wrong.\""
+        verdict: bad
+        feedback: "Blaming the client destroys trust, and you do not know it yet."
+    takeaway: "Acknowledge → look at the concrete cases → put them in perspective with evidence → keep humans in control."
+  - id: just-chatgpt
+    kind: pushback
+    audience: "CEO"
+    prompt: "\"Why do we need a 10-week project? **My nephew built a chatbot with ChatGPT in a weekend.**\""
+    options:
+      - text: "\"A demo in a weekend is realistic, and it's a great way to see the potential. The 10 weeks go into what a demo skips: connecting your real data, testing on hundreds of real questions, protecting customer data, and handling the cases where it's wrong. That's the difference between a demo and something your customers can rely on.\""
+        verdict: best
+        feedback: "Agrees with what is true, then explains concretely where the time goes, in terms of risk he cares about."
+      - text: "\"Your nephew's chatbot is not enterprise-grade.\""
+        verdict: bad
+        feedback: "Condescending, and 'enterprise-grade' explains nothing."
+      - text: "\"We can probably do it in 2 weeks then.\""
+        verdict: bad
+        feedback: "Caving to pressure leads to a fragile system and a worse conversation later."
+      - text: "\"There are many technical complexities you might not see.\""
+        verdict: ok
+        feedback: "True but vague; name the complexities in his terms."
+    takeaway: "Demo vs product: name what the demo skips (real data, testing, security, failure handling) in business terms."
+  - id: black-box
+    kind: pushback
+    audience: "Head of Credit Risk at a bank"
+    prompt: "\"I can't approve a **black box**. If a customer asks why their loan was refused, what do we say?\""
+    options:
+      - text: "\"That's a fair requirement, and regulators share it. For each decision we can show the main factors that drove the score, for instance income stability and existing debt, and we can choose a simpler model if the gain from a complex one is small. Let's agree on the explanation format with your team before we build further.\""
+        verdict: best
+        feedback: "Validates the concern, gives a concrete way to explain decisions, and is willing to trade some performance for transparency."
+      - text: "\"The model is too complex to explain, but it's more accurate.\""
+        verdict: bad
+        feedback: "Unacceptable in credit decisions, and it confirms her fear."
+      - text: "\"We can use SHAP values.\""
+        verdict: ok
+        feedback: "A real technique, but named instead of explained: what will the customer actually hear?"
+      - text: "\"Customers rarely ask.\""
+        verdict: bad
+        feedback: "Dismisses a legal and ethical obligation."
+    takeaway: "On explainability: validate, show what an explanation will look like for one decision, and consider simpler models."
+  - id: hundred-percent
+    kind: pushback
+    audience: "Head of Claims"
+    prompt: "\"I want the email routing to be **100 % accurate**, otherwise we don't go live.\""
+    options:
+      - text: "\"I understand: a misrouted urgent email is serious. Today's manual routing isn't 100 % either; we measured about 92 %. We propose to route automatically only when the model is very confident, which we expect to be about 70 % of emails at around 99 % correct, and send the rest to your team. Would that be acceptable?\""
+        verdict: best
+        feedback: "Takes the concern seriously, compares with today's real baseline, and designs around it with a confidence threshold."
+      - text: "\"100 % is impossible.\""
+        verdict: ok
+        feedback: "True but ends the conversation instead of solving her concern."
+      - text: "\"Sure, we'll reach 100 %.\""
+        verdict: bad
+        feedback: "A promise you cannot keep."
+      - text: "\"Then AI is not for you.\""
+        verdict: bad
+        feedback: "Gives up on a solvable problem."
+    takeaway: "Against '100 % or nothing': compare with today's real error rate, and automate only the confident cases."
+  - id: data-is-fine
+    kind: pushback
+    audience: "IT director"
+    prompt: "You found that 15 % of customer records have the wrong region. He says: \"**Our data is perfectly clean**, the problem must be your code.\""
+    options:
+      - text: "\"It may well be on our side, so let's check together. Here are five example records where the region in the CRM doesn't match the postcode. If you confirm they're errors, we can estimate how widespread it is and decide whether to fix it at the source or correct it in our pipeline.\""
+        verdict: best
+        feedback: "Non-confrontational, evidence-based with concrete examples, and moves toward a joint decision."
+      - text: "\"No, your data is wrong, we checked.\""
+        verdict: bad
+        feedback: "Creates a fight with someone whose help you need."
+      - text: "\"OK, we'll look at our code again.\""
+        verdict: ok
+        feedback: "Polite, but you let a real data problem go unaddressed."
+      - text: "\"Data quality issues are common in large organisations.\""
+        verdict: bad
+        feedback: "Generic, and he hears an accusation."
+    takeaway: "Disagree with data, not with people: bring a few concrete examples and propose to check together."
+  - id: replace-jobs
+    kind: pushback
+    audience: "Team leader of the claims handlers, worried"
+    prompt: "\"Be honest with me: **is this AI going to replace my team?**\""
+    options:
+      - text: "\"I understand the worry. What we are building takes over the sorting and copying that your team says takes an hour a day, so they spend more time on the complex claims and on customers. Decisions on claims stay with your handlers. And we want your team to test it and tell us where it gets things wrong.\""
+        verdict: best
+        feedback: "Empathy, a concrete and honest description of the scope, and involvement of the team."
+      - text: "\"No, absolutely not, AI never replaces people.\""
+        verdict: ok
+        feedback: "Reassuring but sounds like a blanket promise you cannot make."
+      - text: "\"That's a question for management, not for me.\""
+        verdict: bad
+        feedback: "Avoids the question and loses the team's trust."
+      - text: "\"Maybe, but productivity gains are good for the company.\""
+        verdict: bad
+        feedback: "Tone-deaf. The team will resist the project."
+    takeaway: "Be honest about the scope (which tasks change), keep humans in charge of decisions, and involve the users."
+  - id: faster
+    kind: pushback
+    audience: "Managing director, under board pressure"
+    prompt: "\"Skip the pilot. **Roll it out to all 120 stores next month.**\""
+    options:
+      - text: "\"I see the pressure. A full rollout without a pilot means that if something is off, 120 stores feel it at once and we can't prove the value. Option: start with 20 stores next month, compare with the others for 6 weeks, then roll out to all. You get visible progress now and numbers the board will trust.\""
+        verdict: best
+        feedback: "Acknowledges the pressure, names the risk in his terms, and offers a faster compromise that still measures."
+      - text: "\"No, the methodology requires a pilot.\""
+        verdict: bad
+        feedback: "Hides behind process instead of explaining the risk."
+      - text: "\"OK, let's do it.\""
+        verdict: bad
+        feedback: "You take on all the risk and lose the ability to show the value."
+      - text: "\"It's risky, but it's your call.\""
+        verdict: ok
+        feedback: "Honest, but you could have offered a better option."
+    takeaway: "Under time pressure, offer a faster version that keeps a comparison group, framed as protecting the result."
+write:
+  - id: write-black-box
+    audience: "Head of Credit Risk"
+    prompt: "She says: \"I don't trust models I can't understand.\" In **at most 70 words**, answer her."
+    maxWords: 70
+    checklist:
+      - "I acknowledged that her concern is legitimate"
+      - "I described what an explanation would concretely look like"
+      - "I offered a trade-off or a next step"
+      - "I stayed calm and did not lecture"
+    model: "That's a fair requirement, especially for credit decisions. For each customer, we can show the three factors that weighed most, for example 'high existing debt', in words your advisors can repeat. If a simpler model is almost as good, we will choose it. Could we review ten real decisions with your team next week?"
+  - id: write-faster
+    audience: "CEO who wants the project done in half the time"
+    prompt: "He asks to cut the 12-week plan to 6 weeks. In **at most 70 words**, answer him."
+    maxWords: 70
+    checklist:
+      - "I acknowledged his goal"
+      - "I explained what would be lost or at risk, in business terms"
+      - "I proposed an alternative that gives him something sooner"
+    model: "I understand you need results quickly. In 6 weeks we can deliver a working version on one product line, tested on real data, so you have something concrete to show. The other 6 weeks are what make it safe to extend everywhere. Cutting them means going live without knowing how often it is wrong."

@@ -1,0 +1,233 @@
+id: insurer-claims
+title: Drowning in claim emails
+emoji: 🚗
+industry: Insurance
+difficulty: easy
+minutes: 15
+skills: [Discovery questions, GenAI triage, Human in the loop, Value sizing]
+client:
+  name: Claire Martin
+  role: Head of Claims Operations
+  company: Assurea, a mid-size car insurer
+brief: |
+  "Our claims team is overwhelmed. Customers wait more than a week for a first answer and our NPS is collapsing. Everybody talks about ChatGPT: I want an AI that **answers the claim emails automatically**. Can you build that in three months?"
+context: |
+  You are a junior on a BCG X case team. This is your first meeting with Claire. You have 30 minutes, and your manager asked you to **understand the real problem** before promising anything. You can ask **5 questions**: choose them well.
+discovery:
+  budget: 5
+  intro: Pick the questions you want to ask Claire. Good discovery questions uncover the process, the numbers, the data and the constraints. Each question costs time, and some will annoy her.
+  questions:
+    - id: process
+      text: "Can you walk me through what happens to a claim email today, from arrival to the first answer?"
+      value: key
+      answer: "Everything lands in one shared inbox. Two coordinators read each email, guess the type and forward it to the right team. Then a handler opens a file in our claims system, asks for missing documents, and answers. The forwarding alone often takes two or three days."
+      reveals: [manual-routing, queue]
+      why: "The best first question: you cannot improve a process you have not understood. It reveals that the delay comes from **manual routing**, not from writing answers."
+    - id: volume
+      text: "How many emails do you receive, and what kinds?"
+      value: key
+      answer: "About 3,000 emails a day. Roughly 40 % are new claim declarations, 35 % are documents sent for an existing claim, 15 % are questions on an ongoing claim and 10 % are other things: complaints, address changes, spam."
+      reveals: [volume, mix]
+      why: "Volumes and mix size the problem and the value. Here they show that **most emails do not need a written answer** at all: they need to be routed and attached to the right file."
+    - id: data
+      text: "Do you keep a history of past emails with where they were sent and how they were handled?"
+      value: key
+      answer: "Yes, our claims system keeps every email with the team it was assigned to, for the last three years. About a million emails. The quality is decent but some were re-routed by hand without updating the field."
+      reveals: [history]
+      why: "Data availability decides what is feasible. A labelled history of routing decisions means you can **measure** a classifier before deploying it."
+    - id: success
+      text: "If this project is a success in six months, what will have changed for you?"
+      value: key
+      answer: "Customers get a first meaningful contact within 48 hours instead of 8 days, and my handlers stop spending their mornings sorting emails. Our board tracks the 'time to first contact' every month."
+      reveals: [kpi]
+      why: "Asking for the success criterion in the client's own words gives you the **metric** and the business objective, and it is rarely 'use AI'."
+    - id: constraints
+      text: "Are there legal or compliance constraints on what can be sent to customers or to external tools?"
+      value: useful
+      answer: "Anything that commits us on a reimbursement must be validated by a licensed handler. And our DPO will ask where the data goes: emails contain health information when someone is injured."
+      reveals: [compliance]
+      why: "Constraints change the design: here, **no fully automatic answer** on reimbursements, and personal/health data needs care (hosting, agreements)."
+    - id: model
+      text: "Which LLM would you prefer we use: GPT, Claude or Mistral?"
+      value: "off"
+      answer: "I have no idea, that's why we hired you. Can we talk about my problem first?"
+      why: "Jumping to the technology before understanding the problem is the classic junior mistake. The model choice is a detail decided later, with the client's IT and data protection teams."
+    - id: budget
+      text: "What is your budget for this project?"
+      value: weak
+      answer: "We have room if the business case is solid. Show me the value first."
+      why: "A fair question at some point, but not in the first 30 minutes: clients expect you to understand the problem and size the value before talking money."
+    - id: team
+      text: "How many people work on claims intake, and how is their time split?"
+      value: useful
+      answer: "Two coordinators do the sorting full time, and the 40 handlers spend about an hour a day each on email admin: reading, attaching documents to files, forwarding."
+      reveals: [time-spent]
+      why: "Understanding who does what, and how long it takes, is the basis of the value estimate."
+    - id: tried
+      text: "Have you tried anything to fix this already?"
+      value: useful
+      answer: "IT built keyword rules two years ago. They route maybe a third of the emails correctly; the rest still goes to the coordinators."
+      reveals: [rules]
+      why: "Always ask what was tried: it avoids proposing what already failed, and the old system becomes your **baseline** to beat."
+    - id: chatgpt
+      text: "Have you tried pasting a few emails into ChatGPT to see what it says?"
+      value: weak
+      answer: "Someone in my team did, it looked impressive. But I can't send customer emails to a public website."
+      why: "It confirms enthusiasm, but it does not tell you much about the real process; and it raises a data protection issue you should handle carefully."
+    - id: competitors
+      text: "What are your competitors doing with AI?"
+      value: weak
+      answer: "I heard one of them has a chatbot. I don't know if it works."
+      why: "Interesting context, but it does not help you understand Claire's problem. Keep it for a later strategy discussion."
+    - id: timeline
+      text: "Why three months?"
+      value: useful
+      answer: "The board reviews customer satisfaction in the autumn. I need to show visible progress by then, even if it is not finished."
+      why: "Deadlines often hide a real need: here, a **visible first result**, which argues for a focused pilot rather than a big-bang project."
+facts:
+  - { id: manual-routing, text: "Two coordinators read and forward every email by hand; routing alone takes 2–3 days." }
+  - { id: queue, text: "Handlers then open the claim file, request documents and answer." }
+  - { id: volume, text: "≈ 3,000 emails per day." }
+  - { id: mix, text: "Mix: 40 % new claims, 35 % documents for an existing claim, 15 % questions on an ongoing claim, 10 % other." }
+  - { id: history, text: "≈ 1 million past emails with their routing team (3 years), some labels noisy." }
+  - { id: kpi, text: "Board KPI: time to first contact, today 8 days, target 48 hours." }
+  - { id: compliance, text: "Any commitment on reimbursement must be validated by a licensed handler; emails can contain health data." }
+  - { id: time-spent, text: "2 coordinators full time on sorting; 40 handlers spend ≈ 1 h/day each on email admin." }
+  - { id: rules, text: "Existing keyword rules route about a third of emails correctly (baseline)." }
+framing:
+  - id: objective
+    question: "What is the real business objective of the project?"
+    options:
+      - text: "Cut the time to first contact from 8 days to 48 hours by removing the manual sorting bottleneck"
+        correct: true
+        feedback: "Yes: it is measurable, tied to the board KPI, and it targets where the delay really comes from."
+      - text: "Deploy a generative AI that writes answers to all claim emails"
+        feedback: "That is a solution, not an objective; and most emails do not need a written answer, they need routing. Automatic answers on claims are also restricted by compliance."
+      - text: "Replace the claims handlers with AI"
+        feedback: "Not what Claire asked, legally impossible for reimbursement decisions, and a sure way to lose the team's support."
+      - text: "Use AI to improve the company's image"
+        feedback: "Too vague to be steered or measured."
+  - id: task
+    question: "Which ML/GenAI task is at the core of a first version?"
+    options:
+      - text: "Classify each email (type, existing vs new claim) and extract key fields (claim number, policy number) to route it and attach it to the right file"
+        correct: true
+        feedback: "Right: classification + extraction is where the time goes, and it is measurable on the email history."
+      - text: "Generate full answers to customers"
+        feedback: "Possible later for simple information questions, with human validation. It does not address the routing bottleneck."
+      - text: "Forecast the number of emails per day"
+        feedback: "Useful for staffing, but it does not reduce the delay of each email."
+      - text: "Cluster customers into segments"
+        feedback: "Unrelated to the bottleneck."
+  - id: metric
+    question: "How would you measure the model itself before going live?"
+    options:
+      - text: "Routing accuracy and per-class precision/recall on a held-out sample of past emails, compared with the current keyword rules"
+        correct: true
+        feedback: "Yes: offline evaluation on real historical data, against the existing baseline, per class (a rare class can be badly handled while overall accuracy looks fine)."
+      - text: "How impressive the demo looks to the board"
+        feedback: "Demos show the best cases, not the error rate."
+      - text: "The number of tokens used"
+        feedback: "A cost indicator, not a quality metric."
+      - text: "Customer satisfaction in the first week"
+        feedback: "A business outcome to track after go-live, too slow and noisy to evaluate the model."
+  - id: data
+    question: "Which data do you need for the first version? (select all that apply)"
+    multi: true
+    options:
+      - text: "The history of emails with the team they were routed to"
+        correct: true
+        feedback: "Essential: it is the labelled data to evaluate (and possibly train) the classifier."
+      - text: "Attachments (photos, PDFs) of the emails"
+        correct: true
+        feedback: "Yes: many emails are documents sent for an existing claim; the attachment type helps route them."
+      - text: "The list of open claims with their numbers and customers"
+        correct: true
+        feedback: "Yes: to attach an email to the right existing file, you need to match it against open claims."
+      - text: "Customers' social media profiles"
+        feedback: "Not needed, and a privacy problem."
+      - text: "The salaries of the claims handlers"
+        feedback: "Not needed for the model (an average cost per hour is enough for the business case)."
+  - id: risks
+    question: "Which risks must the design handle? (select all that apply)"
+    multi: true
+    options:
+      - text: "Health data in emails: hosting and agreements must satisfy the DPO"
+        correct: true
+        feedback: "Yes: personal and health data must be processed under the right agreements and hosting."
+      - text: "Misrouted urgent emails (e.g. injured person) being delayed"
+        correct: true
+        feedback: "Yes: urgent cases need high recall, a confidence threshold and a fallback to humans."
+      - text: "No automatic commitment on reimbursements"
+        correct: true
+        feedback: "Yes: reimbursement decisions stay with licensed handlers."
+      - text: "The model becoming conscious"
+        feedback: "Not a real project risk."
+approach:
+  id: approach
+  question: "What do you recommend for the first version?"
+  options:
+    - text: "An LLM (hosted under an agreement approved by the DPO) classifies each email and extracts the claim number; high-confidence emails are routed and attached automatically, low-confidence ones go to the coordinators. No automatic answers to customers in phase 1."
+      verdict: best
+      feedback: "Targets the bottleneck, uses the history to measure, keeps humans for uncertain and sensitive cases, and respects compliance. A classic ML classifier trained on the million labelled emails is also a credible option: compare both on the same test set."
+    - text: "A chatbot on the website that answers customers' claim questions"
+      verdict: bad
+      feedback: "It does not touch the email backlog, and claim answers involve commitments that need handlers."
+    - text: "An LLM that writes and sends answers to all emails automatically"
+      verdict: bad
+      feedback: "Breaks the compliance constraint, risks wrong commitments, and most emails do not need an answer anyway."
+    - text: "Improve the keyword rules with more keywords"
+      verdict: ok
+      feedback: "Cheap, but the rules plateau at a third of emails; worth keeping as a baseline and fallback, not as the solution."
+plan:
+  question: "Put the first 3 months in a sensible order."
+  steps:
+    - "Map the process and agree on the KPI and success target with Claire and the DPO"
+    - "Extract and clean a labelled sample of past emails; build a test set with the coordinators"
+    - "Prototype the classifier/extractor and measure it against the keyword rules"
+    - "Pilot in shadow mode: the model suggests, coordinators decide, compare"
+    - "Go live on high-confidence emails with a human fallback, and monitor time to first contact"
+  explanation: "Understand → data and test set → prototype measured against the baseline → shadow pilot (no risk, real data) → progressive go-live with monitoring. Skipping the test set or the shadow phase is how GenAI projects fail in production."
+value:
+  intro: |
+    Claire sends you the numbers: **3,000 emails per day**, and the coordinators spend on average **1.5 minutes** reading and forwarding each email. The pilot suggests the model can route **70 %** of emails automatically with high confidence. A coordinator costs **€35 per hour**, and the team works **250 days per year**.
+  numbers: { emails: 3000, minutes: 1.5, share: 0.7, rate: 35, days: 250 }
+  fields:
+    - label: "Hours of sorting saved per day"
+      answer: 52.5
+      formula: "emails * share * minutes / 60"
+      decimals: 1
+      unit: h/day
+    - label: "Yearly value of that time (€)"
+      answer: 459375
+      formula: "emails * share * minutes / 60 * rate * days"
+      decimals: 0
+      unit: €
+  solution: |
+    $3{,}000 \times 0.7 \times 1.5 / 60 = 52.5$ hours saved per day, i.e. $52.5 \times 35 \times 250 \approx 459{,}000$ € per year.
+
+    But the bigger value is **not** the sorting time: it is cutting the 2–3 days of routing delay, which moves the board KPI (time to first contact) and protects the NPS. Always present both: the measurable cost saving and the strategic benefit. And say clearly which assumption is the most uncertain (the 70 % automation rate).
+pitch:
+  id: pitch
+  question: "Which summary do you send Claire after the meeting?"
+  options:
+    - text: "The delay comes from manually routing 3,000 emails a day, not from writing answers. We propose an AI that classifies and routes emails and attaches documents to the right claim, with humans keeping uncertain cases and all reimbursement decisions. Target: first contact in 48 hours. Next step: a 4-week test on 2,000 past emails to measure accuracy against your current rules."
+      verdict: best
+      feedback: "Answer first, the reason, the solution in plain words, the safeguards, the target KPI and a concrete next step. That is the pyramid principle."
+    - text: "We will deploy a state-of-the-art large language model with retrieval-augmented generation, fine-tuned on your data, with agentic workflows and a vector database."
+      verdict: bad
+      feedback: "Jargon without a link to Claire's problem or KPI. She cannot take a decision on this."
+    - text: "Thanks for the meeting. We learned a lot. We will come back with ideas."
+      verdict: bad
+      feedback: "No insight, no proposal, no next step: a wasted follow-up."
+    - text: "We think AI can probably help with your emails, and we would like to run a large study of all your processes over the next 6 months."
+      verdict: ok
+      feedback: "Not wrong, but too vague and too slow for a client who needs visible progress in 3 months."
+debrief: |
+  **What a strong candidate does in this case**
+
+  - Starts with the **process** and the **numbers** before any technology.
+  - Notices that the request ("answer emails automatically") is a solution; the real problem is a **routing bottleneck**.
+  - Uses the email history to build a **test set** and compares with the existing rules (**baseline**).
+  - Designs with **humans in the loop** where risk is high (reimbursements, low confidence, health data).
+  - Sizes the value with explicit assumptions and links it to the client's **KPI**.

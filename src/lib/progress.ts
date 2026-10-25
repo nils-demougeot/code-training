@@ -33,6 +33,14 @@ export interface LabelsEntry {
   updatedAt: number
 }
 
+/** Client mission (case simulator): best score out of 100. */
+export interface MissionProgress {
+  best: number
+  attempts: number
+  completedAt?: number
+  updatedAt: number
+}
+
 export interface ProjectProgress {
   code: string
   stepsDone: number[]
@@ -115,6 +123,9 @@ export interface Progress {
   interviews: InterviewRecord[]
   competitions: Record<string, CompetitionProgress>
   labels: Record<string, LabelsEntry>
+  missions: Record<string, MissionProgress>
+  /** Explain-it-simply decks: best score out of 100. */
+  explain: Record<string, MissionProgress>
   maths: Record<string, MathProgress>
   bosses: Record<string, BossProgress>
   parsons: Record<string, ParsonsProgress>
@@ -134,6 +145,8 @@ export const emptyProgress = (): Progress => ({
   interviews: [],
   competitions: {},
   labels: {},
+  missions: {},
+  explain: {},
   maths: {},
   bosses: {},
   parsons: {},
@@ -264,6 +277,14 @@ export const BADGES: BadgeDef[] = [
     test: (p) => Object.values(p.exercises).filter((e) => e.optimal).length >= 3,
   },
   {
+    id: 'mission-1', emoji: '💼', label: 'Premier client', description: 'Terminer une mission client',
+    test: (p) => Object.values(p.missions ?? {}).some((m) => m.completedAt),
+  },
+  {
+    id: 'mission-partner', emoji: '🎩', label: 'Partner', description: 'Obtenir au moins 90/100 à une mission client',
+    test: (p) => Object.values(p.missions ?? {}).some((m) => m.best >= 90),
+  },
+  {
     id: 'comp-medal', emoji: '🥉', label: 'Sur le podium', description: 'Décrocher une médaille en compétition',
     test: (p) => Object.values(p.competitions ?? {}).some((c) => c.medal),
   },
@@ -366,6 +387,26 @@ export function mergeProgress(local: Progress, remote: Progress): Progress {
     interviews: [...new Map([...r.interviews, ...local.interviews].map((i) => [i.id, i])).values()]
       .sort((a, b) => b.date - a.date),
     labels: mergeRecords(local.labels ?? {}, r.labels ?? {}, (x, y) => (!x ? y : !y ? x : y.updatedAt > x.updatedAt ? y : x)),
+    missions: mergeRecords(local.missions ?? {}, r.missions ?? {}, (x, y) =>
+      !x || !y
+        ? (x ?? y)
+        : {
+            best: Math.max(x.best, y.best),
+            attempts: Math.max(x.attempts, y.attempts),
+            completedAt: minDefined(x.completedAt, y.completedAt),
+            updatedAt: Math.max(x.updatedAt, y.updatedAt),
+          },
+    ),
+    explain: mergeRecords(local.explain ?? {}, r.explain ?? {}, (x, y) =>
+      !x || !y
+        ? (x ?? y)
+        : {
+            best: Math.max(x.best, y.best),
+            attempts: Math.max(x.attempts, y.attempts),
+            completedAt: minDefined(x.completedAt, y.completedAt),
+            updatedAt: Math.max(x.updatedAt, y.updatedAt),
+          },
+    ),
     competitions: mergeRecords(local.competitions ?? {}, r.competitions ?? {}, (x, y) => {
       if (!x || !y) return x ?? y
       const latest = y.updatedAt > x.updatedAt ? y : x
@@ -449,6 +490,10 @@ interface ProgressStore {
   labExperiment: (lab: string, experiment: string) => void
   finishInterview: (record: InterviewRecord) => void
   grantXp: (xp: number, label: string) => void
+  /** A client mission was completed with this score (0-100); returns the XP earned. */
+  finishMission: (id: string, score: number) => number
+  /** An explain-it-simply deck was played with this score (0-100); returns the XP earned. */
+  finishExplain: (id: string, score: number) => number
   /** Replaces the labels of an exercise. */
   setLabels: (id: string, ids: LabelId[]) => void
   saveCompetitionCell: (id: string, stepId: string, code: string) => void
@@ -683,6 +728,46 @@ export const useProgress = create<ProgressStore>((set, get) => {
       ),
 
     grantXp: (xp, label) => commit(() => {}, xp, label),
+
+    finishMission: (id, score) => {
+      const prev = get().p.missions?.[id]
+      // 20 XP the first time, then XP for every point above one's best score.
+      const xp = (prev?.completedAt ? 0 : 20) + Math.max(0, Math.round((score - (prev?.best ?? 0)) / 2))
+      commit(
+        (p) => {
+          p.missions ??= {}
+          p.missions[id] = {
+            best: Math.max(score, prev?.best ?? 0),
+            attempts: (prev?.attempts ?? 0) + 1,
+            completedAt: prev?.completedAt ?? Date.now(),
+            updatedAt: Date.now(),
+          }
+        },
+        xp,
+        'Mission client',
+      )
+      return xp
+    },
+
+    finishExplain: (id, score) => {
+      const prev = get().p.explain?.[id]
+      // 10 XP the first time, then XP for every point above one's best score.
+      const xp = (prev?.completedAt ? 0 : 10) + Math.max(0, Math.round((score - (prev?.best ?? 0)) / 4))
+      commit(
+        (p) => {
+          p.explain ??= {}
+          p.explain[id] = {
+            best: Math.max(score, prev?.best ?? 0),
+            attempts: (prev?.attempts ?? 0) + 1,
+            completedAt: prev?.completedAt ?? Date.now(),
+            updatedAt: Date.now(),
+          }
+        },
+        xp,
+        'Explain it simply',
+      )
+      return xp
+    },
 
     setLabels: (id, ids) =>
       commit((p) => {

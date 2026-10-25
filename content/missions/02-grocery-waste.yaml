@@ -1,0 +1,236 @@
+id: grocery-waste
+title: Too much bread in the bin
+emoji: 🥖
+industry: Retail
+difficulty: medium
+minutes: 15
+skills: [Demand forecasting, Classic ML over GenAI, Business metrics, Pilot design]
+client:
+  name: Karim Benali
+  role: Head of Supply Chain
+  company: FreshMart, a chain of 120 supermarkets
+brief: |
+  "We throw away tons of fresh food every week, and the next day the shelves are empty. Our CEO wants us to use **AI to fix food waste**. Some people here say we need a generative AI. What would you do?"
+context: |
+  Your team has been asked to scope a first project in a few weeks. Karim gives you 30 minutes. You can ask **5 questions**. Remember: the client asked for "AI", but your job is to find what will actually reduce waste.
+discovery:
+  budget: 5
+  intro: Choose your questions to Karim. Think about how decisions are made today, what the numbers are, which data exists and what success means.
+  questions:
+    - id: process
+      text: "How are orders for fresh products decided today?"
+      value: key
+      answer: "Each evening, every store manager decides the quantities for the next morning, mostly by experience, with a spreadsheet of last week's sales. Orders must reach the warehouse by 6 pm and are delivered at dawn."
+      reveals: [manual-orders]
+      why: "This is where the waste is created: **120 people deciding by gut feeling every evening**. A tool that helps this decision is the natural lever."
+    - id: numbers
+      text: "How much do you throw away, and how often are shelves empty?"
+      value: key
+      answer: "Waste is about 4 % of our fresh sales, which are around €600 million a year. And we estimate that empty shelves cost us another 3 % of fresh sales."
+      reveals: [waste, stockouts]
+      why: "The two numbers frame the trade-off: **ordering less reduces waste but increases empty shelves**. A good solution must improve both, or at least one without hurting the other."
+    - id: data
+      text: "What data do you have on sales, stock and promotions?"
+      value: key
+      answer: "Three years of daily sales per store and product from the tills. Promotions are planned in another system. Stock counts for fresh products are not reliable; waste is recorded weekly."
+      reveals: [history, promo-data, stock-unreliable]
+      why: "Daily sales history is the raw material of a forecast. Knowing that stock data is unreliable tells you to be careful with anything that depends on it."
+    - id: success
+      text: "What would make you say in a year that this project was a success?"
+      value: key
+      answer: "Cutting waste by a quarter without more empty shelves. Our CFO reports waste as a percentage of fresh sales every month."
+      reveals: [kpi]
+      why: "The client's own success criterion gives you the target and the metric. It also confirms that availability matters as much as waste."
+    - id: users
+      text: "Who would use a recommendation, and how much time do they have for it?"
+      value: useful
+      answer: "The store managers, in the evening, with maybe 15 minutes for all fresh orders. They know their stores: a football match, a local fair. They will not follow a black box blindly."
+      reveals: [managers]
+      why: "Adoption is the main risk of such tools. Managers need to **understand and adjust** recommendations, and the tool must save them time."
+    - id: tried
+      text: "Have you tried any tool for this before?"
+      value: useful
+      answer: "A vendor forecasting tool three years ago. Managers stopped using it after two months because it ignored local events and they could not change anything."
+      reveals: [vendor]
+      why: "A failed tool tells you exactly what not to repeat: no explanation, no way to adjust, no local knowledge."
+    - id: products
+      text: "Are some products responsible for most of the waste?"
+      value: useful
+      answer: "Yes. We have about 2,000 fresh products, but around 300 of them, mostly bakery, salads, fruit and dairy, make up 80 % of the waste."
+      reveals: [pareto]
+      why: "A Pareto effect lets you start small: **focus the pilot on the 300 products** that matter, and win quickly."
+    - id: drivers
+      text: "What makes sales of fresh products go up or down?"
+      value: useful
+      answer: "Promotions can double sales. Weather matters a lot for salads and barbecue products. Bank holidays and school holidays too."
+      reveals: [drivers]
+      why: "These drivers become the model's inputs. They also explain why a simple 'same as last week' rule often fails."
+    - id: chatbot
+      text: "Should we build a chatbot so that customers can check what is in stock?"
+      value: "off"
+      answer: "That is not my problem at all. My problem is the bin behind the store."
+      why: "It answers a different question. Proposing GenAI because it is fashionable, not because it solves the problem, damages your credibility."
+    - id: cloud
+      text: "Do you use AWS or Azure?"
+      value: weak
+      answer: "I think IT uses Azure, you would have to ask them."
+      why: "An IT detail for later, with the right people. Not worth a question in a 30-minute meeting with the business owner."
+    - id: budget
+      text: "How much budget do you have?"
+      value: weak
+      answer: "Depends on what you can show me."
+      why: "Too early: understand the problem and size the value first."
+    - id: competitors
+      text: "What are your competitors doing about food waste?"
+      value: weak
+      answer: "Some partner with apps that sell surplus at a discount at the end of the day."
+      why: "Interesting, but it treats the symptom (surplus) and not the cause (ordering too much). It does not help you understand Karim's process."
+facts:
+  - { id: manual-orders, text: "120 store managers order fresh products every evening, by experience, with a spreadsheet." }
+  - { id: waste, text: "Waste ≈ 4 % of fresh sales (≈ €600M per year)." }
+  - { id: stockouts, text: "Empty shelves cost ≈ 3 % of fresh sales." }
+  - { id: history, text: "3 years of daily sales per store and product." }
+  - { id: promo-data, text: "Promotions planned in a separate system." }
+  - { id: stock-unreliable, text: "Stock counts for fresh products are unreliable; waste recorded weekly." }
+  - { id: kpi, text: "Target: −25 % waste, no more empty shelves; CFO tracks waste as % of fresh sales." }
+  - { id: managers, text: "Managers have ≈ 15 min each evening, know local events, distrust black boxes." }
+  - { id: vendor, text: "A vendor tool failed: ignored local events, could not be adjusted." }
+  - { id: pareto, text: "≈ 300 of 2,000 fresh products make 80 % of the waste." }
+  - { id: drivers, text: "Demand drivers: promotions (×2), weather, bank and school holidays." }
+framing:
+  - id: objective
+    question: "What is the business objective?"
+    options:
+      - text: "Reduce fresh-food waste by about 25 % without increasing empty shelves"
+        correct: true
+        feedback: "Yes: measurable, owned by the client, and it captures the trade-off between waste and availability."
+      - text: "Predict sales as accurately as possible"
+        feedback: "Accuracy is a means, not the goal. A forecast can be accurate on average and still lead to bad orders. Judge it on waste and availability."
+      - text: "Use generative AI in the supply chain"
+        feedback: "A technology is not an objective. Here, nothing suggests that generative AI is the right tool."
+      - text: "Reduce the number of store managers"
+        feedback: "Not the request, and the managers' local knowledge is an asset for the solution."
+  - id: task
+    question: "What is the core analytical task?"
+    options:
+      - text: "Forecast daily demand per store and product, then turn it into a recommended order quantity"
+        correct: true
+        feedback: "Right: a classic forecasting problem on tabular data, plus a simple ordering rule on top."
+      - text: "Generate product descriptions with an LLM"
+        feedback: "Unrelated to waste."
+      - text: "Classify products into fresh and non-fresh"
+        feedback: "That information already exists in the product catalogue."
+      - text: "Cluster stores by size"
+        feedback: "Can help the analysis, but it does not tell anyone how much to order tomorrow."
+  - id: metric
+    question: "How do you check that the solution works before going live?"
+    options:
+      - text: "Measure forecast error on recent months the model never saw, and simulate the waste and empty shelves its orders would have produced, compared with the managers' actual orders"
+        correct: true
+        feedback: "Yes: a backtest on unseen recent data, translated into the business metrics, against the current baseline."
+      - text: "R² on the training data"
+        feedback: "Training performance says nothing about the future and is easy to inflate."
+      - text: "The number of orders placed with the tool"
+        feedback: "Usage is worth tracking, but it does not tell you if waste goes down."
+      - text: "Ask the CEO whether the dashboard looks good"
+        feedback: "Opinions are not evidence."
+  - id: data
+    question: "Which data do you need for the first version? (select all that apply)"
+    multi: true
+    options:
+      - text: "Daily sales per store and product"
+        correct: true
+        feedback: "Essential: this is what you forecast."
+      - text: "The promotions calendar"
+        correct: true
+        feedback: "Essential: promotions can double sales; without them the forecast will be wrong exactly when it matters."
+      - text: "Calendar and weather data"
+        correct: true
+        feedback: "Yes: holidays and weather are strong drivers for fresh products."
+      - text: "Customers' names and addresses"
+        feedback: "Not needed to forecast store demand, and personal data you should not collect without reason."
+      - text: "Competitors' prices, scraped every hour"
+        feedback: "Expensive and noisy; at most a later improvement."
+  - id: risks
+    question: "Which pitfalls should the design handle? (select all that apply)"
+    multi: true
+    options:
+      - text: "When a shelf was empty, recorded sales understate real demand"
+        correct: true
+        feedback: "Yes, a classic trap: sales are 'censored' by stockouts. Train naively and the model learns to order too little."
+      - text: "Managers may ignore the tool if they cannot understand or adjust it"
+        correct: true
+        feedback: "Yes: this is exactly why the previous tool failed."
+      - text: "New products have no sales history"
+        correct: true
+        feedback: "Yes: use similar products or category averages for them."
+      - text: "The model could replace the warehouse"
+        feedback: "Not a real risk."
+approach:
+  id: approach
+  question: "What do you recommend for the first version?"
+  options:
+    - text: "A gradient-boosted tree model trained on sales history with promotion, calendar and weather inputs, compared with a 'same day last week' baseline; the order is forecast plus a safety margin, shown to managers with a short reason ('promotion', 'bank holiday') and adjustable"
+      verdict: best
+      feedback: "Simple, proven on tabular retail data, explainable enough, and designed for adoption. GenAI is not needed for this problem."
+    - text: "A moving average of the last 4 weeks per product"
+      verdict: ok
+      feedback: "A good baseline to beat, cheap to build. But it misses promotions and holidays, precisely when waste and empty shelves spike."
+    - text: "A deep neural network trained from scratch on every product of every store"
+      verdict: ok
+      feedback: "Could help later at scale, but it is heavy for a first version, harder to explain to managers, and rarely better than boosted trees on this kind of data at the start."
+    - text: "An LLM that reads the sales tables each evening and decides the orders"
+      verdict: bad
+      feedback: "LLMs are not built for precise numeric forecasting on millions of rows: unreliable, slow and costly. Use the right tool for the job."
+plan:
+  question: "Put the first months in a sensible order."
+  steps:
+    - "Agree on the KPIs (waste %, availability) and the pilot scope: 300 high-waste products, 10 stores"
+    - "Build the dataset: sales, promotions, calendar, weather, with stockout days flagged"
+    - "Backtest forecasts against a simple baseline on recent months"
+    - "Turn forecasts into order recommendations and simulate waste and empty shelves"
+    - "Pilot in 10 stores, compared with 10 similar stores, with managers able to adjust"
+  explanation: "Scope and KPIs first, then data, then an honest backtest, then the business simulation, and only then a pilot with a **control group** so that you can attribute the change to the tool and not to the season."
+value:
+  intro: |
+    Karim confirms: fresh sales are **€600 million** a year and waste is **4 %** of them. Wasted products should be valued **at cost**, which is **70 %** of the sales price. The pilot target is to cut waste by **25 %**. Give the amounts **in millions of euros**.
+  numbers: { sales: 600, waste: 0.04, cost: 0.7, cut: 0.25 }
+  fields:
+    - label: "Yearly waste valued at cost (€ million)"
+      answer: 16.8
+      formula: "sales * waste * cost"
+      decimals: 1
+      unit: M€
+    - label: "Yearly saving if waste falls by 25 % (€ million)"
+      answer: 4.2
+      formula: "sales * waste * cost * cut"
+      decimals: 1
+      unit: M€
+  solution: |
+    Waste at cost: $600 \times 0.04 \times 0.7 = 16.8$ million euros a year. A 25 % cut saves $16.8 \times 0.25 = 4.2$ million euros a year.
+
+    Mention the other side too: if availability improves, recovered sales add value on top, and less waste is a strong sustainability message. Be explicit that the 25 % is a target to validate in the pilot, against control stores.
+pitch:
+  id: pitch
+  question: "Which summary do you send Karim?"
+  options:
+    - text: "Most of the waste comes from 300 products ordered by experience each evening. We propose a forecast that recommends each order, which managers can see explained and adjust. Target: −25 % waste, about €4M a year at cost, without more empty shelves. Next step: an 8-week pilot in 10 stores compared with 10 similar stores."
+      verdict: best
+      feedback: "The cause, the solution in plain words, the respect for managers' judgement, the value and a measurable next step."
+    - text: "We will train a LightGBM model with a Tweedie loss on lagged features and use quantile regression for safety stock."
+      verdict: bad
+      feedback: "Correct ideas, wrong audience: Karim cannot decide anything from this."
+    - text: "From next month, AI will place all fresh orders automatically in every store."
+      verdict: bad
+      feedback: "Overpromises, skips the pilot and removes the managers, which is what killed the previous tool."
+    - text: "AI could probably reduce waste. Let us discuss it again next quarter."
+      verdict: ok
+      feedback: "Not wrong, but no insight, no number, no next step."
+debrief: |
+  **What a strong candidate does in this case**
+
+  - Does not assume that "AI" means generative AI: this is a **forecasting** problem on tabular data.
+  - Frames the **trade-off** between waste and empty shelves, and measures both.
+  - Spots the **stockout bias**: sales are not demand when the shelf was empty.
+  - Starts with the **few products** that cause most of the waste.
+  - Designs for **adoption** (explained, adjustable recommendations) and tests with a **control group**.

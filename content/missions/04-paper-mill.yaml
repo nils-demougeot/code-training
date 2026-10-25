@@ -1,0 +1,239 @@
+id: paper-mill
+title: Predict the breakdowns
+emoji: 🏭
+industry: Manufacturing
+difficulty: hard
+minutes: 20
+skills: [Predictive maintenance, Imbalanced data, Precision vs recall, Time-based validation]
+client:
+  name: Thomas Weber
+  role: Plant Director
+  company: Papyrus Industries, a paper mill with 12 paper machines
+brief: |
+  "We installed sensors on all our machines two years ago. Millions of data points, and we still have breakdowns every week. I want an **AI that predicts every failure** before it happens. Where do we start?"
+context: |
+  Predictive maintenance is a classic industrial AI case, and a classic source of disappointment. Find the failure that matters, check whether the data can really predict it, and think about what the maintenance team will do with an alert. You can ask **5 questions**.
+discovery:
+  budget: 5
+  intro: Ask Thomas your questions. Think about which failures cost the most, how maintenance works today, how failures are recorded and what the sensors measure.
+  questions:
+    - id: downtime
+      text: "Which breakdowns cost you the most, and how much does an hour of stoppage cost?"
+      value: key
+      answer: "By far the bearings on the drying cylinders: about 40 failures a year, each stopping a machine for around 8 hours. An hour of stoppage costs us about €15,000 in lost production."
+      reveals: [failure-mode, cost]
+      why: "'Predict every failure' is impossible to deliver. This question finds **the one failure mode that matters** and its cost, which becomes your scope and your business case."
+    - id: maintenance
+      text: "How is maintenance organised today?"
+      value: key
+      answer: "Preventive maintenance every 6 weeks on a fixed schedule, and a technician measures vibrations with a handheld device once a month. Bearings still fail in between."
+      reveals: [preventive]
+      why: "The current process is your **baseline**, and shows the gap: fixed schedules miss failures that develop between visits."
+    - id: labels
+      text: "Are past failures recorded, with dates and causes?"
+      value: key
+      answer: "Work orders in our maintenance system since 2019, written by technicians in free text, often vague like 'repaired cylinder 4'. The exact stop times are in the production system."
+      reveals: [logs]
+      why: "Without reliable **labels** (when did which failure happen?) there is nothing to learn from. Here you learn they exist but need cleaning with the technicians."
+    - id: sensors
+      text: "What do the sensors measure, and how far back does the data go?"
+      value: key
+      answer: "Vibration and temperature on each cylinder, one reading per second, for two years, stored in the plant historian. Some sensors were offline for weeks."
+      reveals: [sensors]
+      why: "Checks that the data can plausibly **see the failure coming** (vibration is a known early signal for bearings) and reveals data gaps."
+    - id: leadtime
+      text: "If we warned you a few days before a failure, what would the team do?"
+      value: useful
+      answer: "Plan a 2-hour stop during the next product change instead of an 8-hour emergency stop. But we need at least 48 hours of notice."
+      reveals: [lead-time]
+      why: "Defines the **action** and the **minimum warning time**. A prediction that arrives 2 hours before is useless here."
+    - id: falsealarms
+      text: "How many false alarms would the team accept?"
+      value: useful
+      answer: "If it cries wolf every day, they will ignore it. An inspection costs us about €2,000."
+      reveals: [false-alarm]
+      why: "The **cost of a false alarm** versus the cost of a missed failure is what sets the alert threshold."
+    - id: vendor
+      text: "Has a vendor already proposed a monitoring solution?"
+      value: useful
+      answer: "The machine maker sells a platform with fixed vibration thresholds. It sends dozens of alerts a day; nobody reads them anymore."
+      reveals: [vendor-alarms]
+      why: "A warning: **alert fatigue** has already happened once. Precision will matter as much as recall."
+    - id: lstm
+      text: "Should we use an LSTM network or a transformer for the sensor data?"
+      value: "off"
+      answer: "You are the experts. But first, do you understand our problem?"
+      why: "The architecture is a late detail. Before that you need the failure mode, the labels and the decision the alert supports."
+    - id: genai
+      text: "Could we add a ChatGPT for the technicians?"
+      value: "off"
+      answer: "Why would I want that? We are talking about bearings."
+      why: "Off-topic: it does not help predict failures, and it signals that you push fashionable technology."
+    - id: twin
+      text: "Should we build a full digital twin of the plant?"
+      value: weak
+      answer: "That sounds expensive. Is it necessary?"
+      why: "A big, slow programme. Start with one failure mode and prove value first."
+    - id: count
+      text: "How many sensors do you have in total?"
+      value: weak
+      answer: "Thousands, I think. I would have to check."
+      why: "The total is not what matters; which sensors are relevant to the costly failure is."
+    - id: budget
+      text: "What is the budget?"
+      value: weak
+      answer: "It depends on the savings."
+      why: "Size the savings first."
+facts:
+  - { id: failure-mode, text: "Main cost: bearing failures on drying cylinders, ≈ 40 per year, ≈ 8 h of stoppage each." }
+  - { id: cost, text: "One hour of stoppage ≈ €15,000 of lost production." }
+  - { id: preventive, text: "Fixed preventive maintenance every 6 weeks; monthly handheld vibration checks." }
+  - { id: logs, text: "Work orders since 2019 in free text, often vague; exact stop times in the production system." }
+  - { id: sensors, text: "Vibration and temperature per cylinder, 1 reading/s, 2 years, with gaps." }
+  - { id: lead-time, text: "With ≥ 48 h notice, an 8 h emergency stop becomes a planned 2 h stop." }
+  - { id: false-alarm, text: "An inspection costs ≈ €2,000; too many false alarms and the team ignores alerts." }
+  - { id: vendor-alarms, text: "Vendor platform with fixed thresholds: dozens of alerts a day, ignored." }
+framing:
+  - id: objective
+    question: "What is the business objective?"
+    options:
+      - text: "Reduce unplanned downtime from bearing failures by turning emergency stops into short planned stops"
+        correct: true
+        feedback: "Yes: one failure mode, one action, one measurable outcome."
+      - text: "Predict every possible failure in the plant"
+        feedback: "Impossible to deliver: most failure types have too few examples and different signals."
+      - text: "Install more sensors"
+        feedback: "A means, and maybe not needed: start with what exists."
+      - text: "Maximise the model's accuracy"
+        feedback: "Failures are rare: a model that never raises an alert would be more than 99 % accurate and completely useless."
+  - id: task
+    question: "What should the model do?"
+    options:
+      - text: "Estimate for each cylinder the risk of a bearing failure in the coming days from vibration and temperature trends, and alert when it is high"
+        correct: true
+        feedback: "Right: a risk score per asset, with a horizon that matches the 48-hour lead time."
+      - text: "Generate maintenance reports with an LLM"
+        feedback: "Possibly useful one day, unrelated to predicting failures."
+      - text: "Forecast production volumes"
+        feedback: "A different problem."
+      - text: "Cluster the machines into groups"
+        feedback: "Does not produce a warning."
+  - id: metric
+    question: "How do you evaluate the model?"
+    options:
+      - text: "On a later period than the training data: the share of past failures caught at least 48 hours ahead, and the share of alerts that were real failures"
+        correct: true
+        feedback: "Yes: recall and precision in business terms, with a time-based split so that the model is tested on the future, as in real life."
+      - text: "Overall accuracy on all time windows, with a random split"
+        feedback: "Accuracy is meaningless on rare events, and a random split leaks information from the future into training."
+      - text: "The number of alerts per day"
+        feedback: "Useful to monitor, but it does not say whether alerts are right."
+      - text: "How well it predicts tomorrow's vibration level"
+        feedback: "An intermediate quantity, not the decision that matters."
+  - id: data
+    question: "Which data do you need? (select all that apply)"
+    multi: true
+    options:
+      - text: "Vibration and temperature history of the cylinders"
+        correct: true
+        feedback: "The signals that announce bearing failures."
+      - text: "Failure dates and causes, rebuilt from work orders and production stops"
+        correct: true
+        feedback: "The labels: without them there is nothing to learn or evaluate."
+      - text: "Maintenance actions, such as bearing replacement dates"
+        correct: true
+        feedback: "Yes: a replaced bearing resets the clock; ignoring it confuses the model."
+      - text: "Operators' personal data"
+        feedback: "Not needed."
+      - text: "Energy prices"
+        feedback: "Unrelated to bearing wear."
+  - id: risks
+    question: "Which pitfalls must you handle? (select all that apply)"
+    multi: true
+    options:
+      - text: "Very few failures to learn from: about 80 in two years"
+        correct: true
+        feedback: "Yes: keep the model simple, use domain-informed signals, and be honest about uncertainty."
+      - text: "Messy failure labels in free-text work orders"
+        correct: true
+        feedback: "Yes: rebuild the failure history with the technicians."
+      - text: "Too many false alarms, and the team stops reading them"
+        correct: true
+        feedback: "Yes: it already happened with the vendor platform."
+      - text: "Data leakage: using readings from after the failure, or mixing past and future in a random split"
+        correct: true
+        feedback: "Yes: a classic cause of models that look great offline and fail in production."
+      - text: "The model damaging the machines"
+        feedback: "The model only raises alerts; people decide."
+approach:
+  id: approach
+  question: "What do you recommend?"
+  options:
+    - text: "Start with bearing failures: build signals from vibration and temperature trends, label the days before past failures, train a simple model, validate it on a later period, and set the alert threshold with the maintenance team from the cost of a missed failure versus a false alarm"
+      verdict: best
+      feedback: "Focused, honest about rare labels, validated like real life, and tuned to the business trade-off."
+    - text: "Tune the vendor's fixed thresholds machine by machine"
+      verdict: ok
+      feedback: "A cheap baseline worth trying, and the bar your model must beat. Fixed thresholds miss slow trends, though."
+    - text: "A deep learning model on all raw sensor data of the plant to predict any failure"
+      verdict: bad
+      feedback: "Too broad for 80 labelled failures; it will overfit and be impossible to explain to the team."
+    - text: "An LLM that reads the sensor data and decides when to stop the machines"
+      verdict: bad
+      feedback: "Wrong tool for numeric time series, and a dangerous level of autonomy."
+plan:
+  question: "Order the work."
+  steps:
+    - "Pick the costliest failure mode and agree on the required notice and acceptable false-alarm rate"
+    - "Rebuild a clean failure history from work orders and production stops, with the technicians"
+    - "Build signals from the sensor data and train and validate on a time-based split"
+    - "Choose the alert threshold from the cost of missed failures versus false alarms"
+    - "Run alerts in shadow mode for two months alongside normal maintenance, then go live"
+  explanation: "Scope and decision rules first, then labels (no labels, no model), then a model validated on the future, then the threshold as a **business choice**, then a shadow run that proves value without risk."
+value:
+  intro: |
+    Use Thomas's numbers: **40 failures** a year, **8 hours** of stoppage each, **€15,000** per hour. In the backtest, the model catches **60 %** of failures at least 48 hours ahead (recall 0.6), and **half** of its alerts are real (precision 0.5). A caught failure becomes a planned stop of **2 hours**. Each false alarm costs an inspection of **€2,000**.
+  numbers: { failures: 40, hours: 8, cost_h: 15000, recall: 0.6, precision: 0.5, planned: 2, inspection: 2000 }
+  fields:
+    - label: "Yearly cost of these failures today (€)"
+      answer: 4800000
+      formula: "failures * hours * cost_h"
+      decimals: 0
+      unit: €
+    - label: "Net yearly saving after false-alarm inspections (€)"
+      answer: 2112000
+      formula: "failures * recall * (hours - planned) * cost_h - failures * recall * (1 / precision - 1) * inspection"
+      decimals: 0
+      unit: €
+  solution: |
+    Today: $40 \times 8 \times 15{,}000 = 4{,}800{,}000$ € a year.
+
+    Caught failures: $40 \times 0.6 = 24$, each saving $8 - 2 = 6$ hours: $24 \times 6 \times 15{,}000 = 2{,}160{,}000$ €.
+
+    With a precision of 0.5 there are $24 / 0.5 = 48$ alerts, so $24$ false alarms, costing $24 \times 2{,}000 = 48{,}000$ €. Net saving: $2{,}160{,}000 - 48{,}000 = 2{,}112{,}000$ € a year.
+
+    Here a missed failure (≈ €90,000 of avoidable loss) costs far more than a false alarm (€2,000), so the threshold can favour catching failures, as long as the team does not drown in alerts.
+pitch:
+  id: pitch
+  question: "Which summary do you send Thomas?"
+  options:
+    - text: "Bearing failures on the drying cylinders cost about €4.8M a year in unplanned stops. We propose alerts that warn the team at least 2 days before a likely failure, so they can plan a short stop instead. A first version catching 60 % of failures, with half of the alerts real, would save about €2M a year net of inspections. Next step: rebuild the failure history with your technicians and test on the last 6 months."
+      verdict: best
+      feedback: "Focused, quantified, honest about imperfect alerts, with a concrete next step."
+    - text: "We will predict all failures in the plant with 99 % accuracy using deep learning."
+      verdict: bad
+      feedback: "An impossible promise, and 99 % accuracy is meaningless when failures are rare."
+    - text: "Our gradient boosting model achieves an F1 of 0.55 at the optimal threshold on the validation fold."
+      verdict: bad
+      feedback: "Thomas cannot decide anything from an F1 score: translate it into failures caught, false alarms and euros."
+    - text: "Before any AI, we should install new sensors on all machines."
+      verdict: ok
+      feedback: "Maybe later, but the existing vibration sensors are probably enough to start on bearings."
+debrief: |
+  **What a strong candidate does in this case**
+
+  - Narrows "predict every failure" to **one costly failure mode**.
+  - Checks for **labels** and data gaps before talking about models.
+  - Knows that **accuracy is useless on rare events**; uses recall and precision, in business terms.
+  - Validates on a **later period** to avoid leakage.
+  - Sets the alert threshold from **costs**: a missed failure versus a false alarm.

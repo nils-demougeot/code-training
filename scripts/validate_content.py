@@ -415,6 +415,149 @@ def check_git_levels():
     return report["levels"]
 
 
+def odd_dollars(text):
+    """A lone `$` starts a formula in the Markdown renderer: amounts must be written with € or `USD`."""
+    return len(re.findall(r"(?<!\\)\$", text.replace("$$", ""))) % 2 == 1
+
+
+def jargon_rules():
+    """The jargon detector of the explain page (src/pages/ExplainPage.tsx), reused to keep model answers plain."""
+    src = (ROOT / "src" / "pages" / "ExplainPage.tsx").read_text()
+    return [(re.compile(m.group(1), re.I), m.group(2)) for m in re.finditer(r"\[/(.+?)/i, '([^']+)'", src)]
+
+
+def check_choice(name, c, verdicts):
+    opts = c.get("options") or []
+    if len(opts) < 3:
+        errors.append(f"{name}: needs at least 3 options")
+    for o in opts:
+        if not o.get("text") or not o.get("feedback"):
+            errors.append(f"{name}: every option needs text and feedback")
+    if verdicts:
+        if any(o.get("verdict") not in ("best", "ok", "bad") for o in opts):
+            errors.append(f"{name}: every option needs a verdict (best/ok/bad)")
+        if sum(o.get("verdict") == "best" for o in opts) != 1:
+            errors.append(f"{name}: exactly one option must be 'best'")
+    elif c.get("multi"):
+        n = sum(bool(o.get("correct")) for o in opts)
+        if n == 0 or n == len(opts):
+            errors.append(f"{name}: a multiple choice needs right and wrong options")
+    elif sum(bool(o.get("correct")) for o in opts) != 1:
+        errors.append(f"{name}: exactly one option must be correct")
+
+
+def walk_text(obj):
+    if isinstance(obj, str):
+        yield obj
+    elif isinstance(obj, dict):
+        for v in obj.values():
+            yield from walk_text(v)
+    elif isinstance(obj, list):
+        for v in obj:
+            yield from walk_text(v)
+
+
+def check_mission(path, m):
+    mid = m.get("id", path.name)
+    for key in ["id", "title", "emoji", "industry", "difficulty", "minutes", "skills", "client", "brief", "context",
+                "discovery", "facts", "framing", "approach", "plan", "value", "pitch", "debrief"]:
+        if key not in m:
+            errors.append(f"{mid}: missing {key}")
+            return
+    if m["difficulty"] not in DIFFICULTIES:
+        errors.append(f"{mid}: bad difficulty")
+    for key in ["name", "role", "company"]:
+        if not m["client"].get(key):
+            errors.append(f"{mid}: client needs {key}")
+    facts = {f["id"] for f in m["facts"]}
+    if len(facts) != len(m["facts"]):
+        errors.append(f"{mid}: duplicate fact ids")
+    qs = m["discovery"]["questions"]
+    budget = m["discovery"]["budget"]
+    if len({q["id"] for q in qs}) != len(qs):
+        errors.append(f"{mid}: duplicate question ids")
+    if not 0 < budget < len(qs):
+        errors.append(f"{mid}: the question budget must be smaller than the number of questions")
+    values = [q.get("value") for q in qs]
+    if any(v not in ("key", "useful", "weak", "off") for v in values):
+        errors.append(f"{mid}: question value must be key/useful/weak/\"off\" (quote off: YAML 1.1 reads it as false)")
+    if not 1 <= values.count("key") <= budget:
+        errors.append(f"{mid}: between 1 and {budget} key questions expected")
+    if not {"weak", "off"} & set(values):
+        errors.append(f"{mid}: add at least one weak or off-topic question as a trap")
+    revealed = set()
+    for q in qs:
+        for key in ["text", "answer", "why"]:
+            if not q.get(key):
+                errors.append(f"{mid}/{q.get('id')}: missing {key}")
+        for r in q.get("reveals") or []:
+            if r not in facts:
+                errors.append(f"{mid}/{q['id']}: reveals unknown fact {r!r}")
+            revealed.add(r)
+    if facts - revealed:
+        errors.append(f"{mid}: facts never revealed: {sorted(facts - revealed)}")
+    if not m["framing"]:
+        errors.append(f"{mid}: framing needs questions")
+    for c in m["framing"]:
+        check_choice(f"{mid}/framing/{c.get('id')}", c, verdicts=False)
+    check_choice(f"{mid}/approach", m["approach"], verdicts=True)
+    check_choice(f"{mid}/pitch", m["pitch"], verdicts=True)
+    steps = m["plan"].get("steps") or []
+    if len(steps) < 4 or len(set(steps)) != len(steps):
+        errors.append(f"{mid}: the plan needs at least 4 distinct steps")
+    numbers = m["value"].get("numbers") or {}
+    for f in m["value"].get("fields") or []:
+        try:
+            got = eval(f["formula"], {"__builtins__": {}}, dict(numbers))
+        except Exception as e:  # noqa: BLE001
+            errors.append(f"{mid}: formula {f.get('formula')!r} fails: {e}")
+            continue
+        if abs(got - f["answer"]) > 0.5 * 10 ** -f["decimals"] + 1e-9:
+            errors.append(f"{mid}: field {f['label']!r}: formula gives {got}, answer says {f['answer']}")
+    if not m["value"].get("fields"):
+        errors.append(f"{mid}: value needs fields")
+    for t in walk_text(m):
+        if odd_dollars(t):
+            errors.append(f"{mid}: unbalanced $ in {t[:60]!r}")
+
+
+def check_explain(path, d, rules):
+    did = d.get("id", path.name)
+    for key in ["id", "title", "emoji", "summary", "items", "write"]:
+        if key not in d:
+            errors.append(f"{did}: missing {key}")
+            return
+    ids = [i.get("id") for i in d["items"]] + [w.get("id") for w in d["write"]]
+    if len(set(ids)) != len(ids):
+        errors.append(f"{did}: duplicate ids")
+    if len(d["items"]) < 5:
+        errors.append(f"{did}: at least 5 situations expected")
+    for it in d["items"]:
+        name = f"{did}/{it.get('id')}"
+        if it.get("kind") not in ("explain", "metric", "pushback", "so-what"):
+            errors.append(f"{name}: bad kind {it.get('kind')!r}")
+        for key in ["audience", "prompt", "takeaway"]:
+            if not it.get(key):
+                errors.append(f"{name}: missing {key}")
+        check_choice(name, it, verdicts=True)
+    for w in d["write"]:
+        name = f"{did}/{w.get('id')}"
+        for key in ["audience", "prompt", "model"]:
+            if not w.get(key):
+                errors.append(f"{name}: missing {key}")
+        if len(w.get("checklist") or []) < 3:
+            errors.append(f"{name}: the checklist needs at least 3 items")
+        found = [term for rx, term in rules if rx.search(w.get("model", ""))]
+        if found:
+            errors.append(f"{name}: the model answer uses jargon the page flags: {found}")
+        words = len(w.get("model", "").split())
+        if words > w.get("maxWords", 120):
+            errors.append(f"{name}: the model answer has {words} words, more than the limit it sets")
+    for t in walk_text(d):
+        if odd_dollars(t):
+            errors.append(f"{did}: unbalanced $ in {t[:60]!r}")
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--only", help="only check items whose id contains this string")
@@ -503,7 +646,21 @@ def main():
             if key not in f:
                 errors.append(f"{path.name}: missing {key}")
 
-    print(f"\n{n_ex} exercices, {n_proj} projets, {n_cards} cartes, {n_quiz} questions de quiz, {n_docs} entrées de doc, {n_parsons} problèmes de blocs, {n_git} missions Git, {n_comp} compétitions, {n_maths} exercices de maths ({n_maths_inst} tirages) vérifiés.")
+    n_missions = 0
+    for path in sorted((CONTENT / "missions").glob("*.yaml")):
+        n_missions += 1
+        check_mission(path, yaml.safe_load(path.read_text()))
+    if not args.only and n_missions and len({yaml.safe_load(p.read_text())["id"] for p in (CONTENT / "missions").glob("*.yaml")}) != n_missions:
+        errors.append("duplicate mission ids")
+    n_explain = 0
+    rules = jargon_rules()
+    if len(rules) < 15:
+        errors.append("could not read the jargon list from ExplainPage.tsx")
+    for path in sorted((CONTENT / "explain").glob("*.yaml")):
+        n_explain += 1
+        check_explain(path, yaml.safe_load(path.read_text()), rules)
+
+    print(f"\n{n_ex} exercices, {n_proj} projets, {n_cards} cartes, {n_quiz} questions de quiz, {n_docs} entrées de doc, {n_parsons} problèmes de blocs, {n_git} missions Git, {n_comp} compétitions, {n_maths} exercices de maths ({n_maths_inst} tirages), {n_missions} missions client, {n_explain} decks explain vérifiés.")
     for w in warnings:
         print(f"⚠️  {w}")
     for e in errors:

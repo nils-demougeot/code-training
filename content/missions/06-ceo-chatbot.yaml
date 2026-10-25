@@ -1,0 +1,231 @@
+id: ceo-chatbot
+title: The CEO wants a chatbot
+emoji: 🛋️
+industry: E-commerce
+difficulty: hard
+minutes: 15
+skills: [Root cause, When not to use GenAI, Managing the client, Phased roadmap]
+client:
+  name: Julien Moreau
+  role: CEO
+  company: Maison Nova, an online furniture retailer
+brief: |
+  "All our competitors have launched a generative AI chatbot. Our customer service is overwhelmed and our online reviews say we are impossible to reach. I want **our chatbot live in six weeks**. Can BCG X do it?"
+context: |
+  A CEO with a clear solution in mind. Your job is not to say yes or no straight away, but to understand the problem behind the request and propose what will really help, even if it is less fashionable. You can ask **5 questions**.
+discovery:
+  budget: 5
+  intro: Ask Julien your questions. Look for what customers actually contact the company about, and why.
+  questions:
+    - id: problem
+      text: "What problem should the chatbot solve for you?"
+      value: key
+      answer: "Customer service is drowning, our reviews say nobody answers, and my board keeps asking about our AI strategy."
+      reveals: [pressure]
+      why: "Separates the **business problem** (overwhelmed service, bad reviews) from the **solution** the CEO has in mind, and reveals the board pressure you will need to address too."
+    - id: contacts
+      text: "What do customers contact you about?"
+      value: key
+      answer: "About 40,000 contacts a month. 55 % are 'where is my order?', 15 % returns, 10 % questions about products, and the rest is miscellaneous."
+      reveals: [contacts, wismo]
+      why: "The decisive question: **more than half** of the volume is one simple question. Always look at the contact reasons before designing a bot."
+    - id: rootcause
+      text: "Why do so many customers ask where their order is?"
+      value: key
+      answer: "Furniture takes 2 to 6 weeks to arrive, with three different carriers. After the order confirmation we send nothing, and one carrier is often late."
+      reveals: [no-tracking]
+      why: "The **root cause**: customers lack information. A chatbot that cannot see deliveries would not fix that; sending the information proactively would."
+    - id: tracking
+      text: "Do you have the delivery status of each order in your systems?"
+      value: key
+      answer: "Two carriers give us tracking through an API, the third sends a file every night. But none of it is shown to customers."
+      reveals: [tracking-data]
+      why: "The data needed for the fix exists. Feasibility is high and the timeline realistic."
+    - id: cost
+      text: "How much does a customer contact cost you?"
+      value: useful
+      answer: "About €5 per contact with our outsourced call centre."
+      reveals: [cost]
+      why: "With the volume, it sizes the value of any reduction in contacts."
+    - id: board
+      text: "What would you like to show the board in six weeks?"
+      value: useful
+      answer: "Fewer complaints, better reviews... and honestly, something with AI in it."
+      reveals: [board]
+      why: "Acknowledges the CEO's real constraint. Your roadmap must give a quick, visible win **and** a credible AI story."
+    - id: advice
+      text: "Do customers ask for help choosing products?"
+      value: useful
+      answer: "About 10 % of contacts: sizes, materials, whether a sofa fits through a door. Those customers buy more after talking to us."
+      reveals: [advice]
+      why: "Finds where GenAI could genuinely add value later: product advice that increases sales."
+    - id: llm
+      text: "Do you prefer GPT or Claude for the chatbot?"
+      value: "off"
+      answer: "Whatever works. You are the experts."
+      why: "Accepting the solution before understanding the problem. The model choice is irrelevant at this stage."
+    - id: avatar
+      text: "Should the chatbot have a name and an avatar?"
+      value: "off"
+      answer: "...Sure? Is that really what we should discuss today?"
+      why: "Cosmetic details in a 30-minute meeting with a CEO cost you credibility."
+    - id: competitors
+      text: "Which competitors have launched chatbots?"
+      value: weak
+      answer: "The two biggest ones. One of them got mocked on social media when its bot invented a return policy."
+      why: "Some context, and a nice warning about hallucinations, but it does not tell you what your client's customers need."
+    - id: platform
+      text: "Which e-commerce platform do you use?"
+      value: weak
+      answer: "A custom platform built by our IT team."
+      why: "An IT detail to settle later with the right people."
+    - id: budget
+      text: "What budget do you have?"
+      value: weak
+      answer: "Enough, if it works."
+      why: "Too early."
+facts:
+  - { id: pressure, text: "Service overwhelmed, bad reviews ('unreachable'), board asking about AI strategy." }
+  - { id: contacts, text: "≈ 40,000 contacts per month." }
+  - { id: wismo, text: "Mix: 55 % 'where is my order?', 15 % returns, 10 % product questions, 20 % other." }
+  - { id: no-tracking, text: "Delivery takes 2–6 weeks with 3 carriers; nothing is sent after the order confirmation; one carrier often late." }
+  - { id: tracking-data, text: "Tracking exists (2 carrier APIs + 1 nightly file) but is not shown to customers." }
+  - { id: cost, text: "One contact costs ≈ €5." }
+  - { id: board, text: "CEO wants fewer complaints, better reviews and a visible AI story within 6 weeks." }
+  - { id: advice, text: "10 % of contacts ask for product advice; those customers buy more." }
+framing:
+  - id: objective
+    question: "What is the real objective?"
+    options:
+      - text: "Cut 'where is my order?' contacts and improve reviews by giving customers delivery information before they need to ask"
+        correct: true
+        feedback: "Yes: it targets the largest share of contacts at its root cause, and it is measurable."
+      - text: "Launch a generative AI chatbot within six weeks"
+        feedback: "That is the CEO's proposed solution, not the objective. It may not reduce contacts if it cannot see deliveries."
+      - text: "Have an AI strategy to show the board"
+        feedback: "A real concern to address in the roadmap, but not the operational objective."
+      - text: "Halve the customer service team"
+        feedback: "Not the request, and not the right framing for the first step."
+  - id: task
+    question: "What kind of work is at the core of the first phase?"
+    options:
+      - text: "Mostly not machine learning: connect carrier tracking data and send proactive delivery updates with a tracking page; an order-status answer in the help centre can come on top"
+        correct: true
+        feedback: "Right. Recognising that the best first step needs no AI is a strength, not a weakness."
+      - text: "Fine-tune an LLM on all past customer conversations"
+        feedback: "Expensive and it does not give the bot access to delivery status, the information customers want."
+      - text: "Predict which customers will complain"
+        feedback: "Could be useful later; it does not remove the cause."
+      - text: "Generate product descriptions with GenAI"
+        feedback: "Unrelated to the contact volume."
+  - id: metric
+    question: "How do you measure success?"
+    options:
+      - text: "'Where is my order?' contacts per 100 orders and review scores, compared between a region with the new notifications and the others"
+        correct: true
+        feedback: "Yes: normalised by order volume, tied to the objective, with a comparison group."
+      - text: "The number of chatbot conversations per day"
+        feedback: "A vanity metric: more conversations can mean more confused customers."
+      - text: "The perplexity of the language model"
+        feedback: "A technical quantity with no business meaning."
+      - text: "The number of AI features launched"
+        feedback: "Output, not outcome."
+  - id: data
+    question: "Which data do you need? (select all that apply)"
+    multi: true
+    options:
+      - text: "Order and delivery status from the carriers"
+        correct: true
+        feedback: "The core of the solution."
+      - text: "Contact reasons from the customer service tool"
+        correct: true
+        feedback: "To measure the baseline and track the effect."
+      - text: "Customers' contact preferences and consent (email, SMS)"
+        correct: true
+        feedback: "Needed to send notifications legally and in the right channel."
+      - text: "Customers' social media profiles"
+        feedback: "Not needed, and intrusive."
+      - text: "Competitors' chat logs"
+        feedback: "Not available, and not needed."
+  - id: risks
+    question: "Which risks should you manage? (select all that apply)"
+    multi: true
+    options:
+      - text: "The third carrier's nightly file makes tracking information stale"
+        correct: true
+        feedback: "Yes: show the update time, push the carrier for an API."
+      - text: "A chatbot that cannot see order status would frustrate customers even more"
+        correct: true
+        feedback: "Yes: this is why connecting the data comes first."
+      - text: "The CEO feeling the project is not 'AI enough'"
+        correct: true
+        feedback: "Yes: show the phased roadmap with a GenAI phase built on reliable data, and the quick visible win."
+      - text: "The chatbot being too polite"
+        feedback: "Not a real risk."
+approach:
+  id: approach
+  question: "What do you recommend?"
+  options:
+    - text: "Phase 1 (6 weeks): proactive delivery emails and SMS with a tracking page fed by carrier data, plus an order-status answer in the help centre. Phase 2: a GenAI assistant for product advice and returns, connected to order data, measured on the same KPIs"
+      verdict: best
+      feedback: "Fixes the root cause fast, gives the board a visible win, and positions GenAI where it adds value, on reliable data."
+    - text: "A scripted FAQ chatbot"
+      verdict: ok
+      feedback: "Cheap, but without order data it cannot answer the main question, 'where is my order?'."
+    - text: "A GenAI chatbot trained on the website content, live in 6 weeks"
+      verdict: bad
+      feedback: "It cannot see deliveries, may invent policies (like the competitor's), and leaves the root cause untouched."
+    - text: "Hire 30 more call-centre agents"
+      verdict: bad
+      feedback: "Expensive, slow, and it treats the symptom."
+plan:
+  question: "Order the next weeks."
+  steps:
+    - "Analyse contact reasons and measure the baseline rate of 'where is my order?' contacts"
+    - "Connect the carriers' tracking data to the order system"
+    - "Launch proactive notifications and a tracking page in one region first"
+    - "Compare contacts and reviews with the other regions, then roll out"
+    - "Scope phase 2: a GenAI assistant for product advice, built on reliable order data"
+  explanation: "Baseline, then data plumbing, then a regional launch that doubles as a test, then rollout, and only then the GenAI phase on solid foundations."
+value:
+  intro: |
+    **40,000** contacts a month, **55 %** of them 'where is my order?'. A comparable retailer saw proactive notifications remove **60 %** of these contacts. A contact costs **€5**. Count **12 months**.
+  numbers: { contacts: 40000, wismo: 0.55, avoid: 0.6, cost: 5, months: 12 }
+  fields:
+    - label: "'Where is my order?' contacts avoided per month"
+      answer: 13200
+      formula: "contacts * wismo * avoid"
+      decimals: 0
+    - label: "Yearly saving (€)"
+      answer: 792000
+      formula: "contacts * wismo * avoid * cost * months"
+      decimals: 0
+      unit: €
+  solution: |
+    $40{,}000 \times 0.55 \times 0.6 = 13{,}200$ contacts avoided a month, i.e. $13{,}200 \times 5 \times 12 = 792{,}000$ € a year.
+
+    Plus what is harder to price: better reviews, and an overwhelmed team that can finally answer the remaining customers quickly. The 60 % comes from another company: validate it in the regional test.
+pitch:
+  id: pitch
+  question: "Which summary do you send Julien?"
+  options:
+    - text: "More than half of your contacts are customers asking where their order is, because we send no news after the order. The fastest win is proactive delivery updates and a tracking page: about 13,000 fewer contacts a month, roughly €800k a year, and better reviews. A GenAI assistant comes next, for product advice, once it can see order data. Next step: connect the carrier feeds and test in one region within 6 weeks."
+      verdict: best
+      feedback: "Data-driven, respectful of the CEO's goal, honest about where AI fits, with a quick win and a roadmap."
+    - text: "Sure, we will launch a GenAI chatbot in six weeks, like your competitors."
+      verdict: bad
+      feedback: "Says yes to the wrong solution; the contacts will not go down and the bot may invent answers."
+    - text: "You don't need AI. AI is overhyped."
+      verdict: bad
+      feedback: "Dismissive and wrong for phase 2. Lead with the insight, not with a lecture."
+    - text: "We recommend an 18-month digital transformation roadmap."
+      verdict: ok
+      feedback: "Maybe useful later, but the CEO needs a visible result in six weeks, and you have one."
+debrief: |
+  **What a strong candidate does in this case**
+
+  - Treats "a chatbot" as a **hypothesis**, not a requirement, and looks at the **contact reasons** first.
+  - Finds the **root cause** (no delivery information) and the data that fixes it.
+  - Is comfortable recommending **no AI for the first step**, without dismissing AI altogether.
+  - Manages the client: a **quick visible win** plus a **credible GenAI phase** for the board.
+  - Measures with a **comparison group** (one region first).

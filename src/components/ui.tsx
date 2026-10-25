@@ -17,12 +17,14 @@ export function DomainChip({ domain, className }: { domain: Domain; className?: 
   )
 }
 
-export function DifficultyBadge({ difficulty }: { difficulty: Difficulty }) {
+const DIFFICULTY_EN: Record<Difficulty, string> = { easy: 'Easy', medium: 'Medium', hard: 'Hard' }
+
+export function DifficultyBadge({ difficulty, lang = 'fr' }: { difficulty: Difficulty; lang?: 'fr' | 'en' }) {
   const d = DIFFICULTY[difficulty]
   return (
     <span className="chip" style={{ color: d.color, borderColor: `${d.color}33` }}>
       <span className="size-1.5 rounded-full" style={{ background: d.color }} />
-      {d.label}
+      {lang === 'en' ? DIFFICULTY_EN[difficulty] : d.label}
     </span>
   )
 }

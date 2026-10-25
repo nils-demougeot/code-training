@@ -1,8 +1,5 @@
 import clsx from 'clsx'
-import {
-  ArrowRight, Brain, CalendarClock, Check, Code2, Flame, FlaskConical, Layers, RotateCcw, Sparkles, Target, Timer,
-  Trophy, Zap,
-} from 'lucide-react'
+import { ArrowRight, Brain, Briefcase, CalendarClock, Check, Code2, Flame, FlaskConical, Layers, RotateCcw, Sparkles, Target, Timer, Trophy, Zap } from 'lucide-react'
 import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { Heatmap, Radar } from '@/components/charts'
@@ -110,6 +107,10 @@ export default function Dashboard() {
               <Link to="/quiz?n=5" className="btn btn-ghost">
                 <Zap className="size-4 text-warn" />
                 Mode 5 minutes
+              </Link>
+              <Link to="/prep" className="btn btn-ghost">
+                <Briefcase className="size-4 text-accent" />
+                Prépa BCG X
               </Link>
             </div>
           </div>

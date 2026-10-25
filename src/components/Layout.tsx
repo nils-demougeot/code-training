@@ -1,6 +1,6 @@
 import clsx from 'clsx'
 import {
-  BookMarked, BookOpen, Trophy, Code2, Cpu, Sigma, GitBranch, Flame, FlaskConical, Globe, LayoutDashboard, Layers, Menu, Mic, Puzzle, Rocket, Search,
+  BookMarked, BookOpen, Bot, Briefcase, Trophy, Code2, Cpu, Sigma, GitBranch, Flame, FlaskConical, Globe, LayoutDashboard, Layers, Menu, Mic, Puzzle, Rocket, Search,
   UserCircle2, X, Zap,
 } from 'lucide-react'
 import { useEffect, useId, useMemo, useState, type ReactNode } from 'react'
@@ -22,6 +22,7 @@ export function useDueCards(): number {
 
 const NAV: { to: string; label: string; icon: typeof Code2; badge?: 'cards' }[] = [
   { to: '/', label: 'Accueil', icon: LayoutDashboard },
+  { to: '/prep', label: 'Prépa BCG X', icon: Briefcase },
   { to: '/exercices', label: 'Exercices', icon: Code2 },
   { to: '/memoire', label: 'Mémoire', icon: Layers, badge: 'cards' },
   { to: '/blocs', label: 'Blocs de code', icon: Puzzle },
@@ -30,6 +31,7 @@ const NAV: { to: string; label: string; icon: typeof Code2; badge?: 'cards' }[] 
   { to: '/projets', label: 'Projets', icon: Rocket },
   { to: '/competitions', label: 'Compétitions', icon: Trophy },
   { to: '/maths', label: 'Maths', icon: Sigma },
+  { to: '/genai', label: 'GenAI Academy', icon: Bot },
   { to: '/git', label: 'Git & GitHub', icon: GitBranch },
   { to: '/fiches', label: 'Fiches', icon: BookOpen },
   { to: '/doc', label: 'Documentation', icon: BookMarked },

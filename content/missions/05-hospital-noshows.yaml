@@ -1,0 +1,234 @@
+id: hospital-noshows
+title: The empty consultation rooms
+emoji: 🏥
+industry: Healthcare
+difficulty: medium
+minutes: 15
+skills: [Responsible AI, Fairness, Randomised pilot, From prediction to action]
+client:
+  name: Dr. Amina Diallo
+  role: Head of Outpatient Operations
+  company: a regional hospital with 200,000 consultations a year
+brief: |
+  "15 % of our patients do not show up to their appointments, while others wait nine weeks for a slot. I want a **model that predicts no-shows so that we can overbook**, like airlines do."
+context: |
+  A prediction is only useful through the **action** it triggers, and in healthcare actions affect patients unequally. Understand why patients miss appointments and what the hospital can do about it. You can ask **5 questions**.
+discovery:
+  budget: 5
+  intro: Ask Dr. Diallo your questions. Think about causes, numbers, data, what is done today and who could be affected by the solution.
+  questions:
+    - id: why
+      text: "Why do patients miss their appointments, as far as you know?"
+      value: key
+      answer: "Many forget: appointments are often booked months in advance. Some have transport problems, some feel better, and some never received the letter."
+      reveals: [reasons]
+      why: "The causes suggest **actions other than overbooking**: reminders, easy rescheduling, transport help."
+    - id: volume
+      text: "How many appointments are missed, and what does an empty slot cost?"
+      value: key
+      answer: "About 200,000 appointments a year, 15 % missed. An empty slot costs us around €120 in staff and equipment time, and our waiting list is nine weeks long."
+      reveals: [volume, waitlist]
+      why: "Size of the problem and of the value, in the client's terms: money and waiting time."
+    - id: data
+      text: "What do you know about past appointments?"
+      value: key
+      answer: "Four years of appointments with whether the patient came, the specialty, how far in advance it was booked, the patient's age and postcode, previous no-shows, and whether an SMS reminder was sent."
+      reveals: [history]
+      why: "Labelled history with useful signals (booking lead time, past no-shows): a risk model is feasible."
+    - id: current
+      text: "What do you do today to reduce no-shows?"
+      value: key
+      answer: "One SMS 48 hours before, for everyone. Nobody calls patients, and cancelling is only possible by phone during office hours."
+      reveals: [sms, cancel]
+      why: "The **baseline**, and two cheap levers already visible: targeted calls and easier cancellation."
+    - id: overbook
+      text: "How do the clinicians feel about overbooking?"
+      value: useful
+      answer: "They hate it. When everybody comes, clinics run hours late and patients wait in the corridor."
+      reveals: [overbook-concern]
+      why: "The action the client asked for has a real cost when the prediction is wrong. Better to know before proposing it."
+    - id: equity
+      text: "Are some groups of patients more likely to miss appointments?"
+      value: useful
+      answer: "Yes: patients from deprived areas and those who live far away. I am worried we would end up penalising them."
+      reveals: [equity]
+      why: "A model will learn these patterns. If the action is overbooking, the most vulnerable patients bear the cost: a **fairness** issue to design around."
+    - id: governance
+      text: "Who has to approve the use of patient data for this?"
+      value: useful
+      answer: "Our data protection officer and the ethics committee. Patients' trust matters a lot to us."
+      reveals: [governance]
+      why: "Health data needs governance from day one; involving these people early avoids a late veto."
+    - id: algorithm
+      text: "Should we use XGBoost or a neural network?"
+      value: "off"
+      answer: "I have no idea. Is that important right now?"
+      why: "The algorithm is a detail compared with the action, the data governance and the fairness questions."
+    - id: app
+      text: "Should we build a mobile app for patients?"
+      value: weak
+      answer: "Many of our patients are elderly. I am not sure an app would reach them."
+      why: "A big solution proposed before understanding the problem."
+    - id: others
+      text: "What do other hospitals do?"
+      value: weak
+      answer: "One hospital nearby started calling patients. I heard it helped."
+      why: "Fine for benchmarking later; it does not help you understand this hospital."
+    - id: budget
+      text: "What is your budget?"
+      value: weak
+      answer: "Public hospital budgets are tight. Show me the value."
+      why: "Too early."
+    - id: cloud
+      text: "Can we put the data on a public cloud?"
+      value: weak
+      answer: "Health data needs certified hosting. Ask our IT department."
+      why: "A real constraint, but a technical one for IT; the governance question covers it better."
+facts:
+  - { id: reasons, text: "Causes: forgotten appointments (booked months ahead), transport, feeling better, letters not received." }
+  - { id: volume, text: "≈ 200,000 appointments a year, 15 % missed; an empty slot costs ≈ €120." }
+  - { id: waitlist, text: "Waiting list: about nine weeks." }
+  - { id: history, text: "4 years of appointments: attendance, specialty, booking lead time, age, postcode, past no-shows, SMS sent." }
+  - { id: sms, text: "Today: one SMS 48 h before, for everyone; no calls." }
+  - { id: cancel, text: "Cancelling is only possible by phone during office hours." }
+  - { id: overbook-concern, text: "Clinicians strongly dislike overbooking: overruns and corridor waits." }
+  - { id: equity, text: "Patients from deprived or distant areas miss more often; risk of penalising them." }
+  - { id: governance, text: "DPO and ethics committee must approve the use of patient data." }
+framing:
+  - id: objective
+    question: "What is the objective?"
+    options:
+      - text: "Reduce wasted slots and waiting times, without harming patients who already find it harder to attend"
+        correct: true
+        feedback: "Yes: operational value and an explicit fairness constraint."
+      - text: "Predict no-shows with the highest possible accuracy"
+        feedback: "Predicting that everyone comes is already 85 % accurate. The value is in the action, not the score."
+      - text: "Overbook as many slots as possible"
+        feedback: "A means with real side effects, and the clinicians oppose it."
+      - text: "Penalise patients who miss appointments"
+        feedback: "Punitive, likely to hurt vulnerable patients, and contrary to the hospital's mission."
+  - id: task
+    question: "What should the model be used for first?"
+    options:
+      - text: "Rank upcoming appointments by no-show risk so that staff can focus help (a call, rescheduling, transport) on the patients most likely to miss"
+        correct: true
+        feedback: "Right: the model targets a helpful action, which is low risk even when it is wrong."
+      - text: "Automatically double-book every risky slot"
+        feedback: "When the model is wrong, two patients arrive for one slot, and the riskiest patients are often the most vulnerable."
+      - text: "Write SMS reminders with an LLM"
+        feedback: "The wording is not the bottleneck; targeting and action are."
+      - text: "Forecast the total number of appointments next year"
+        feedback: "A planning question, not the no-show problem."
+  - id: metric
+    question: "How do you measure success?"
+    options:
+      - text: "Offline: how many of the actual no-shows fall in the top 20 % of the risk list, on recent months. Then a randomised pilot: no-show rate of patients called versus similar patients not called"
+        correct: true
+        feedback: "Yes: a metric that matches the action, and a randomised test that proves the effect of the calls."
+      - text: "Accuracy of the model"
+        feedback: "Misleading with 15 % positives."
+      - text: "The number of SMS sent"
+        feedback: "Activity, not impact."
+      - text: "Performance on the training data"
+        feedback: "Says nothing about new patients."
+  - id: data
+    question: "Which data should the model use? (select all that apply)"
+    multi: true
+    options:
+      - text: "Past appointments with attendance"
+        correct: true
+        feedback: "The labels."
+      - text: "Booking lead time and specialty"
+        correct: true
+        feedback: "Strong, legitimate predictors."
+      - text: "Reminder history"
+        correct: true
+        feedback: "Useful, and needed to separate the effect of reminders."
+      - text: "Patients' full medical records"
+        feedback: "Not needed, and far too sensitive for this purpose."
+      - text: "Patients' ethnicity as a model input"
+        feedback: "Not as an input. Fairness checks can be done with area-level indicators (e.g. deprivation by postcode), under governance."
+  - id: risks
+    question: "Which risks should you design for? (select all that apply)"
+    multi: true
+    options:
+      - text: "The model learns that deprived patients miss more, and a punitive action then harms them"
+        correct: true
+        feedback: "Yes: choose supportive actions and check outcomes by group."
+      - text: "Clinics overrunning if overbooking is used"
+        correct: true
+        feedback: "Yes: if overbooking is ever used, limit and monitor it."
+      - text: "Patient data protection and approvals"
+        correct: true
+        feedback: "Yes: DPO and ethics committee from the start."
+      - text: "Patients reading the model's code"
+        feedback: "Not a risk."
+approach:
+  id: approach
+  question: "What do you recommend?"
+  options:
+    - text: "A simple, explainable risk model on past appointments; staff call the riskiest patients to confirm, reschedule or arrange transport; freed slots go to the waiting list; tested with a randomised pilot; overbooking only considered later, in a few clinics, with monitoring"
+      verdict: best
+      feedback: "Helpful action, fairness by design, evidence through a randomised pilot."
+    - text: "No model: two SMS reminders for everyone and a link to cancel online"
+      verdict: ok
+      feedback: "Cheap and probably effective: a great first step and the baseline the model must beat. It does not use the data to help those who need it most."
+    - text: "Overbook automatically wherever the predicted risk is above 50 %"
+      verdict: bad
+      feedback: "Ignores the clinicians, the overruns and the fairness problem."
+    - text: "A GenAI chatbot that chats with patients about their appointments"
+      verdict: bad
+      feedback: "Does not address the causes, and many patients would not use it."
+plan:
+  question: "Order the first steps."
+  steps:
+    - "Agree on goals and guardrails with clinicians, the DPO and the ethics committee"
+    - "Build the risk model on past appointments and check it on recent months"
+    - "Check the risk list for unfair patterns across areas and age groups"
+    - "Design the action with staff: calls, rescheduling, waiting-list backfill"
+    - "Run a randomised pilot in two specialties, then decide on scaling"
+  explanation: "Governance first in healthcare, then the model, then a **fairness check** before any patient is affected, then the action, then a randomised pilot to measure the real effect."
+value:
+  intro: |
+    **200,000** appointments a year, **15 %** missed, **€120** per empty slot. The staff call the **20 %** of appointments with the highest risk; this group contains **half** of all no-shows. Calls prevent **30 %** of the no-shows they target (the freed slots are reused). A call costs **€4**.
+  numbers: { appts: 200000, rate: 0.15, capture: 0.5, effect: 0.3, slot: 120, top: 0.2, call: 4 }
+  fields:
+    - label: "No-shows contained in the top-20 % list (per year)"
+      answer: 15000
+      formula: "appts * rate * capture"
+      decimals: 0
+    - label: "Net yearly value of the calls (€)"
+      answer: 380000
+      formula: "appts * rate * capture * effect * slot - appts * top * call"
+      decimals: 0
+      unit: €
+  solution: |
+    No-shows: $200{,}000 \times 0.15 = 30{,}000$; half are in the list: $15{,}000$.
+
+    Prevented: $15{,}000 \times 0.3 = 4{,}500$ slots, worth $4{,}500 \times 120 = 540{,}000$ €. Calls: $200{,}000 \times 0.2 = 40{,}000$ calls at €4, i.e. $160{,}000$ €. Net: $540{,}000 - 160{,}000 = 380{,}000$ € a year.
+
+    The model is what makes the calls affordable: calling everyone would cost $800{,}000$ € a year. And the main benefit for the hospital is shorter waiting times.
+pitch:
+  id: pitch
+  question: "Which summary do you send Dr. Diallo?"
+  options:
+    - text: "Most missed appointments come from long booking delays, forgotten dates and transport problems. We propose using a risk score to call the 20 % of patients most likely to miss, offering to confirm, reschedule or help with transport, and giving freed slots to the waiting list. Estimated value: about €380k a year, plus shorter waits. Patients are never penalised, and we will prove the effect with a randomised pilot in two specialties."
+      verdict: best
+      feedback: "Causes, a supportive action, value, fairness and a rigorous test, in plain words."
+    - text: "Our model has an AUC of 0.78; we will overbook every slot with a risk above 50 %."
+      verdict: bad
+      feedback: "Jargon plus the riskiest action, without the clinicians or fairness."
+    - text: "AI can help hospitals a lot. We will come back with a proposal."
+      verdict: bad
+      feedback: "Says nothing."
+    - text: "Let us start by overbooking a little in every clinic and see what happens."
+      verdict: ok
+      feedback: "At least it is a test, but without targeting, measurement or the clinicians' agreement."
+debrief: |
+  **What a strong candidate does in this case**
+
+  - Separates the **prediction** from the **action**, and picks a helpful action that is safe when the model is wrong.
+  - Raises **fairness** early: who bears the cost of errors?
+  - Brings in **governance** (DPO, ethics committee) from the start for health data.
+  - Uses a metric that matches the action (no-shows captured in the top of the list), not accuracy.
+  - Proves impact with a **randomised pilot**.

@@ -24,6 +24,9 @@ const CompetitionPage = lazy(() => import('./pages/CompetitionPage'))
 const Maths = lazy(() => import('./pages/Maths'))
 const MathChapter = lazy(() => import('./pages/MathChapter'))
 const GenAIHome = lazy(() => import('./pages/GenAIHome'))
+const Prep = lazy(() => import('./pages/Prep'))
+const MissionPage = lazy(() => import('./pages/MissionPage'))
+const ExplainPage = lazy(() => import('./pages/ExplainPage'))
 const Blocks = lazy(() => import('./pages/Blocks'))
 const ParsonsPage = lazy(() => import('./pages/ParsonsPage'))
 const GitHome = lazy(() => import('./pages/GitHome'))
@@ -75,6 +78,11 @@ export default function App() {
           <Route path="/maths/:chapter" element={<MathChapter course="maths" />} />
           <Route path="/genai" element={<GenAIHome />} />
           <Route path="/genai/:chapter" element={<MathChapter course="genai" />} />
+          <Route path="/prep" element={<Prep />} />
+          <Route path="/missions" element={<Navigate to="/prep#missions" replace />} />
+          <Route path="/missions/:id" element={<MissionPage />} />
+          <Route path="/explain" element={<Navigate to="/prep#explain" replace />} />
+          <Route path="/explain/:id" element={<ExplainPage />} />
           <Route path="/stats" element={<Navigate to="/maths" replace />} />
           <Route path="/blocs" element={<Blocks />} />
           <Route path="/blocs/:id" element={<ParsonsPage />} />
