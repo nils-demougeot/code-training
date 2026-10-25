@@ -5,7 +5,9 @@ import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { Markdown } from '@/components/Markdown'
 import { Empty } from '@/components/ui'
 import { useProgress } from '@/lib/progress'
-import { BOSS_LIVES, BOSS_ROUNDS, bossPool, chapterById, CHAPTERS, rng, type Chapter } from '@/maths'
+import { BOSS_LIVES, BOSS_ROUNDS, bossPool, rng, type Chapter } from '@/maths'
+import { COURSES, type Course } from '@/maths/courses'
+import { t } from '@/maths/i18n'
 import { MathPlayer, Stars, type Outcome } from '@/maths/MathPlayer'
 import { celebrate } from './ExercisePage'
 import { FormulaSheet } from './Maths'
@@ -14,28 +16,31 @@ type Tab = 'cours' | 'exercices' | 'boss'
 
 const newSeed = () => (Date.now() ^ Math.floor(Math.random() * 1e9)) >>> 0
 
-export default function MathChapter() {
+/** A chapter of a course (maths in French, GenAI Academy in English): lesson, practice, boss. */
+export default function MathChapter({ course: courseId = 'maths' }: { course?: Course['id'] }) {
+  const course = COURSES[courseId]
   const { chapter: id } = useParams()
-  const chapter = id ? chapterById.get(id) : undefined
+  const chapter = course.chapters.find((c) => c.id === id)
   if (!chapter) {
     return (
-      <Empty icon={<BookOpen className="size-6" />} title="Chapitre introuvable">
-        <Link to="/maths" className="btn btn-ghost mt-4">
-          Retour aux maths
+      <Empty icon={<BookOpen className="size-6" />} title={t(course.lang).notFound}>
+        <Link to={course.home} className="btn btn-ghost mt-4">
+          {t(course.lang).back}
         </Link>
       </Empty>
     )
   }
-  return <ChapterView key={chapter.id} chapter={chapter} />
+  return <ChapterView key={chapter.id} chapter={chapter} course={course} />
 }
 
-function ChapterView({ chapter }: { chapter: Chapter }) {
+function ChapterView({ chapter, course }: { chapter: Chapter; course: Course }) {
+  const T = t(course.lang)
   const [params, setParams] = useSearchParams()
   const tab = (params.get('tab') as Tab | null) ?? 'cours'
   const [sheet, setSheet] = useState(false)
   const p = useProgress((s) => s.p)
-  const index = CHAPTERS.indexOf(chapter)
-  const next = CHAPTERS[index + 1]
+  const index = course.chapters.indexOf(chapter)
+  const next = course.chapters[index + 1]
   const setTab = (t: Tab) => {
     const n = new URLSearchParams(params)
     n.set('tab', t)
@@ -44,28 +49,30 @@ function ChapterView({ chapter }: { chapter: Chapter }) {
 
   return (
     <div className="mx-auto max-w-5xl">
-      <Link to="/maths" className="mb-3 inline-flex items-center gap-1 text-xs text-faint hover:text-fg">
+      <Link to={course.home} className="mb-3 inline-flex items-center gap-1 text-xs text-faint hover:text-fg">
         <ArrowLeft className="size-3.5" />
-        Maths pour la data
+        {course.homeLabel}
       </Link>
       <div className="mb-5 flex flex-wrap items-center gap-3">
         <span className="flex size-12 items-center justify-center rounded-2xl bg-white/[0.04] text-3xl">{chapter.emoji}</span>
         <div>
-          <div className="text-[11px] uppercase tracking-wider text-faint">Chapitre {index + 1}</div>
+          <div className="text-[11px] uppercase tracking-wider text-faint">
+            {T.chapter} {index + 1}
+          </div>
           <h1 className="text-2xl font-semibold tracking-tight">{chapter.title}</h1>
         </div>
-        {p.bosses?.[chapter.id]?.beatenAt && <Crown className="size-6 text-warn" aria-label="Boss vaincu" />}
+        {p.bosses?.[chapter.id]?.beatenAt && <Crown className="size-6 text-warn" aria-label={T.won} />}
         <button className="btn btn-ghost ml-auto px-3 py-1.5 text-xs" onClick={() => setSheet(true)}>
           <BookOpen className="size-3.5" />
-          Formulaire
+          {T.formulaSheet}
         </button>
       </div>
 
       <div className="mb-6 flex gap-1 rounded-xl border border-line bg-white/[0.02] p-1" role="tablist">
         {([
-          ['cours', 'Cours', <BookOpen key="c" className="size-4" />],
-          ['exercices', 'Exercices', <PenLine key="e" className="size-4" />],
-          ['boss', 'Boss', <Swords key="b" className="size-4" />],
+          ['cours', T.lessonTab, <BookOpen key="c" className="size-4" />],
+          ['exercices', T.exercisesTab, <PenLine key="e" className="size-4" />],
+          ['boss', T.bossTab, <Swords key="b" className="size-4" />],
         ] as [Tab, string, React.ReactNode][]).map(([t, label, icon]) => (
           <button
             key={t}
@@ -85,24 +92,25 @@ function ChapterView({ chapter }: { chapter: Chapter }) {
           <Markdown className="prose-base">{chapter.lesson}</Markdown>
           <div className="mt-8 flex flex-wrap gap-2 border-t border-line pt-5">
             <button className="btn btn-primary px-4 py-2 text-sm" onClick={() => setTab('exercices')}>
-              Passer aux exercices
+              {T.toExercises}
               <ArrowRight className="size-4" />
             </button>
             <button className="btn btn-ghost px-4 py-2 text-sm" onClick={() => setTab('boss')}>
               <Swords className="size-4" />
-              Affronter le boss
+              {T.fightBoss}
             </button>
           </div>
         </div>
       )}
-      {tab === 'exercices' && <Practice chapter={chapter} />}
-      {tab === 'boss' && <Boss chapter={chapter} next={next} />}
-      {sheet && <FormulaSheet only={chapter.id} onClose={() => setSheet(false)} />}
+      {tab === 'exercices' && <Practice chapter={chapter} course={course} />}
+      {tab === 'boss' && <Boss chapter={chapter} next={next} course={course} />}
+      {sheet && <FormulaSheet chapters={[chapter]} title={T.formulaSheet} closeLabel={T.back} onClose={() => setSheet(false)} />}
     </div>
   )
 }
 
-function Practice({ chapter }: { chapter: Chapter }) {
+function Practice({ chapter, course }: { chapter: Chapter; course: Course }) {
+  const T = t(course.lang)
   const [params, setParams] = useSearchParams()
   const p = useProgress((s) => s.p)
   const solveMath = useProgress((s) => s.solveMath)
@@ -151,7 +159,7 @@ function Practice({ chapter }: { chapter: Chapter }) {
                 <span className="block truncate text-sm">{e.title}</span>
                 <span className="block truncate text-[11px] text-faint">{e.skill}</span>
               </span>
-              <Stars n={st} size="size-3" />
+              <Stars n={st} size="size-3" lang={course.lang} />
             </button>
           )
         })}
@@ -159,9 +167,12 @@ function Practice({ chapter }: { chapter: Chapter }) {
       <div className="card min-w-0 p-5 md:p-6">
         <div className="mb-4 flex flex-wrap items-center gap-2">
           <h2 className="text-lg font-semibold">{exercise.title}</h2>
-          <span className="chip">{'●'.repeat(exercise.level)}{'○'.repeat(3 - exercise.level)} niveau {exercise.level}</span>
-          <button className="btn btn-quiet ml-auto px-2 py-1 text-xs" onClick={() => setSeed(newSeed())} title="Mêmes questions, autres nombres">
-            Autres nombres
+          <span className="chip">
+            {'●'.repeat(exercise.level)}
+            {'○'.repeat(3 - exercise.level)} {T.level} {exercise.level}
+          </span>
+          <button className="btn btn-quiet ml-auto px-2 py-1 text-xs" onClick={() => setSeed(newSeed())} title={T.againTitle}>
+            {T.again}
           </button>
         </div>
         <MathPlayer
@@ -170,12 +181,13 @@ function Practice({ chapter }: { chapter: Chapter }) {
           seed={seed}
           onDone={onDone}
           onNext={nextEx ? () => select(nextEx.id) : () => setSeed(newSeed())}
-          nextLabel={nextEx ? 'Exercice suivant' : 'Autres nombres'}
+          nextLabel={nextEx ? T.nextExercise : T.again}
+          lang={course.lang}
         />
         {nextEx && (
           <div className="mt-4 text-right">
             <button className="text-xs text-faint hover:text-fg" onClick={() => setSeed(newSeed())}>
-              Refaire avec d’autres nombres
+              {T.againLink}
             </button>
           </div>
         )}
@@ -194,7 +206,8 @@ interface Fight {
   xp: number
 }
 
-function Boss({ chapter, next }: { chapter: Chapter; next?: Chapter }) {
+function Boss({ chapter, next, course }: { chapter: Chapter; next?: Chapter; course: Course }) {
+  const T = t(course.lang)
   const finishBoss = useProgress((s) => s.finishBoss)
   const best = useProgress((s) => s.p.bosses?.[chapter.id])
   const pool = useMemo(() => bossPool(chapter), [chapter])
@@ -211,18 +224,16 @@ function Boss({ chapter, next }: { chapter: Chapter; next?: Chapter }) {
     return (
       <div className="card flex flex-col items-center p-8 text-center">
         <div className="text-6xl">{chapter.emoji}</div>
-        <h2 className="mt-4 text-xl font-semibold">Le boss du chapitre</h2>
-        <p className="mt-2 max-w-md text-sm text-muted">
-          {BOSS_ROUNDS} calculs d’affilée tirés dans tout le chapitre, sans formule ni second essai. Tu as {BOSS_LIVES} vies : chaque erreur en coûte une.
-        </p>
+        <h2 className="mt-4 text-xl font-semibold">{T.bossTitle}</h2>
+        <p className="mt-2 max-w-md text-sm text-muted">{T.bossRules(BOSS_ROUNDS, BOSS_LIVES)}</p>
         {best && (
           <p className="mt-3 text-xs text-faint">
-            {best.beatenAt ? `Vaincu, meilleur score : ${best.bestLives} vie${best.bestLives > 1 ? 's' : ''} restante${best.bestLives > 1 ? 's' : ''}` : `${best.attempts} tentative${best.attempts > 1 ? 's' : ''}, pas encore vaincu`}
+            {best.beatenAt ? T.bossBeaten(best.bestLives) : T.bossTries(best.attempts)}
           </p>
         )}
         <button className="btn btn-primary mt-6 px-5 py-2.5" onClick={start}>
           <Swords className="size-4" />
-          {best?.beatenAt ? 'Rejouer' : 'Combattre'}
+          {best?.beatenAt ? T.replay : T.fight}
         </button>
       </div>
     )
@@ -247,9 +258,11 @@ function Boss({ chapter, next }: { chapter: Chapter; next?: Chapter }) {
         <span className="text-3xl">{chapter.emoji}</span>
         <div className="min-w-40 flex-1">
           <div className="mb-1 flex justify-between text-xs text-muted">
-            <span>Boss : {chapter.title}</span>
             <span>
-              Manche {Math.min(fight.round + 1, fight.rounds.length)}/{fight.rounds.length}
+              {T.boss} : {chapter.title}
+            </span>
+            <span>
+              {T.round} {Math.min(fight.round + 1, fight.rounds.length)}/{fight.rounds.length}
             </span>
           </div>
           <div className="h-2.5 overflow-hidden rounded-full bg-white/[0.06]">
@@ -259,7 +272,7 @@ function Boss({ chapter, next }: { chapter: Chapter; next?: Chapter }) {
             />
           </div>
         </div>
-        <div className="flex gap-1" aria-label={`${fight.lives} vies`}>
+        <div className="flex gap-1" aria-label={`${fight.lives} ♥`}>
           {Array.from({ length: BOSS_LIVES }, (_, k) => (
             <Heart key={k} className={clsx('size-5', k < fight.lives ? 'fill-bad text-bad' : 'text-faint/40')} />
           ))}
@@ -269,19 +282,15 @@ function Boss({ chapter, next }: { chapter: Chapter; next?: Chapter }) {
       {fight.over ? (
         <div className={clsx('card flex flex-col items-center p-8 text-center animate-fade-up', fight.over === 'won' ? 'border-ok/40' : 'border-bad/40')}>
           {fight.over === 'won' ? <Trophy className="size-12 text-warn" /> : <Skull className="size-12 text-bad" />}
-          <h2 className="mt-3 text-xl font-semibold">{fight.over === 'won' ? 'Boss vaincu !' : 'Le boss a gagné cette fois'}</h2>
-          <p className="mt-2 text-sm text-muted">
-            {fight.over === 'won'
-              ? `Avec ${fight.lives} vie${fight.lives > 1 ? 's' : ''} restante${fight.lives > 1 ? 's' : ''}${fight.xp ? ` · +${fight.xp} XP` : ''}.`
-              : 'Relis les corrections, entraîne-toi sur les exercices ratés, puis reviens.'}
-          </p>
+          <h2 className="mt-3 text-xl font-semibold">{fight.over === 'won' ? T.won : T.lost}</h2>
+          <p className="mt-2 text-sm text-muted">{fight.over === 'won' ? T.wonText(fight.lives, fight.xp) : T.lostText}</p>
           <div className="mt-6 flex flex-wrap justify-center gap-2">
             <button className="btn btn-ghost px-4 py-2 text-sm" onClick={start}>
-              Rejouer
+              {T.replay}
             </button>
             {fight.over === 'won' && next && (
-              <Link to={`/maths/${next.id}`} className="btn btn-primary px-4 py-2 text-sm">
-                Chapitre suivant : {next.title}
+              <Link to={`${course.base}/${next.id}`} className="btn btn-primary px-4 py-2 text-sm">
+                {T.nextChapter} : {next.title}
                 <ArrowRight className="size-4" />
               </Link>
             )}
@@ -298,7 +307,8 @@ function Boss({ chapter, next }: { chapter: Chapter; next?: Chapter }) {
           boss
           onDone={onDone}
           onNext={!fight.over ? advance : undefined}
-          nextLabel="Manche suivante"
+          nextLabel={T.nextRound}
+          lang={course.lang}
         />
       </div>
     </div>

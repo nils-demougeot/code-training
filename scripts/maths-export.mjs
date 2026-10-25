@@ -11,7 +11,8 @@ import remarkRehype from 'remark-rehype'
 import { unified } from 'unified'
 
 const root = fileURLToPath(new URL('..', import.meta.url))
-const bundle = await build({ entryPoints: [join(root, 'src/maths/index.ts')], bundle: true, write: false, format: 'esm', platform: 'node' })
+// Every course played with the maths engine: maths (French) and the GenAI Academy (English).
+const bundle = await build({ entryPoints: [join(root, 'src/maths/exportEntry.ts')], bundle: true, write: false, format: 'esm', platform: 'node' })
 const M = await import('data:text/javascript;base64,' + Buffer.from(bundle.outputFiles[0].text).toString('base64'))
 
 const SEEDS = Number(process.argv[2] ?? 60)
@@ -35,7 +36,7 @@ function checkMarkdown(where, text) {
 }
 
 const out = { chapters: [], instances: [], problems }
-for (const ch of M.CHAPTERS) {
+for (const ch of Object.values(M.COURSES).flatMap((c) => c.chapters)) {
   out.chapters.push({ id: ch.id, exercises: ch.exercises.map((e) => e.id) })
   checkMarkdown(`${ch.id} lesson`, ch.lesson)
   for (const f of ch.formulas) checkMarkdown(`${ch.id} formula ${f.name}`, `$$${f.tex}$$`)
@@ -70,6 +71,9 @@ for (const ch of M.CHAPTERS) {
       if (inst.choice) {
         const { options, answer } = inst.choice
         if (answer < 0 || answer >= options.length || new Set(options).size !== options.length) problems.push(`${where}: bad choice`)
+        const why = inst.choice.explanations
+        if (why && (why.length !== options.length || why.some((w) => !w || !w.trim()))) problems.push(`${where}: one explanation per option expected`)
+        if (seed <= 12) for (const w of why ?? []) checkMarkdown(`${where} explanation`, w)
       }
       out.instances.push({
         id: ex.id,

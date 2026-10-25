@@ -17,10 +17,10 @@ export const mathExerciseById = new Map<string, { exercise: MathExercise; chapte
   CHAPTERS.flatMap((chapter) => chapter.exercises.map((exercise) => [exercise.id, { exercise, chapter }] as const)),
 )
 
-/** The boss draws its rounds among a chapter's calculation exercises (not the formula quiz). */
+/** The boss draws its rounds among the chapter's exercises, except those marked `boss: false`. */
 export const BOSS_ROUNDS = 5
 export const BOSS_LIVES = 3
 
 export function bossPool(chapter: Chapter): MathExercise[] {
-  return chapter.exercises.filter((e) => !e.id.endsWith('-formulas'))
+  return chapter.exercises.filter((e) => e.boss !== false)
 }

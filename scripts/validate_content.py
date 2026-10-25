@@ -28,7 +28,7 @@ sys.path.insert(0, str(ROOT / "public"))
 
 import harness  # noqa: E402
 
-DOMAINS = {"python", "numpy", "pandas", "sql", "stats", "ml", "dl", "algo", "git"}
+DOMAINS = {"python", "numpy", "pandas", "sql", "stats", "ml", "dl", "genai", "algo", "git"}
 DIFFICULTIES = {"easy", "medium", "hard"}
 CONTENT = ROOT / "content"
 SHARED = {p.stem: p.read_text() for p in (CONTENT / "shared").glob("*.py")}

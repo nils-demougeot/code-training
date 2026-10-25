@@ -2,11 +2,12 @@ import clsx from 'clsx'
 import { Check, Eye, Lightbulb, RefreshCw, Send, Star, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Markdown } from '@/components/Markdown'
-import { isCorrect, parseAnswer, precisionLabel, rng, txt, type MathExercise, type MathInstance } from './core'
+import { isCorrect, parseAnswer, plain, precisionLabel, rng, type Lang, type MathExercise, type MathInstance } from './core'
+import { t } from './i18n'
 
-export function Stars({ n, size = 'size-3.5' }: { n: number; size?: string }) {
+export function Stars({ n, size = 'size-3.5', lang = 'fr' }: { n: number; size?: string; lang?: Lang }) {
   return (
-    <span className="inline-flex gap-0.5" aria-label={`${n} étoile${n > 1 ? 's' : ''} sur 3`}>
+    <span className="inline-flex gap-0.5" aria-label={t(lang).starsLabel(n)}>
       {[0, 1, 2].map((i) => (
         <Star key={i} className={clsx(size, i < n ? 'fill-warn text-warn' : 'text-faint/40')} />
       ))}
@@ -29,7 +30,8 @@ export function MathPlayer({
   boss,
   onDone,
   onNext,
-  nextLabel = 'Exercice suivant',
+  nextLabel,
+  lang = 'fr',
 }: {
   exercise: MathExercise
   seed: number
@@ -37,7 +39,9 @@ export function MathPlayer({
   onDone: (o: Outcome) => void
   onNext?: () => void
   nextLabel?: string
+  lang?: Lang
 }) {
+  const T = t(lang)
   const inst: MathInstance = useMemo(() => exercise.generate(rng(seed)), [exercise, seed])
   const [values, setValues] = useState<string[]>(() => inst.fields.map(() => ''))
   const [choice, setChoice] = useState<number | null>(null)
@@ -104,7 +108,7 @@ export function MathPlayer({
               <label key={i} className="block">
                 <div className="mb-1 flex items-baseline justify-between gap-2 text-sm">
                   <Markdown className="[&_p]:my-0">{f.label}</Markdown>
-                  <span className="shrink-0 text-[11px] text-faint">{precisionLabel(f.decimals)}</span>
+                  <span className="shrink-0 text-[11px] text-faint">{precisionLabel(f.decimals, lang)}</span>
                 </div>
                 <div
                   className={clsx(
@@ -130,7 +134,7 @@ export function MathPlayer({
                       }
                     }}
                     className="min-w-0 flex-1 bg-transparent py-2 font-mono text-[15px] outline-none"
-                    placeholder="ex. 0,25 · 1/4 · sqrt(2)/2"
+                    placeholder={T.placeholder}
                     data-field={i}
                   />
                   {f.unit && <span className="ml-2 text-xs text-faint">{f.unit}</span>}
@@ -138,8 +142,8 @@ export function MathPlayer({
                   {state === false && <X className="ml-2 size-4 text-bad" />}
                 </div>
                 <div className="mt-1 h-4 px-1 font-mono text-[11px] text-faint">
-                  {values[i].trim() && (parsed[i] === null ? <span className="text-warn">expression non reconnue</span> : /[^0-9.,\s-]/.test(values[i]) ? `= ${txt(parsed[i]!, 6)}` : null)}
-                  {done && !checked?.[i] && <span className="text-ok"> réponse : {txt(f.answer, Math.max(f.decimals + 1, 2))}</span>}
+                  {values[i].trim() && (parsed[i] === null ? <span className="text-warn">{T.unrecognized}</span> : /[^0-9.,\s-]/.test(values[i]) ? `= ${plain(parsed[i]!, 6, lang)}` : null)}
+                  {done && !checked?.[i] && <span className="text-ok"> {T.answer} : {plain(f.answer, Math.max(f.decimals + 1, 2), lang)}</span>}
                 </div>
               </label>
             )
@@ -151,29 +155,29 @@ export function MathPlayer({
         <div className="flex flex-wrap items-center gap-2">
           <button className="btn btn-primary px-4 py-2 text-sm" onClick={check} disabled={!ready}>
             <Send className="size-4" />
-            Vérifier
+            {T.check}
           </button>
           {!boss && (
             <>
               <button className="btn btn-ghost px-3 py-2 text-sm" onClick={() => setHint(true)} disabled={hint}>
                 <Lightbulb className="size-4" />
-                Formule
+                {T.hint}
               </button>
               <button className="btn btn-quiet px-3 py-2 text-sm" onClick={giveUp}>
                 <Eye className="size-4" />
-                Voir la correction
+                {T.giveUp}
               </button>
             </>
           )}
-          {!boss && wrong > 0 && <span className="text-xs text-bad">Pas encore : vérifie tes calculs (les cases en rouge).</span>}
-          {!boss && <span className="ml-auto hidden text-[11px] text-faint sm:block">Entrée pour vérifier · fractions, %, √, e^x, ln acceptés</span>}
+          {!boss && wrong > 0 && <span className="text-xs text-bad">{T.notYet}</span>}
+          {!boss && !inst.choice && <span className="ml-auto hidden text-[11px] text-faint sm:block">{T.keys}</span>}
         </div>
       )}
 
       {hint && !done && (
         <div className="rounded-xl border border-warn/30 bg-warn/[0.06] p-4 text-sm">
           <div className="mb-1 flex items-center gap-1.5 text-xs font-medium text-warn">
-            <Lightbulb className="size-3.5" /> La formule à utiliser
+            <Lightbulb className="size-3.5" /> {T.hintTitle}
           </div>
           <Markdown>{inst.hint}</Markdown>
         </div>
@@ -183,24 +187,41 @@ export function MathPlayer({
         <div className={clsx('rounded-2xl border p-4 animate-fade-up', done.correct ? 'border-ok/30 bg-ok/[0.05]' : 'border-line bg-white/[0.02]')}>
           <div className="mb-3 flex flex-wrap items-center gap-3">
             {done.correct ? <Check className="size-5 text-ok" /> : <X className="size-5 text-bad" />}
-            <span className="font-semibold">{done.correct ? 'Juste !' : done.gaveUp ? 'Correction' : 'Raté'}</span>
-            {done.correct && !boss && <Stars n={done.stars} />}
+            <span className="font-semibold">{done.correct ? T.right : done.gaveUp ? T.correction : T.missed}</span>
+            {done.correct && !boss && <Stars n={done.stars} lang={lang} />}
             {!boss && (
               <div className="ml-auto flex gap-2">
                 {onNext && (
                   <button className="btn btn-primary px-3 py-1.5 text-xs" onClick={onNext}>
                     <RefreshCw className="size-3.5" />
-                    {nextLabel}
+                    {nextLabel ?? T.nextExercise}
                   </button>
                 )}
               </div>
             )}
           </div>
-          <div className="section-title mb-2">Correction pas à pas</div>
+          <div className="section-title mb-2">{T.stepByStep}</div>
           <Markdown>{inst.solution}</Markdown>
+          {inst.choice?.explanations && (
+            <div className="mt-4 space-y-2">
+              <div className="section-title">{T.whyOptions}</div>
+              {inst.choice.options.map((o, i) => (
+                <div
+                  key={i}
+                  className={clsx('rounded-xl border px-3 py-2 text-sm', i === inst.choice!.answer ? 'border-ok/40 bg-ok/[0.05]' : 'border-line')}
+                >
+                  <div className="mb-1 flex items-start gap-2">
+                    <span className="mt-0.5 text-xs text-faint">{'ABCD'[i]}</span>
+                    <Markdown className="min-w-0 flex-1 font-medium [&_p]:my-0">{o}</Markdown>
+                  </div>
+                  <Markdown className="text-muted [&_p]:my-0">{inst.choice!.explanations![i]}</Markdown>
+                </div>
+              ))}
+            </div>
+          )}
           {boss && onNext && (
             <button className="btn btn-primary mt-4 px-4 py-2 text-sm" onClick={onNext}>
-              {nextLabel}
+              {nextLabel ?? T.nextRound}
             </button>
           )}
         </div>

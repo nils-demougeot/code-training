@@ -282,7 +282,6 @@ def ml_ridge(w, lambda_, mse, g):
     return [pen, mse + pen, w[0] - 0.1 * _num_deriv(total, w[0])]
 
 
-CHECKS = {name.replace("_", "-"): fn for name, fn in list(globals().items()) if callable(fn) and not name.startswith("_") and name[:2] in ("p_", "rv", "in", "la", "ca", "ml")}
 # Parameter names that are Python keywords.
 RENAME = {"lambda": "lambda_"}
 
@@ -290,9 +289,11 @@ RENAME = {"lambda": "lambda_"}
 def check_instance(inst):
     """Returns None when the instance is right, else a message."""
     ex = inst["id"]
-    if ex.endswith("-formulas"):
+    if inst["choice"] is not None and "correct" in inst["params"]:
+        # Question banks (formula quizzes, GenAI concept questions): the option marked correct is the bank's answer.
         return None if inst["choice"] == inst["params"]["correct"] else "wrong option marked correct"
-    fn = CHECKS.get(ex)
+    # The check of exercise "rv-binomial" is the function rv_binomial (looked up at call time).
+    fn = globals().get(ex.replace("-", "_"))
     if fn is None:
         return "no independent check"
     params = {RENAME.get(k, k): v for k, v in inst["params"].items()}
@@ -304,3 +305,84 @@ def check_instance(inst):
         if abs(got - want) > max(1e-6, 1e-6 * abs(want)) and abs(got - want) > 0.05 * 10 ** -dec:
             return f"field {i + 1}: app says {got}, independent value {want} (params {inst['params']})"
     return None
+
+
+# ---------------------------------------------------------------- GenAI Academy
+
+def gen_tokens(words, window, reserved):
+    per_doc = words / 0.75
+    return [per_doc, math.floor((window - reserved) / per_doc)]
+
+
+def gen_temperature(logits, temp):
+    from scipy.special import softmax
+
+    z = np.array(logits, float)
+    return [softmax(z)[0], softmax(z / temp)[0]]
+
+
+def gen_fewshot_cost(k, tokensPerExample, callsPerDay, price):
+    extra = k * tokensPerExample
+    return [extra, extra * callsPerDay * 30 / 1e6 * price]
+
+
+def gen_cosine(q, d1, d2):
+    from scipy.spatial.distance import cosine
+
+    return [1 - cosine(q, d1), 1 - cosine(q, d2)]
+
+
+def gen_chunking(docTokens, size, overlap, docs, dim):
+    # Simulate the sliding window instead of using the closed formula.
+    starts, start = [], 0
+    while True:
+        starts.append(start)
+        if start + size >= docTokens:
+            break
+        start += size - overlap
+    return [len(starts), len(starts) * docs * dim * np.dtype(np.float32).itemsize / 1e6]
+
+
+def gen_recall_mrr(ranks, k):
+    found = [x for x in ranks if x > 0]
+    return [sum(x <= k for x in found) / len(ranks), sum(1 / x for x in found) / len(ranks)]
+
+
+def gen_precision_k(flags, relevantTotal):
+    hits = sum(flags[:5])
+    assert hits <= relevantTotal
+    return [hits / 5, hits / relevantTotal]
+
+
+def gen_eval_margin(n, k):
+    lo, hi = stats.norm.interval(0.95, loc=k / n, scale=math.sqrt(k / n * (1 - k / n) / n))
+    return [k / n, (hi - lo) / 2]
+
+
+def gen_guardrail(tp, fn, fp, tn):
+    from sklearn.metrics import precision_score, recall_score
+
+    y = [1] * (tp + fn) + [0] * (fp + tn)
+    blocked = [1] * tp + [0] * fn + [1] * fp + [0] * tn
+    return [recall_score(y, blocked), precision_score(y, blocked)]
+
+
+def gen_agent_reliability(p, n, target):
+    steps = 0
+    while p ** (steps + 1) >= target:
+        steps += 1
+    return [p ** n, steps]
+
+
+def gen_monthly_cost(requests, tin, tout, pin, pout):
+    per_request = tin / 1e6 * pin + tout / 1e6 * pout
+    return [per_request, per_request * requests * 30]
+
+
+def gen_latency(retrieval, ttft, tokens, speed):
+    return [retrieval + ttft + tokens / speed, retrieval + ttft]
+
+
+def gen_roi(tickets, minutes, saved, rate, runCost):
+    hours = tickets * minutes * saved / 60
+    return [hours * rate, hours * rate - runCost]

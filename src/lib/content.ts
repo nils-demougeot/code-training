@@ -51,7 +51,7 @@ export function toPython(item: { language?: string }, code: string): string {
 
 const DIFF_ORDER = { easy: 0, medium: 1, hard: 2 } as const
 
-export const DOMAIN_ORDER: Domain[] = ['python', 'numpy', 'pandas', 'sql', 'stats', 'ml', 'dl', 'algo', 'git']
+export const DOMAIN_ORDER: Domain[] = ['python', 'numpy', 'pandas', 'sql', 'stats', 'ml', 'dl', 'genai', 'algo', 'git']
 
 export const exercises: Exercise[] = Object.values(exerciseFiles)
   .map((raw) => {

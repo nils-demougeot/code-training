@@ -7,7 +7,7 @@ import { PageHeader, ProgressBar } from '@/components/ui'
 import { labById } from '@/labs/registry'
 import { cards, exercises, quizQuestions } from '@/lib/content'
 import { useProgress } from '@/lib/progress'
-import { CHAPTERS } from '@/maths'
+import { CHAPTERS, type Chapter } from '@/maths'
 import { Stars } from '@/maths/MathPlayer'
 
 const LABS = ['clt', 'ab-test', 'bayes']
@@ -110,15 +110,24 @@ export default function Maths() {
   )
 }
 
-export function FormulaSheet({ onClose, only }: { onClose: () => void; only?: string }) {
-  const chapters = only ? CHAPTERS.filter((c) => c.id === only) : CHAPTERS
+export function FormulaSheet({
+  onClose,
+  chapters = CHAPTERS,
+  title = 'Formulaire',
+  closeLabel = 'Fermer',
+}: {
+  onClose: () => void
+  chapters?: Chapter[]
+  title?: string
+  closeLabel?: string
+}) {
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/70 p-4 backdrop-blur-sm" onClick={onClose}>
-      <div className="card my-8 w-full max-w-3xl p-6" onClick={(e) => e.stopPropagation()} role="dialog" aria-label="Formulaire">
+      <div className="card my-8 w-full max-w-3xl p-6" onClick={(e) => e.stopPropagation()} role="dialog" aria-label={title}>
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-semibold">Formulaire</h2>
+          <h2 className="text-lg font-semibold">{title}</h2>
           <button className="btn btn-quiet px-2 py-1 text-xs" onClick={onClose}>
-            Fermer
+            {closeLabel}
           </button>
         </div>
         <div className="space-y-6">

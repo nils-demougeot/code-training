@@ -23,6 +23,7 @@ const Competitions = lazy(() => import('./pages/Competitions'))
 const CompetitionPage = lazy(() => import('./pages/CompetitionPage'))
 const Maths = lazy(() => import('./pages/Maths'))
 const MathChapter = lazy(() => import('./pages/MathChapter'))
+const GenAIHome = lazy(() => import('./pages/GenAIHome'))
 const Blocks = lazy(() => import('./pages/Blocks'))
 const ParsonsPage = lazy(() => import('./pages/ParsonsPage'))
 const GitHome = lazy(() => import('./pages/GitHome'))
@@ -71,7 +72,9 @@ export default function App() {
           <Route path="/competitions/:id" element={<CompetitionPage />} />
           <Route path="/design/*" element={<Navigate to="/competitions" replace />} />
           <Route path="/maths" element={<Maths />} />
-          <Route path="/maths/:chapter" element={<MathChapter />} />
+          <Route path="/maths/:chapter" element={<MathChapter course="maths" />} />
+          <Route path="/genai" element={<GenAIHome />} />
+          <Route path="/genai/:chapter" element={<MathChapter course="genai" />} />
           <Route path="/stats" element={<Navigate to="/maths" replace />} />
           <Route path="/blocs" element={<Blocks />} />
           <Route path="/blocs/:id" element={<ParsonsPage />} />

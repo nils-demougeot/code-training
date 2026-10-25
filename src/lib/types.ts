@@ -1,4 +1,4 @@
-export type Domain = 'python' | 'numpy' | 'pandas' | 'sql' | 'stats' | 'ml' | 'dl' | 'algo' | 'git'
+export type Domain = 'python' | 'numpy' | 'pandas' | 'sql' | 'stats' | 'ml' | 'dl' | 'genai' | 'algo' | 'git'
 export type Difficulty = 'easy' | 'medium' | 'hard'
 
 export interface TestCase {

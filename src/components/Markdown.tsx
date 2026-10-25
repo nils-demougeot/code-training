@@ -14,11 +14,15 @@ hljs.registerLanguage('python', python)
 hljs.registerLanguage('sql', sql)
 hljs.registerLanguage('bash', bash)
 
+const escapeHtml = (code: string) => code.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c]!)
+
 export function highlight(code: string, language = 'python'): string {
+  // Unknown languages (text, json, yaml…) are shown as plain text rather than coloured as Python.
+  if (!hljs.getLanguage(language)) return escapeHtml(code)
   try {
-    return hljs.highlight(code, { language: hljs.getLanguage(language) ? language : 'python' }).value
+    return hljs.highlight(code, { language }).value
   } catch {
-    return code.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c]!)
+    return escapeHtml(code)
   }
 }
 

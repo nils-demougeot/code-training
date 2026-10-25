@@ -13,6 +13,7 @@ export function formulaQuiz(id: string, title: string, bank: FormulaQuestion[]):
     title,
     skill: 'Reconnaître les formules du cours',
     level: 1,
+    boss: false,
     generate: (r) => {
       const index = Math.floor(r.next() * bank.length)
       const item = bank[index]

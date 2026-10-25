@@ -1,4 +1,4 @@
-import { Binary, Brain, Database, Dices, FileCode2, GitBranch, Grid3x3, Network, Table2, type LucideIcon } from 'lucide-react'
+import { Binary, Bot, Brain, Database, Dices, FileCode2, GitBranch, Grid3x3, Network, Table2, type LucideIcon } from 'lucide-react'
 import type { Difficulty, Domain } from './types'
 
 export interface DomainMeta {
@@ -59,6 +59,13 @@ export const DOMAINS: Record<Domain, DomainMeta> = {
     description: 'Réseaux de neurones from scratch, backprop, PyTorch, entraînement.',
     icon: Brain,
     color: '#f472b6',
+  },
+  genai: {
+    label: 'GenAI',
+    short: 'GEN',
+    description: 'LLMs in practice: prompts, embeddings, retrieval (RAG), evaluation and safety. In English.',
+    icon: Bot,
+    color: '#2dd4bf',
   },
   algo: {
     label: 'Algo & entretien',

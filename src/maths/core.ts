@@ -12,6 +12,8 @@ export interface MathField {
 export interface MathChoice {
   options: string[]
   answer: number
+  /** Why each option is right or wrong (same order as options), shown after answering. */
+  explanations?: string[]
 }
 
 export interface MathInstance {
@@ -32,6 +34,8 @@ export interface MathExercise {
   /** Shown in the list: what the exercise trains. */
   skill: string
   level: 1 | 2 | 3
+  /** false: never drawn in the chapter's boss fight (e.g. the formula quiz). */
+  boss?: boolean
   generate: (r: Rng) => MathInstance
 }
 
@@ -229,8 +233,15 @@ export function isCorrect(value: number, field: MathField): boolean {
   return Math.abs(value - field.answer) <= tol || Math.abs(value - field.answer) <= 0.005 * Math.abs(field.answer)
 }
 
-export const precisionLabel = (decimals: number) =>
-  decimals <= 0 ? 'valeur exacte (entier)' : `à ${txt(10 ** -decimals, decimals)} près`
+export type Lang = 'fr' | 'en'
+
+/** Plain-text number in the course's language (decimal comma in French). */
+export const plain = (x: number, decimals: number, lang: Lang) => (lang === 'fr' ? txt(x, decimals) : String(Number(x.toFixed(decimals))))
+
+export const precisionLabel = (decimals: number, lang: Lang = 'fr') =>
+  lang === 'fr'
+    ? decimals <= 0 ? 'valeur exacte (entier)' : `à ${txt(10 ** -decimals, decimals)} près`
+    : decimals <= 0 ? 'exact value (integer)' : `within ${plain(10 ** -decimals, decimals, 'en')}`
 
 /** Field helper. */
 export const field = (label: string, answer: number, decimals = 2, unit?: string): MathField => ({ label, answer, decimals, unit })
